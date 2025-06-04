@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - Mon Budget Personnel</title>
+    <!-- Tailwind CSS CDN pour un style moderne et réactif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Styles de base pour la police et l'arrière-plan */
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; padding: 20px; }
+        /* Conteneur principal pour centrer le contenu */
+        .container { max-width: 960px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        /* Styles des titres h1 et h2 */
+        h1, h2 { color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-bottom: 20px; }
+        /* Style des cartes de budget */
+        .budget-card {
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .budget-card h3 { margin-top: 0; color: #34495e; font-size: 1.2em; }
+        /* Conteneur de la barre de progression */
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            height: 20px;
+            margin-top: 10px;
+        }
+        /* Style de la barre de progression elle-même */
+        .progress-bar {
+            height: 100%;
+            border-radius: 5px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 20px;
+            transition: width 0.5s ease-in-out; /* Animation pour le changement de largeur */
+        }
+        /* Couleurs des barres de progression en fonction du statut */
+        .progress-bar.green { background-color: #27ae60; } /* OK */
+        .progress-bar.orange { background-color: #f39c12; } /* Près du budget */
+        .progress-bar.red { background-color: #e74c3c; } /* Dépassé */
+
+        /* Style de la carte de résumé du mois */
+        .summary-card {
+            background-color: #dbeafe; /* blue-100 */
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .summary-card p { font-size: 1.1em; margin: 5px 0; }
+        .summary-card .income { color: #27ae60; font-weight: bold; }
+        .summary-card .expense { color: #e74c3c; font-weight: bold; }
+
+        /* Style du lien de retour */
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #3b82f6; text-decoration: none; }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ page_title }}</h1>
+        <p class="text-lg text-gray-700 mb-6 text-center">Aperçu pour {{ current_month_name }} {{ current_year }}</p>
+
+        <div class="summary-card">
+            <h3>Résumé du mois</h3>
+            <p>Revenus Totaux : <span class="income">{{ total_income_month|floatformat:2 }} CHF</span></p>
+            <p>Dépenses Totales : <span class="expense">{{ total_expense_month|floatformat:2 }} CHF</span></p>
+            <p>Solde Net : <span class="{% if total_income_month|add:total_expense_month >= 0 %}income{% else %}expense{% endif %}">{{ total_income_month|add:total_expense_month|floatformat:2 }} CHF</span></p>
+        </div>
+
+        <h2>Budgets par Catégorie</h2>
+        {% if budget_data %}
+            {% for budget in budget_data %}
+                <div class="budget-card">
+                    <h3>{{ budget.category_name }}</h3>
+                    <p>Budgété : {{ budget.budgeted_amount|floatformat:2 }} CHF</p>
+                    <p>Dépensé : {{ budget.spent_amount|floatformat:2 }} CHF</p>
+                    <p>Restant : <span class="{% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
+
+                    <div class="progress-bar-container">
+                        {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
+                        {% if budget.percentage_spent < 75 %}
+                            {% with color_class="green" %}
+                                <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                                    {{ budget.percentage_spent|floatformat:0 }}%
+                                </div>
+                            {% endwith %}
+                        {% elif budget.percentage_spent < 100 %}
+                            {% with color_class="orange" %}
+                                <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                                    {{ budget.percentage_spent|floatformat:0 }}%
+                                </div>
+                            {% endwith %}
+                        {% else %}
+                            {% with color_class="red" %}
+                                <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                                    {{ budget.percentage_spent|floatformat:0 }}%
+                                </div>
+                            {% endwith %}
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-center text-gray-600">Aucun budget configuré pour ce mois. Ajoutez-en via l'administration Django !</p>
+        {% endif %}
+
+        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    </div>
+</body>
+</html>

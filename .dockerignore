@@ -1,0 +1,10 @@
+# .dockerignore
+
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.sqlite3
+.DS_Store
+.vscode/
