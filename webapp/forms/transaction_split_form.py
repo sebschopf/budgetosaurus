@@ -55,8 +55,10 @@ class SplitTransactionLineForm(forms.Form):
         main_category = cleaned_data.get('main_category')
         subcategory = cleaned_data.get('subcategory')
 
-        if not main_category and not subcategory:
-            raise forms.ValidationError("Veuillez sélectionner une catégorie principale ou une sous-catégorie.")
+        if not main_category:
+            raise forms.ValidationError("Veuillez sélectionner une catégorie principale.")
+
+        final_category = None
 
         if subcategory:
             # Si une sous-catégorie est sélectionnée, s'assurer qu'elle a un parent
@@ -64,16 +66,17 @@ class SplitTransactionLineForm(forms.Form):
             if subcategory.parent != main_category:
                 self.add_error('subcategory', "Cette sous-catégorie n'appartient pas à la catégorie principale sélectionnée.")
             # La catégorie finale pour la transaction sera la sous-catégorie
-            cleaned_data['final_category'] = subcategory
+            final_category = subcategory
         else:
             # Si seule la catégorie principale est sélectionnée, c'est elle la catégorie finale.
-            # Assurez-vous qu'elle n'a pas de parent pour être considérée comme une catégorie de niveau supérieur finale
-            # ou que la validation du modèle Category gère cela. Ici, le filtre du queryset assure qu'elle n'a pas de parent.
-            cleaned_data['final_category'] = main_category
+            final_category = main_category
             
+        cleaned_data['final_category'] = final_category # Ajouter la catégorie finale aux données nettoyées
+        
         return cleaned_data
 
 # Création du formset pour gérer plusieurs instances de SplitTransactionLineForm
 # extra=1 signifie qu'une ligne vide sera affichée par défaut en plus des données initiales.
 # can_delete=True ajoute une case à cocher 'delete' pour supprimer des lignes.
 SplitTransactionFormset = formset_factory(SplitTransactionLineForm, extra=1, can_delete=True)
+

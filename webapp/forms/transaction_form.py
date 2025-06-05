@@ -42,7 +42,7 @@ class TransactionForm(forms.ModelForm):
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date', 'class': 'p-2 border rounded-md w-full'}),
             'amount': forms.NumberInput(attrs={'step': '0.01', 'class': 'p-2 border rounded-md w-full'}),
-            'description': forms.TextInput(attrs={'class': 'p-2 border rounded-md w-full'}),
+            'description': forms.TextInput(attrs={'class': 'p-2 border rounded-md w-full', 'list': 'commonDescriptionsList'}), # Ajout de list pour l'autocomplétion
             'account': forms.Select(attrs={'class': 'p-2 border rounded-md w-full'}),
             'transaction_type': forms.Select(attrs={'class': 'p-2 border rounded-md w-full'}),
             # 'tags': forms.CheckboxSelectMultiple n'est pas mis ici car il est déjà défini dans le champ 'tags'
@@ -69,7 +69,7 @@ class TransactionForm(forms.ModelForm):
                     self.fields['subcategory'].queryset = self.instance.category.parent.children.all().order_by('name')
                 else:
                     self.fields['category'].initial = self.instance.category
-                    self.fields['subcategory'].queryset = Category.objects.none()
+                    self.fields['subcategory'].queryset = Category.objects.none() # Aucune sous-catégorie pour une catégorie parent
             else:
                 self.fields['category'].initial = None
                 self.fields['subcategory'].initial = None
@@ -98,15 +98,15 @@ class TransactionForm(forms.ModelForm):
                     pass # Le queryset reste vide si la catégorie principale n'existe pas
 
             # Si une sous-catégorie a été soumise, s'assurer qu'elle est dans le queryset
-            # Ceci est vital pour que ModelChoiceField puisse valider l'ID soumis,
-            # même si la logique parent-enfant ne la mettrait pas dans le queryset par défaut.
             if submitted_subcategory_id:
                 try:
                     submitted_subcategory = Category.objects.get(pk=submitted_subcategory_id)
                     # Utiliser Q objects pour combiner les querysets si la sous-catégorie soumise
                     # n'est pas déjà dans le queryset généré par la catégorie principale.
-                    if submitted_subcategory not in subcategory_queryset:
-                        subcategory_queryset = (subcategory_queryset | Category.objects.filter(pk=submitted_subcategory_id)).distinct()
+                    # Vérifier que la sous-catégorie soumise est bien un enfant de la catégorie principale soumise (si présente)
+                    if not main_category_id_from_post or (submitted_subcategory.parent and submitted_subcategory.parent.id == int(main_category_id_from_post)):
+                        if submitted_subcategory not in subcategory_queryset:
+                            subcategory_queryset = (subcategory_queryset | Category.objects.filter(pk=submitted_subcategory_id)).distinct()
                 except Category.DoesNotExist:
                     pass # La sous-catégorie soumise n'existe pas, donc elle ne sera pas ajoutée.
 
@@ -141,28 +141,32 @@ class TransactionForm(forms.ModelForm):
             raise forms.ValidationError("Veuillez sélectionner une catégorie ou une sous-catégorie.")
 
         # Règle 2: Déterminer la catégorie finale pour le modèle Transaction.
-        # Si une sous-catégorie est fournie:
         if sub_category:
-            # Vérifier si une catégorie principale a également été fournie et si elle est le parent de la sous-catégorie.
-            if main_category and sub_category.parent == main_category:
-                final_category = sub_category
-            elif not main_category and sub_category.parent is None:
-                # Cas spécial: si la sous-catégorie est sélectionnée et qu'elle est elle-même une catégorie de niveau supérieur,
-                # et qu'aucune catégorie principale n'a été explicitement sélectionnée.
-                # Cela signifie que l'utilisateur avait l'intention d'utiliser une catégorie de niveau supérieur via le champ sous-catégorie.
+            # Si une sous-catégorie est sélectionnée, elle doit avoir une catégorie parente
+            # et cette catégorie parente doit correspondre à la catégorie principale sélectionnée (si elle l'est).
+            if sub_category.parent and sub_category.parent == main_category:
                 final_category = sub_category
             else:
-                # Scénario invalide: sous-catégorie sélectionnée, mais le parent ne correspond pas ou aucun parent sélectionné pour une vraie sous-catégorie.
-                if main_category: # Incohérence du parent
-                    self.add_error('subcategory', "La sous-catégorie sélectionnée n'appartient pas à la catégorie principale.")
-                else: # Sous-catégorie sélectionnée sans catégorie principale, et ce n'est pas une catégorie de niveau supérieur.
-                    self.add_error('subcategory', "Veuillez sélectionner la catégorie principale de cette sous-catégorie.")
+                # La sous-catégorie sélectionnée n'a pas de parent ou ne correspond pas au parent sélectionné.
+                # Cela peut arriver si l'utilisateur a manipulé le JS ou si une ancienne valeur est restée.
+                self.add_error('subcategory', "La sous-catégorie sélectionnée n'est pas valide pour la catégorie principale choisie.")
         elif main_category:
-            # Si seule une catégorie principale est sélectionnée, elle est utilisée
-            final_category = main_category
+            # Si seule une catégorie principale est sélectionnée, elle est utilisée.
+            # Assurez-vous qu'elle n'a pas de parent. (Le queryset initial le garantit, mais une double-vérification est bonne).
+            if main_category.parent is None:
+                final_category = main_category
+            else:
+                # Ce cas ne devrait pas arriver si le queryset 'category' est bien filtré (parent__isnull=True)
+                self.add_error('category', "La catégorie principale sélectionnée ne peut pas être une sous-catégorie.")
         
         # Assigner la catégorie finale déterminée au champ 'category' de l'instance du modèle.
         # Cela sera utilisé par form.save() pour définir la catégorie de la transaction.
-        cleaned_data['category'] = final_category
+        # Nous ajoutons 'final_category' aux cleaned_data pour que la vue puisse l'utiliser.
+        cleaned_data['final_category'] = final_category
+
+        # Si des erreurs ont été ajoutées, le formulaire n'est pas valide
+        if self.errors:
+            del cleaned_data['final_category'] # Supprimer pour éviter KeyError si la validation échoue plus tard
 
         return cleaned_data
+

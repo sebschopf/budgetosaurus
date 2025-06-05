@@ -68,6 +68,32 @@
         .batch-actions button:hover {
             background-color: #c0392b;
         }
+
+        /* NOUVEAUX STYLES POUR LES PICTOGRAMMES / BADGES DE CATÉGORIE */
+        .category-info-icon {
+            font-size: 0.8em;
+            margin-left: 5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1; /* Aligner le texte */
+        }
+        .category-info-icon.fund-managed {
+            background-color: #28a745; /* Vert pour les fonds */
+        }
+        .category-info-icon.budgeted {
+            background-color: #007bff; /* Bleu pour les budgets */
+        }
+        .category-info-icon.no-special {
+            background-color: #6c757d; /* Gris pour les autres */
+        }
+        /* Masquer initialement les icônes dans les options du select (géré par JS) */
+        .form-field-group select option .category-info-icon {
+            display: none;
+        }
     </style>
 {% endblock %}
 
@@ -92,6 +118,13 @@
 {% endblock %}
 
 {% block extra_js %}
+    {# Définir les données des catégories et sous-catégories en JSON à l'aide de json_script #}
+    <script id="allCategoriesData" type="application/json">
+        {{ all_categories_data_json|safe }}
+    </script>
+    <script id="allSubcategoriesData" type="application/json">
+        {{ all_subcategories_data_json|safe }}
+    </script>
     {# Inclure les scripts spécifiques au tableau de bord #}
     {% include 'webapp/dashboard_includes/dashboard_scripts.html' %}
 {% endblock %}

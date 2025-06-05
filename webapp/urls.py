@@ -2,21 +2,32 @@
 # Ce fichier définit les chemins d'URL pour les vues de l'application 'webapp'.
 
 from django.urls import path, re_path # Importez re_path pour les regex dans les URLs
-# Importe les vues directement depuis leurs modules
-from .views import dashboard, transactions, imports, budgets, review_transactions, glossary 
+# Importe les vues directement depuis leurs modules refactorisés
+from .views import (
+    general_transactions, # Contient dashboard_view, add_transaction_submit, load_subcategories, get_common_descriptions
+    transaction_actions,  # Contient delete_selected_transactions, get_transaction_form_for_edit, suggest_transaction_categorization
+    summary_views,        # Contient recap_overview_view, category_transactions_summary_view, all_transactions_summary_view
+    split_transactions_views, # Contient split_transaction_view, process_split_transaction
+    fund_allocations_views,   # Contient allocate_income_view, process_allocation_income
+    fund_debits_views,        # Contient debit_funds_view, process_fund_debit
+    imports,              # Reste inchangé
+    budgets,              # Reste inchangé
+    review_transactions,  # Reste inchangé (pour l'instant, update_transaction_category reste ici)
+    glossary              # Reste inchangé
+)
 
 urlpatterns = [
     # URL de la page d'accueil/tableau de bord
-    path('', dashboard.dashboard_view, name='dashboard_view'),
+    path('', general_transactions.dashboard_view, name='dashboard_view'),
     
     # URL pour la soumission du formulaire d'ajout de transaction (POST seulement)
-    path('add-transaction-submit/', transactions.add_transaction_submit, name='add_transaction_submit'),
+    path('add-transaction-submit/', general_transactions.add_transaction_submit, name='add_transaction_submit'),
     
     # URL pour la requête AJAX de chargement des sous-catégories
-    path('load-subcategories/', transactions.load_subcategories, name='load_subcategories'),
+    path('load-subcategories/', general_transactions.load_subcategories, name='load_subcategories'),
     
     # URL pour récupérer les descriptions de transactions courantes (pour l'autocomplétion)
-    path('get-common-descriptions/', transactions.get_common_descriptions, name='get_common_descriptions'),
+    path('get-common-descriptions/', general_transactions.get_common_descriptions, name='get_common_descriptions'),
 
     # URL pour la page d'importation des transactions via CSV
     path('import-transactions/', imports.import_transactions_view, name='import_transactions_view'),
@@ -24,35 +35,42 @@ urlpatterns = [
     # URL pour la page de l'aperçu des budgets
     path('budget-overview/', budgets.budget_overview, name='budget_overview'),
 
-    # URLs pour la révision des transactions
+    # URLs pour la révision des transactions (ces vues n'ont pas encore été refactorisées)
+    # NOTE: update_transaction_category est toujours dans review_transactions.py pour le moment.
     path('review-transactions/', review_transactions.review_transactions_view, name='review_transactions_view'),
     path('update-transaction-category/<int:transaction_id>/', review_transactions.update_transaction_category, name='update_transaction_category'),
     
     # URL pour obtenir le formulaire d'édition de transaction via AJAX
-    path('get-transaction-form/<int:transaction_id>/', transactions.get_transaction_form_for_edit, name='get_transaction_form_for_edit'),
+    path('get-transaction-form/<int:transaction_id>/', transaction_actions.get_transaction_form_for_edit, name='get_transaction_form_for_edit'),
 
     # URL pour la suppression par lot des transactions
-    path('delete-selected-transactions/', transactions.delete_selected_transactions, name='delete_selected_transactions'),
+    path('delete-selected-transactions/', transaction_actions.delete_selected_transactions, name='delete_selected_transactions'),
 
     # URL pour le glossaire
     path('glossary/', glossary.glossary_view, name='glossary_view'),
 
     # Nouvelle URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
-    path('suggest-categorization/', transactions.suggest_transaction_categorization, name='suggest_transaction_categorization'),
+    path('suggest-categorization/', transaction_actions.suggest_transaction_categorization, name='suggest_transaction_categorization'),
 
     # URLs pour le récapitulatif des transactions par catégorie avec filtres de période
     re_path(r'^category-transactions-summary/(?:(?P<year>\d{4})/)?(?:(?P<month>\d{1,2})/)?$', 
-            transactions.category_transactions_summary_view, 
+            summary_views.category_transactions_summary_view, 
             name='category_transactions_summary_view'),
 
     # URL pour le récapitulatif de toutes les transactions
-    path('all-transactions-summary/', transactions.all_transactions_summary_view, name='all_transactions_summary_view'),
+    path('all-transactions-summary/', summary_views.all_transactions_summary_view, name='all_transactions_summary_view'),
 
     # URLs pour la fonctionnalité de division de transaction
-    # On utilise un seul path avec un paramètre optionnel pour l'ID,
-    # ce qui est plus propre que deux paths avec le même préfixe et des noms différents.
-    # L'ID est maintenant optionnel directement dans la vue.
-    re_path(r'^split-transaction/(?:(?P<transaction_id>\d+)/)?$', 
-            transactions.split_transaction_view, 
-            name='split_transaction_view'), # Le nom unique sera 'split_transaction_view'
+    path('split-transaction/<int:transaction_id>/', split_transactions_views.split_transaction_view, name='split_transaction_view_with_id'),
+    path('split-transaction/', split_transactions_views.split_transaction_view, name='split_transaction_view'), # Pour la vue sans ID initial
+    path('process-split-transaction/', split_transactions_views.process_split_transaction, name='process_split_transaction'), # URL pour le POST du split
+
+    # URLs pour l'allocation de revenu
+    path('allocate-income/<int:transaction_id>/', fund_allocations_views.allocate_income_view, name='allocate_income_view'),
+    path('process-allocation-income/<int:transaction_id>/', fund_allocations_views.process_allocation_income, name='process_allocation_income'),
+
+    # URLs pour le débit de fonds
+    path('debit-funds/<int:transaction_id>/', fund_debits_views.debit_funds_view, name='debit_funds_view'),
+    path('process-fund-debit/<int:transaction_id>/', fund_debits_views.process_fund_debit, name='process_fund_debit'),
 ]
+

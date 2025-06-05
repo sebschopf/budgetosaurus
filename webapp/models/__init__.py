@@ -11,18 +11,22 @@ from .funds import Fund, FundManager
 from .saving_goals import SavingGoal
 from .categorization_rules import CategorizationRule
 from .allocations import Allocation, AllocationLine # Nouveaux modèles d'allocation
+from .fund_debits import FundDebitRecord, FundDebitLine # Nouveaux modèles de débits de fonds
 
-# Vous pouvez définir __all__ si vous voulez contrôler ce qui est importé avec '*'
+#  __all__  pour ce qui est importé avec '*'
 __all__ = [
-    'Account',
-    'Category',
-    'Tag',
-    'Transaction',
-    'Budget',
-    'Fund',
-    'FundManager',
-    'SavingGoal',
-    'CategorizationRule',
-    'Allocation',
-    'AllocationLine',
+    'Account', # compte bancaire
+    'Category', # catégorie principale
+    'Tag', # étiquette
+    'Transaction', # transaction principale
+    'Budget', # budget
+    'Fund', # fonds (enveloppes budgétaires)
+    'FundManager', # gestionnaire de fonds
+    'SavingGoal', # objectif d'épargne
+    'CategorizationRule', # catégorisation automatique
+    'Allocation', # allocation
+    'AllocationLine', # allocation line
+    'FundDebitRecord', # fond debit record
+    'FundDebitLine',   # fond debit line
 ]
+

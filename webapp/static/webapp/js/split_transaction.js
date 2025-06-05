@@ -26,40 +26,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const maxNumFormsInput = document.querySelector('#id_split_lines-MAX_NUM_FORMS'); // Nécessaire pour formset
 
     /**
-     * Initialise les dropdowns de catégorie et sous-catégorie pour une ligne de division donnée.
-     * Gère le chargement des sous-catégories et la sélection initiale si un initialSubcategoryId est fourni.
-     * @param {HTMLElement} splitLineElement L'élément DOM de la ligne de division.
+     *Ajouter un badge d'icône à la catégorie principale ou sous-catégorie.
+     * @param {string} categoryName Le nom de la catégorie.
+     * @param {boolean} isFundManaged Indique si la catégorie est gérée par un fonds.
+     * @returns {string} L'HTML formaté de la catégorie avec l'icône.
      */
-    function initializeSplitCategoryDropdowns(splitLineElement) {
-        // Utilise le préfixe du formset pour trouver les éléments
-        const prefix = splitLineElement.querySelector('input[name$="-description"]').name.split('-')[0]; // Ex: split_lines
-        const mainCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-main_category"]`);
-        const subCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-subcategory"]`);
-        
-        // Récupérer l'initial value directement du select
-        const initialSubcategoryId = subCategorySelect ? subCategorySelect.value : null;
+    function formatCategoryNameWithIcon(categoryName, isFundManaged) {
+        let iconClass = 'no-special'; // Default
+        let iconText = 'Autre'; // Default text pour l'icône
 
-        if (mainCategorySelect && subCategorySelect) {
-            // Charger les sous-catégories si une catégorie principale est déjà sélectionnée
-            if (mainCategorySelect.value) {
-                populateSubcategories(mainCategorySelect.value, subCategorySelect, initialSubcategoryId);
-            } else {
-                // Cacher le select de sous-catégorie si aucune catégorie principale n'est sélectionnée
-                subCategorySelect.classList.add('subcategory-hidden');
-            }
-
-            // Écouteur pour le changement de catégorie principale
-            mainCategorySelect.addEventListener('change', function() {
-                populateSubcategories(this.value, subCategorySelect);
-            });
-        }
+        if (isFundManaged) {
+            iconClass = 'fund-managed';
+            iconText = 'Fonds';
+        } 
+        return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
     }
 
     /**
-     * Peuple le dropdown des sous-catégories en fonction de la catégorie parente sélectionnée.
-     * @param {string} parentCategoryId L'ID de la catégorie parente.
-     * @param {HTMLElement} subcategorySelectElement L'élément <select> des sous-catégories.
-     * @param {string|null} initialSubcategoryId L'ID de la sous-catégorie à pré-sélectionner.
+     * La fonction pour remplir les catégories principales dans le sélecteur.
+     * @param {HTMLElement} selectElement The <select> élément pour les catégories principales.
+     * @param {Array} categoriesData Données des catégories principales à afficher.
+     * @param {string|number|null} initialValue Valeur initiale à pré-sélectionner, si disponible.
+     */
+    function populateMainCategories(selectElement, categoriesData, initialValue = null) {
+        selectElement.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
+        categoriesData.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
+            option.dataset.isFundManaged = category.is_fund_managed; // ajouter pour l'icône si nécessaire
+            selectElement.appendChild(option);
+        });
+        if (initialValue) {
+            selectElement.value = initialValue;
+        }
+        // Déclencher l'événement 'change' pour mettre à jour les sous-catégories et l'icône
+        selectElement.dispatchEvent(new Event('change'));
+    }
+
+    /**
+     * Pour remplir les sous-catégories basées sur la catégorie principale sélectionnée.
+     * @param {string} parentCategoryId ID de la catégorie principale sélectionnée.
+     * @param {HTMLElement} subcategorySelectElement Le <select> élément pour les sous-catégories.
+     * @param {string|null} initialSubcategoryId L'ID de la sous-catégorie initiale à pré-sélectionner, si disponible.
      */
     function populateSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
         subcategorySelectElement.innerHTML = '<option value="">Sélectionner Sous-catégorie</option>';
@@ -69,27 +78,53 @@ document.addEventListener('DOMContentLoaded', function() {
             childrenOfParent.forEach(subcategory => {
                 const option = document.createElement('option');
                 option.value = subcategory.id;
-                option.textContent = subcategory.name;
+                option.innerHTML = formatCategoryNameWithIcon(subcategory.name, subcategory.is_fund_managed);
+                option.dataset.isFundManaged = subcategory.is_fund_managed;
                 subcategorySelectElement.appendChild(option);
             });
-            subcategorySelectElement.classList.remove('subcategory-hidden'); // Afficher le champ
+            subcategorySelectElement.classList.remove('subcategory-hidden'); // montrer le champ
         } else {
-            subcategorySelectElement.classList.add('subcategory-hidden'); // Cacher le champ
+            subcategorySelectElement.classList.add('subcategory-hidden'); // cacher le champ s'il n'y a pas de sous-catégories
         }
 
-        // Sélectionner la sous-catégorie initiale si elle existe
         if (initialSubcategoryId) {
-            // S'assurer que l'option existe avant de tenter de la sélectionner
+            // S'assurer que la sous-catégorie initiale existe avant de la sélectionner
             const optionExists = Array.from(subcategorySelectElement.options).some(option => option.value == initialSubcategoryId);
             if (optionExists) {
                 subcategorySelectElement.value = initialSubcategoryId;
             }
         }
+        updateCategoryIconDisplay(subcategorySelectElement); // Mettre à jour l'icône pour la sous-catégorie
+    }
+
+    /**
+     * Ajoute ou met à jour l'icône d'information de la catégorie à côté du sélecteur.
+     * @param {HTMLElement} selectElement élément <select> pour lequel mettre à jour l'icône.
+     */
+    function updateCategoryIconDisplay(selectElement) {
+        let currentIcon = selectElement.nextElementSibling;
+        if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
+            currentIcon.remove();
+        }
+
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        if (selectedOption && selectedOption.value) { // Ajouter seulement si une option est sélectionnée
+            const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' est la valeur attendue pour un fonds géré
+            
+            const iconSpan = document.createElement('span');
+            iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Formatage de l'icône sans texte initial
+            iconSpan.classList.add('category-info-icon'); // basique class pour le style
+            iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
+            iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // texte par défaut
+
+            // Insérer l'icône après le sélecteur
+            selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
+        }
     }
 
 
     /**
-     * Crée et ajoute une nouvelle ligne de division au formulaire (compatible formset).
+     * Créer et ajoute une nouvelle ligne de division au formulaire.
      */
     function createSplitLine() {
         const currentTotalForms = parseInt(totalFormsInput.value);
@@ -97,9 +132,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const div = document.createElement('div');
         div.classList.add('split-line');
-        div.setAttribute('id', `form-${newFormIndex}`); // Important pour le JS de formset
+        div.setAttribute('id', `form-${newFormIndex}`); // Important pour le formset Django
 
-        const formPrefix = 'split_lines'; // Doit correspondre au préfixe dans la vue Python
+        const formPrefix = 'split_lines'; // Doit être le même que le préfixe utilisé dans le formset Django !
         div.innerHTML = `
             <input type="hidden" name="${formPrefix}-${newFormIndex}-id" id="id_${formPrefix}-${newFormIndex}-id">
             <input type="text" name="${formPrefix}-${newFormIndex}-description" id="id_${formPrefix}-${newFormIndex}-description" placeholder="Description" required>
@@ -107,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <div>
                 <select name="${formPrefix}-${newFormIndex}-main_category" id="id_${formPrefix}-${newFormIndex}-main_category" class="split-category-main" required>
                     <option value="">Sélectionner Catégorie Principale</option>
-                    ${allCategories.map(cat => `<option value="${cat.id}">${cat.name}</option>`).join('')}
+                    ${allCategories.map(cat => `<option value="${cat.id}">${cat.html}</option>`).join('')}
                 </select>
                 <select name="${formPrefix}-${newFormIndex}-subcategory" id="id_${formPrefix}-${newFormIndex}-subcategory" class="split-category subcategory-hidden">
                     <option value="">Sélectionner Sous-catégorie</option>
@@ -121,19 +156,19 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         splitLinesContainer.appendChild(div);
-        totalFormsInput.value = newFormIndex + 1; // Mettre à jour TOTAL_FORMS
+        totalFormsInput.value = newFormIndex + 1; // Update TOTAL_FORMS
 
-        addSplitLineEventListeners(div); // Attacher les événements à la nouvelle ligne
-        initializeSplitCategoryDropdowns(div); // Initialiser les dropdowns de la nouvelle ligne
-        calculateRemainingAmount(); // Recalculer après ajout
+        addSplitLineEventListeners(div); // lier les événements à la nouvelle ligne
+        initializeSplitCategoryDropdowns(div); // Initialise les sélecteurs de catégorie pour la nouvelle ligne
+        calculateRemainingAmount(); // Recalculer le montant restant après l'ajout d'une nouvelle ligne
     }
 
     /**
-     * Attache les écouteurs d'événements nécessaires à une ligne de division.
-     * @param {HTMLElement} lineElement L'élément DOM de la ligne de division.
+     * Ajoute les écouteurs d'événements nécessaires à une ligne de division.
+     * @param {HTMLElement} lineElement The DOM element de la ligne de division.
      */
     function addSplitLineEventListeners(lineElement) {
-        const amountInput = lineElement.querySelector('input[name$="-amount"]'); // Sélectionne par la fin du nom
+        const amountInput = lineElement.querySelector('input[name$="-amount"]'); // Selection de l'input de montant
         const deleteBtn = lineElement.querySelector('.delete-split-btn');
         const mainCategorySelect = lineElement.querySelector('select[name$="-main_category"]');
         const subCategorySelect = lineElement.querySelector('select[name$="-subcategory"]');
@@ -145,26 +180,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (deleteBtn && deleteCheckbox) {
             deleteBtn.addEventListener('click', function() {
-                // Cacher la ligne visuellement et cocher la case DELETE
+                // Hide the line visually and check the DELETE checkbox
                 lineElement.style.display = 'none';
                 deleteCheckbox.checked = true;
-                calculateRemainingAmount(); // Recalculer, car cette ligne ne compte plus
+                calculateRemainingAmount(); // Recalculate, as this line no longer counts
             });
         }
         
-        if (mainCategorySelect && subCategorySelect) {
+        if (mainCategorySelect) {
             mainCategorySelect.addEventListener('change', function() {
                 populateSubcategories(this.value, subCategorySelect);
+                updateCategoryIconDisplay(this); // Update icon for main category
+            });
+        }
+        if (subCategorySelect) {
+            subCategorySelect.addEventListener('change', function() {
+                updateCategoryIconDisplay(this); // Update icon for subcategory
             });
         }
     }
 
     /**
-     * Calcule le montant restant à diviser et met à jour l'affichage du résumé.
+     * Initializes category and subcategory dropdowns for a given split line.
+     * Manages loading subcategories and initial selection if an initialSubcategoryId is provided.
+     * @param {HTMLElement} splitLineElement The DOM element of the split line.
+     */
+    function initializeSplitCategoryDropdowns(splitLineElement) {
+        const prefix = splitLineElement.querySelector('input[name$="-description"]').name.split('-')[0]; // Ex: split_lines
+        const mainCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-main_category"]`);
+        const subCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-subcategory"]`);
+        
+        // Populate main categories with icons
+        const initialMainCategoryValue = mainCategorySelect.value; // Get initial value from Django form
+        populateMainCategories(mainCategorySelect, allCategories, initialMainCategoryValue);
+
+        // If there was an initial subcategory value, populateSubcategories will handle selecting it
+        const initialSubcategoryId = subCategorySelect ? subCategorySelect.value : null;
+
+        if (mainCategorySelect.value) {
+            populateSubcategories(mainCategorySelect.value, subCategorySelect, initialSubcategoryId);
+        } else {
+            subCategorySelect.classList.add('subcategory-hidden');
+            updateCategoryIconDisplay(subCategorySelect); // Clear icon if subcategory is hidden
+        }
+        updateCategoryIconDisplay(mainCategorySelect); // Initial display for main category
+    }
+
+
+    /**
+     * Calculates the remaining amount to split and updates the summary display.
      */
     function calculateRemainingAmount() {
         let currentSplitSum = 0;
-        // Sélectionne tous les inputs de montant POUR LES LIGNES NON MARQUÉES POUR SUPPRESSION
+        // Selects all amount inputs FOR LINES NOT MARKED FOR DELETION
         const splitAmountInputs = document.querySelectorAll('.split-line:not([style*="display: none"]) input[name$="-amount"]');
         splitAmountInputs.forEach(input => {
             let value = parseFloat(input.value.replace(',', '.')) || 0;
@@ -173,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let remaining = originalTransactionAmount - currentSplitSum;
         remainingAmountSpan.textContent = remaining.toFixed(2);
-        splitSummaryBox.classList.remove('balanced'); // Réinitialiser la classe balanced
+        splitSummaryBox.classList.remove('balanced'); // Reset balanced class
         
         if (Math.abs(remaining) < 0.01) {
             splitSummaryBox.classList.add('balanced');
@@ -187,8 +255,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Initialisation au chargement de la page ---
-    // Attacher les événements aux lignes de formset existantes (y compris celles pré-remplies par Django)
+    // --- Initialization on page load ---
+    // Attach events to existing formset lines (including those pre-filled by Django)
     document.querySelectorAll('.split-line').forEach(line => {
         addSplitLineEventListeners(line);
         initializeSplitCategoryDropdowns(line);
@@ -198,12 +266,12 @@ document.addEventListener('DOMContentLoaded', function() {
         addSplitLineBtn.addEventListener('click', createSplitLine);
     }
 
-    calculateRemainingAmount(); // Calcul initial
+    calculateRemainingAmount(); // Initial calculation
 
-    // Gérer la soumission du formulaire de division
+    // Handle split form submission
     if (splitTransactionForm) {
         splitTransactionForm.addEventListener('submit', function(event) {
-            // Validation client finale, en se basant sur le calcul du montant restant
+            // Final client-side validation, based on remaining amount calculation
             let currentRemaining = parseFloat(remainingAmountSpan.textContent);
             if (Math.abs(currentRemaining) > 0.01) {
                 event.preventDefault(); 
@@ -211,10 +279,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 return; 
             }
 
-            // Validation client : S'assurer que chaque ligne non supprimée a une description, un montant et une catégorie valide
+            // Client-side validation: Ensure each non-deleted line has a description, amount, and valid category
             const splitLines = splitLinesContainer.querySelectorAll('.split-line:not([style*="display: none"])');
             let allLinesValid = true;
-            if (splitLines.length === 0) { // Ne pas permettre de soumettre sans aucune ligne non supprimée
+            if (splitLines.length === 0) { // Do not allow submitting without any non-deleted lines
                 allLinesValid = false;
             }
 
@@ -224,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const mainCategorySelect = line.querySelector('select[name$="-main_category"]');
                 const subCategorySelect = line.querySelector('select[name$="-subcategory"]');
 
-                line.classList.remove('has-error'); // Réinitialiser l'état d'erreur visuel
+                line.classList.remove('has-error'); // Reset visual error state
 
                 if (!descriptionInput.value.trim() || !amountInput.value.trim()) {
                     allLinesValid = false;
@@ -232,12 +300,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 let finalCategorySelected = false;
-                if (subCategorySelect.value) { // Une sous-catégorie est choisie
+                if (subCategorySelect.value) { // A subcategory is chosen
                     const selectedSub = allSubcategories.find(s => s.id === parseInt(subCategorySelect.value));
                     if (selectedSub && selectedSub.parent === parseInt(mainCategorySelect.value)) {
                         finalCategorySelected = true;
                     }
-                } else if (mainCategorySelect.value) { // Seule la catégorie principale est choisie
+                } else if (mainCategorySelect.value) { // Only the main category is chosen
                         finalCategorySelected = true;
                 }
                 
@@ -251,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 event.preventDefault(); 
                 alert("Veuillez remplir toutes les informations requises (description, montant, catégorie) pour chaque ligne de division, et vérifier la cohérence des catégories.");
             }
-            // Le reste de la validation est géré côté serveur par le formset.
+            // The rest of the validation is handled server-side by the formset.
         });
     }
 });

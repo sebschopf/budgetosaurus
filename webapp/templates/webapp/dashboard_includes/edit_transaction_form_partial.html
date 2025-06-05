@@ -70,3 +70,11 @@
     </div>
     {% if form.tags.errors %}<p class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</p>{% endif %}
 </div>
+
+{# Inclure les données de catégorie et sous-catégorie en JSON pour le JavaScript #}
+<script id="allCategoriesData" type="application/json">
+    {{ all_categories_data_json|safe }}
+</script>
+<script id="allSubcategoriesData" type="application/json">
+    {{ all_subcategories_data_json|safe }}
+</script>

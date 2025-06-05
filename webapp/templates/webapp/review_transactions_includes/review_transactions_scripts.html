@@ -8,46 +8,90 @@
         const modalForm = document.getElementById('editTransactionForm');
         const modalFormFieldsContainer = document.getElementById('modal-form-fields');
 
-        // Fonction pour charger les sous-catégories (réutilisée de index.html)
-        function loadSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
-            if (parentCategoryId) {
-                fetch(`/load-subcategories/?parent_category_id=${parentCategoryId}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('La réponse du réseau n\'était pas ok.');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                        if (data.length > 0) {
-                            data.forEach(subcategory => {
-                                const option = document.createElement('option');
-                                option.value = subcategory.id;
-                                option.textContent = subcategory.name;
-                                subcategorySelectElement.appendChild(option);
-                            });
-                            const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
-                            if (subcategoryContainer) subcategoryContainer.style.display = 'block';
-                        } else {
-                            const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
-                            if (subcategoryContainer) subcategoryContainer.style.display = 'none';
-                        }
+        // Récupérer les données de catégorie et sous-catégorie du DOM pour la modale
+        // Ces scripts sont inclus dans review_transactions.html qui n'a pas les json_script tags.
+        // Les données doivent être passées via get_transaction_form_for_edit view.
+        let allCategories = [];
+        let allSubcategories = [];
 
-                        if (initialSubcategoryId) {
-                            subcategorySelectElement.value = initialSubcategoryId;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur lors du chargement des sous-catégories:', error);
-                        subcategorySelectElement.innerHTML = '<option value="">Erreur de chargement</option>';
-                        const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
-                        if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+        /**
+         * Ajoute un pictogramme/badge à côté d'un nom de catégorie.
+         * @param {string} categoryName Le nom de la catégorie.
+         * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
+         * @returns {string} Le HTML du nom de catégorie avec le pictogramme.
+         */
+        function formatCategoryNameWithIcon(categoryName, isFundManaged) {
+            let iconClass = 'no-special'; // Default
+            let iconText = 'Autre'; // Default text for no special management
+
+            if (isFundManaged) {
+                iconClass = 'fund-managed';
+                iconText = 'Fonds';
+            }
+            return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
+        }
+
+        /**
+         * Peuple le dropdown des sous-catégories en fonction d'une catégorie parente sélectionnée.
+         * @param {string} parentCategoryId L'ID de la catégorie parente.
+         * @param {HTMLElement} subcategorySelectElement L'élément <select> des sous-catégories.
+         * @param {string|null} initialSubcategoryId L'ID de la sous-catégorie à pré-sélectionner.
+         */
+        function loadSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
+            subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+            const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
+
+            if (parentCategoryId && allSubcategories.length > 0) {
+                const childrenOfParent = allSubcategories.filter(cat => cat.parent === parseInt(parentCategoryId));
+
+                if (childrenOfParent.length > 0) {
+                    childrenOfParent.forEach(subcategory => {
+                        const option = document.createElement('option');
+                        option.value = subcategory.id;
+                        option.innerHTML = formatCategoryNameWithIcon(subcategory.name, subcategory.is_fund_managed);
+                        option.dataset.isFundManaged = subcategory.is_fund_managed;
+                        subcategorySelectElement.appendChild(option);
                     });
+                    if (subcategoryContainer) subcategoryContainer.style.display = 'block';
+                } else {
+                    if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                }
+
+                if (initialSubcategoryId) {
+                    const optionExists = Array.from(subcategorySelectElement.options).some(option => option.value == initialSubcategoryId);
+                    if (optionExists) {
+                        subcategorySelectElement.value = initialSubcategoryId;
+                    }
+                }
+                updateCategoryIconDisplay(subcategorySelectElement); // Update icon for subcategory
             } else {
-                subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
                 if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                updateCategoryIconDisplay(subcategorySelectElement); // Clear icon if subcategory is hidden
+            }
+        }
+
+        /**
+         * Affiche l'icône de la catégorie sélectionnée à côté de l'élément select.
+         * @param {HTMLElement} selectElement L'élément <select> de la catégorie.
+         */
+        function updateCategoryIconDisplay(selectElement) {
+            let currentIcon = selectElement.nextElementSibling;
+            if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
+                currentIcon.remove();
+            }
+
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (selectedOption && selectedOption.value) { // Only add if an actual category is selected
+                const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' is a string from dataset
+                
+                const iconSpan = document.createElement('span');
+                iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Format only the icon part
+                iconSpan.classList.add('category-info-icon'); // Ensure basic class
+                iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
+                iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // Text for the badge
+
+                // Insert the icon right after the select element
+                selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
             }
         }
 
@@ -69,6 +113,15 @@
                     })
                     .then(html => {
                         modalFormFieldsContainer.innerHTML = html; 
+
+                        // Récupérer les données de catégorie et sous-catégorie du HTML inséré
+                        const categoriesDataScript = modalFormFieldsContainer.querySelector('#allCategoriesData');
+                        const subcategoriesDataScript = modalFormFieldsContainer.querySelector('#allSubcategoriesData');
+                        if (categoriesDataScript && subcategoriesDataScript) {
+                            allCategories = JSON.parse(categoriesDataScript.textContent);
+                            allSubcategories = JSON.parse(subcategoriesDataScript.textContent);
+                        }
+                        
                         const hiddenTransactionIdInput = modalFormFieldsContainer.querySelector('input[name="transaction_id"]');
                         if (hiddenTransactionIdInput) {
                             modalForm.action = `/update-transaction-category/${hiddenTransactionIdInput.value}/`;
@@ -77,21 +130,44 @@
                         // Réinitialiser la logique des sous-catégories pour le formulaire dans la modale
                         const modalCategorySelect = modalFormFieldsContainer.querySelector('#id_category');
                         const modalSubcategorySelect = modalFormFieldsContainer.querySelector('#id_subcategory');
-                        const modalSubcategoryContainer = modalSubcategorySelect ? modalSubcategorySelect.closest('.form-field-group') : null;
-                        const modalDescriptionInput = modalFormFieldsContainer.querySelector('#id_description'); // Récupérer le champ description de la modale
-
+                        const modalDescriptionInput = modalFormFieldsContainer.querySelector('#id_description'); 
 
                         if (modalCategorySelect && modalSubcategorySelect) {
-                            const initialModalSubcategoryId = modalSubcategorySelect.value; 
+                            // Populate main categories with icons
+                            // Re-populate and select the initial value in modalCategorySelect
+                            modalCategorySelect.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
+                            allCategories.forEach(category => {
+                                const option = document.createElement('option');
+                                option.value = category.id;
+                                option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
+                                option.dataset.isFundManaged = category.is_fund_managed;
+                                modalCategorySelect.appendChild(option);
+                            });
+                            // Select the initial value from the loaded form if it exists
+                            const initialModalCategoryValue = modalFormFieldsContainer.querySelector('#id_category').value;
+                            if (initialModalCategoryValue) {
+                                modalCategorySelect.value = initialModalCategoryValue;
+                            }
+
+
+                            const initialModalSubcategoryId = modalFormFieldsContainer.querySelector('#id_subcategory').value; 
                             if (modalCategorySelect.value) {
                                 loadSubcategories(modalCategorySelect.value, modalSubcategorySelect, initialModalSubcategoryId);
                             } else {
-                                if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                                modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                                const subcategoryContainer = modalSubcategorySelect.closest('.form-field-group');
+                                if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                                updateCategoryIconDisplay(modalSubcategorySelect); // Clear icon if subcategory is hidden
                             }
 
                             modalCategorySelect.addEventListener('change', function() {
                                 loadSubcategories(this.value, modalSubcategorySelect);
+                                updateCategoryIconDisplay(this); // Update icon for main category
                             });
+                            modalSubcategorySelect.addEventListener('change', function() {
+                                updateCategoryIconDisplay(this); // Update icon for subcategory
+                            });
+                            updateCategoryIconDisplay(modalCategorySelect); // Initial display for main category
                         }
 
                         // --- Logique de suggestion pour la modale d'édition ---
@@ -120,12 +196,16 @@
                                                 
                                                 // Charger les sous-catégories de la modale si une sous-catégorie est suggérée
                                                 if (data.subcategory_id) {
-                                                    modalSubcategorySelect.dataset.initialValue = data.subcategory_id;
-                                                    loadSubcategories(data.category_id, modalSubcategorySelect); 
+                                                    loadSubcategories(data.category_id, modalSubcategorySelect, data.subcategory_id); 
                                                 } else {
                                                     modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                                                    if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                                                    const subcategoryContainer = modalSubcategorySelect.closest('.form-field-group');
+                                                    if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                                                    updateCategoryIconDisplay(modalSubcategorySelect); // Clear icon if subcategory is hidden
                                                 }
+
+                                                // Update icon for main category after setting its value
+                                                updateCategoryIconDisplay(modalCategorySelect);
 
                                                 // Mettre à jour les tags de la modale
                                                 const modalTagsCheckboxes = modalFormFieldsContainer.querySelectorAll('input[name="tags"]');
@@ -193,20 +273,52 @@
                 } else {
                     modalFormFieldsContainer.innerHTML = data.errors_html; 
                     
+                    // Re-initialiser les catégories et les icônes après une soumission avec erreurs
+                    const categoriesDataScript = modalFormFieldsContainer.querySelector('#allCategoriesData');
+                    const subcategoriesDataScript = modalFormFieldsContainer.querySelector('#allSubcategoriesData');
+                    if (categoriesDataScript && subcategoriesDataScript) {
+                        allCategories = JSON.parse(categoriesDataScript.textContent);
+                        allSubcategories = JSON.parse(subcategoriesDataScript.textContent);
+                    }
+
                     const modalCategorySelect = modalFormFieldsContainer.querySelector('#id_category');
                     const modalSubcategorySelect = modalFormFieldsContainer.querySelector('#id_subcategory');
-                    const modalSubcategoryContainer = modalSubcategorySelect ? modalSubcategorySelect.closest('.form-field-group') : null;
+                    
+                    // Re-populate main categories with icons and select the value that was submitted
+                    if (modalCategorySelect) {
+                        const currentSelectedCategory = modalCategorySelect.value; // Value already set by Django
+                        modalCategorySelect.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
+                        allCategories.forEach(category => {
+                            const option = document.createElement('option');
+                            option.value = category.id;
+                            option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
+                            option.dataset.isFundManaged = category.is_fund_managed;
+                            modalCategorySelect.appendChild(option);
+                        });
+                        modalCategorySelect.value = currentSelectedCategory; // Re-select
 
-                    if (modalCategorySelect && modalSubcategorySelect) {
-                        const initialModalSubcategoryId = modalSubcategorySelect.value; 
+                        const initialModalSubcategoryId = modalSubcategorySelect ? modalSubcategorySelect.value : null;
                         if (modalCategorySelect.value) {
                             loadSubcategories(modalCategorySelect.value, modalSubcategorySelect, initialModalSubcategoryId);
                         } else {
-                            if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                            if (modalSubcategorySelect) {
+                                modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                                const subcategoryContainer = modalSubcategorySelect.closest('.form-field-group');
+                                if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                                updateCategoryIconDisplay(modalSubcategorySelect);
+                            }
                         }
+
                         modalCategorySelect.addEventListener('change', function() {
                             loadSubcategories(this.value, modalSubcategorySelect);
+                            updateCategoryIconDisplay(this);
                         });
+                        if (modalSubcategorySelect) {
+                            modalSubcategorySelect.addEventListener('change', function() {
+                                updateCategoryIconDisplay(this);
+                            });
+                        }
+                        updateCategoryIconDisplay(modalCategorySelect); // Initial display for main category
                     }
                 }
             })

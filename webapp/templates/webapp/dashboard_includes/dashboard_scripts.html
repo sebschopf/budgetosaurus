@@ -20,46 +20,118 @@
         const deleteSelectedBtn = document.getElementById('delete-selected-btn');
         const transactionsForm = document.getElementById('transactions-form');
 
+        // Récupérer les données de catégorie et sous-catégorie du DOM
+        const allCategories = JSON.parse(document.getElementById('allCategoriesData').textContent);
+        const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData').textContent);
 
-        function loadSubcategories(parentCategoryId) {
-            if (parentCategoryId) {
-                fetch(`/load-subcategories/?parent_category_id=${parentCategoryId}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('La réponse du réseau n\'était pas ok.');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                        if (data.length > 0) {
-                            data.forEach(subcategory => {
-                                const option = document.createElement('option');
-                                option.value = subcategory.id;
-                                option.textContent = subcategory.name;
-                                subcategorySelect.appendChild(option);
-                            });
-                            subcategoryContainer.style.display = 'block';
-                        } else {
-                            subcategoryContainer.style.display = 'none';
-                        }
+        /**
+         * Ajoute un pictogramme/badge à côté d'un nom de catégorie.
+         * @param {string} categoryName Le nom de la catégorie.
+         * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
+         * @returns {string} Le HTML du nom de catégorie avec le pictogramme.
+         */
+        function formatCategoryNameWithIcon(categoryName, isFundManaged) {
+            let iconClass = 'no-special'; // Default
+            let iconText = 'Autre'; // Default text for no special management
 
-                        const initialSubcategoryValue = subcategorySelect.dataset.initialValue; 
-                        if (initialSubcategoryValue) {
-                            subcategorySelect.value = initialSubcategoryValue;
-                            delete subcategorySelect.dataset.initialValue; 
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erreur lors du chargement des sous-catégories:', error);
-                        subcategorySelect.innerHTML = '<option value="">Erreur de chargement</option>';
-                        subcategoryContainer.style.display = 'none';
-                    });
+            // For simplicity, we are only checking for 'is_fund_managed'.
+            // If there were 'is_budgeted' (for budget planning) property, we would check it too.
+            // For now, 'no-special' implies it's neither fund-managed nor specifically budgeted.
+            if (isFundManaged) {
+                iconClass = 'fund-managed';
+                iconText = 'Fonds';
+            } 
+            // Add else if for 'is_budgeted' if applicable in the future:
+            // else if (isBudgeted) {
+            //     iconClass = 'budgeted';
+            //     iconText = 'Budget';
+            // }
+
+            return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
+        }
+
+        /**
+         * Peuple le dropdown des catégories principales avec les icônes.
+         * @param {HTMLElement} selectElement L'élément <select> à peupler.
+         * @param {Array} categoriesData Les données des catégories.
+         * @param {string|number|null} initialValue La valeur initiale à sélectionner.
+         */
+        function populateMainCategories(selectElement, categoriesData, initialValue = null) {
+            selectElement.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
+                option.dataset.isFundManaged = category.is_fund_managed; // Store for later use if needed
+                selectElement.appendChild(option);
+            });
+            if (initialValue) {
+                selectElement.value = initialValue;
+            }
+            // Trigger change to update subcategories and initial icon display if necessary
+            selectElement.dispatchEvent(new Event('change'));
+        }
+
+        /**
+         * Peuple le dropdown des sous-catégories en fonction de la catégorie parente sélectionnée.
+         * @param {string} parentCategoryId L'ID de la catégorie parente.
+         * @param {HTMLElement} subcategorySelectElement L'élément <select> des sous-catégories.
+         * @param {string|null} initialSubcategoryId L'ID de la sous-catégorie à pré-sélectionner.
+         */
+        function populateSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
+            subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+            const childrenOfParent = allSubcategories.filter(cat => cat.parent === parseInt(parentCategoryId));
+
+            if (childrenOfParent.length > 0) {
+                childrenOfParent.forEach(subcategory => {
+                    const option = document.createElement('option');
+                    option.value = subcategory.id;
+                    option.innerHTML = formatCategoryNameWithIcon(subcategory.name, subcategory.is_fund_managed);
+                    option.dataset.isFundManaged = subcategory.is_fund_managed;
+                    subcategorySelectElement.appendChild(option);
+                });
+                subcategoryContainer.style.display = 'block'; // Afficher le champ
             } else {
-                subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                subcategoryContainer.style.display = 'none';
+                subcategoryContainer.style.display = 'none'; // Cacher le champ
+            }
+
+            if (initialSubcategoryId) {
+                // S'assurer que l'option existe avant de tenter de la sélectionner
+                const optionExists = Array.from(subcategorySelectElement.options).some(option => option.value == initialSubcategoryId);
+                if (optionExists) {
+                    subcategorySelectElement.value = initialSubcategoryId;
+                }
+            }
+            // Update the displayed icon next to the select field
+            updateCategoryIconDisplay(subcategorySelectElement);
+        }
+
+        /**
+         * Affiche l'icône de la catégorie sélectionnée à côté de l'élément select.
+         * @param {HTMLElement} selectElement L'élément <select> de la catégorie.
+         */
+        function updateCategoryIconDisplay(selectElement) {
+            let currentIcon = selectElement.nextElementSibling;
+            if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
+                currentIcon.remove();
+            }
+
+            const selectedOption = selectElement.options[selectElement.selectedIndex];
+            if (selectedOption && selectedOption.value) { // Only add if an actual category is selected
+                const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' is a string from dataset
+                const categoryName = selectedOption.textContent.split(' <span')[0]; // Get original name without existing icon
+
+                const iconSpan = document.createElement('span');
+                iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Format only the icon part
+                iconSpan.classList.add('category-info-icon'); // Ensure basic class
+                iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
+                iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // Text for the badge
+
+                // Insert the icon right after the select element
+                selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
             }
         }
+
 
         function formatDate(date) {
             const year = date.getFullYear();
@@ -99,10 +171,18 @@
                 });
         }
 
+        // Event listener for main category change
         categorySelect.addEventListener('change', function() {
             const selectedParentId = this.value;
-            loadSubcategories(selectedParentId);
+            populateSubcategories(selectedParentId, subcategorySelect);
+            updateCategoryIconDisplay(this); // Update icon for main category
         });
+
+        // Event listener for subcategory change
+        subcategorySelect.addEventListener('change', function() {
+            updateCategoryIconDisplay(this); // Update icon for subcategory
+        });
+
 
         const lastSelectedAccountId = localStorage.getItem(LAST_ACCOUNT_KEY);
         if (lastSelectedAccountId) {
@@ -116,16 +196,12 @@
             localStorage.setItem(LAST_ACCOUNT_KEY, this.value);
         });
 
-        const initialParentId = categorySelect.value;
-        const initialSubcategoryValue = subcategorySelect.value; 
-        
-        if (initialSubcategoryValue) {
-            subcategorySelect.dataset.initialValue = initialSubcategoryValue;
-        }
+        // Initial population and icon display
+        populateMainCategories(categorySelect, allCategories, categorySelect.value);
+        // If there was an initial subcategory value, it will be set by populateSubcategories
+        // when categorySelect.dispatchEvent(new Event('change')) is called.
 
-        loadSubcategories(initialParentId);
-
-        if (!initialParentId) {
+        if (!categorySelect.value) { // If no main category is initially selected, hide subcategory dropdown
             subcategoryContainer.style.display = 'none';
         }
 
@@ -157,13 +233,17 @@
                             // Charger les sous-catégories si une sous-catégorie est suggérée
                             if (data.subcategory_id) {
                                 // Stocker la sous-catégorie suggérée pour qu'elle soit sélectionnée après le chargement
-                                subcategorySelect.dataset.initialValue = data.subcategory_id;
-                                loadSubcategories(data.category_id); // Recharger les sous-catégories
+                                // Pass initial subcategory value directly to populateSubcategories
+                                populateSubcategories(data.category_id, subcategorySelect, data.subcategory_id); 
                             } else {
                                 // Si seule une catégorie principale est suggérée, s'assurer que la sous-catégorie est vide/cachée
                                 subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
                                 subcategoryContainer.style.display = 'none';
+                                updateCategoryIconDisplay(subcategorySelect); // Clear icon if subcategory is hidden
                             }
+
+                            // Update icon for main category after setting its value
+                            updateCategoryIconDisplay(categorySelect);
 
                             // Mettre à jour les tags
                             const tagsCheckboxes = document.querySelectorAll('input[name="tags"]');
