@@ -5,10 +5,10 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from django.db.models import F
 from django.db import transaction as db_transaction
-from datetime import date, timedelta # Importez date et timedelta
-import calendar # Importez calendar pour le nom du mois et le dernier jour du mois
+from datetime import date, timedelta
+import calendar
 
-from webapp.models import Category, Transaction, Account, Tag # Assurez-vous d'importer Tag
+from webapp.models import Category, Transaction, Account, Tag # Assurez-vous d'importer Tag et Fund
 from webapp.forms import TransactionForm
 from webapp.services import TransactionService
 
@@ -165,7 +165,8 @@ def category_transactions_summary_view(request, year=None, month=None):
         # Si le mois n'est pas spécifié, on est en mode "année courante"
         period_type = 'year'
         start_date = date(selected_year, 1, 1)
-        end_date = date(selected_year, 12, 31)
+        # Pour l'année courante, la date de fin doit être le 31 décembre de cette année.
+        end_date = date(selected_year, 12, 31) 
         period_display = f"Année {selected_year}"
     else:
         # Si le mois est spécifié, on est en mode "mois courant"
@@ -222,3 +223,53 @@ def category_transactions_summary_view(request, year=None, month=None):
         'selected_month': selected_month, # None si c'est l'année entière
     }
     return render(request, 'webapp/category_transactions_summary.html', context)
+
+
+@require_GET
+def all_transactions_summary_view(request):
+    """
+    Vue affichant un récapitulatif de toutes les transactions,
+    avec une indication si elles ont été ventilées (ont une allocation).
+    """
+    # Utilise prefetch_related pour charger les allocations en une seule requête,
+    # car 'allocation' est une OneToOneField inversée.
+    all_transactions = Transaction.objects.select_related('category', 'account').prefetch_related('allocation').order_by('-date', '-created_at')
+
+    transactions_data = []
+    for transaction in all_transactions:
+        # Vérifier si la transaction a une allocation associée
+        # hasattr(transaction, 'allocation') vérifie l'existence de l'objet lié
+        # transaction.allocation est l'objet Allocation ou None si non lié
+        is_allocated = hasattr(transaction, 'allocation') and transaction.allocation is not None
+
+        transactions_data.append({
+            'id': transaction.id,
+            'date': transaction.date,
+            'description': transaction.description,
+            'amount': transaction.amount,
+            'category_name': transaction.category.name if transaction.category else 'N/A',
+            'account_name': transaction.account.name,
+            'account_currency': transaction.account.currency,
+            'transaction_type': transaction.get_transaction_type_display(),
+            'is_allocated': is_allocated,
+        })
+    
+    context = {
+        'page_title': 'Toutes les Transactions',
+        'transactions': transactions_data,
+    }
+    return render(request, 'webapp/all_transactions_summary.html', context)
+
+
+@require_GET
+def split_transaction_view(request):
+    """
+    Vue placeholder pour la fonctionnalité de division de transaction.
+    Cette vue affichera une interface permettant à l'utilisateur de diviser
+    une transaction unique en plusieurs transactions catégorisées.
+    """
+    context = {
+        'page_title': 'Diviser une Transaction',
+        # Des données ou un formulaire iront ici à l'avenir
+    }
+    return render(request, 'webapp/split_transaction.html', context) # Un nouveau template sera nécessaire

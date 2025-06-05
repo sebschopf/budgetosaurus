@@ -1,0 +1,154 @@
+{# webapp/templates/webapp/all_transactions_summary.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* Styles spécifiques pour cette page */
+        .transactions-table-container {
+            overflow-x: auto; /* Permet le défilement horizontal sur petits écrans */
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            text-align: left;
+        }
+        .transactions-table th,
+        .transactions-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .transactions-table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            font-size: 0.85em;
+        }
+        .transactions-table tbody tr:hover {
+            background-color: #fcfcfc;
+        }
+        .transactions-table td {
+            color: #333;
+        }
+        .amount.income {
+            color: #27ae60; /* Vert pour positif */
+            font-weight: bold;
+        }
+        .amount.expense {
+            color: #e74c3c; /* Rouge pour négatif */
+            font-weight: bold;
+        }
+        .allocated-status {
+            font-weight: bold;
+            text-align: center;
+        }
+        .allocated-true {
+            color: #28a745; /* Vert pour ventilé */
+        }
+        .allocated-false {
+            color: #999; /* Gris pour non ventilé */
+        }
+        .no-transactions-message {
+            text-align: center;
+            padding: 30px;
+            color: #777;
+            font-size: 1.1em;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        .section-header h1 {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 5px;
+        }
+
+        /* Styles pour le bouton Diviser */
+        .split-button {
+            background-color: #60a5fa; /* blue-400 */
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            cursor: pointer;
+            text-decoration: none; /* Pour les liens */
+            display: inline-block;
+            transition: background-color 0.2s ease;
+            border: none;
+        }
+        .split-button:hover {
+            background-color: #3b82f6; /* blue-500 */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="section-header">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">Toutes vos transactions enregistrées, avec leur statut de ventilation.</p>
+    </div>
+
+    {% if transactions %}
+        <div class="transactions-table-container">
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Montant</th>
+                        <th>Catégorie</th>
+                        <th>Compte</th>
+                        <th>Type</th>
+                        <th>Ventilé</th>
+                        <th>Actions</th> {# Nouvelle colonne pour les actions #}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.date|date:"d M Y" }}</td>
+                            <td>{{ transaction.description }}</td>
+                            <td class="amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">
+                                {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
+                            </td>
+                            <td>{{ transaction.category_name }}</td>
+                            <td>{{ transaction.account_name }}</td>
+                            <td>{{ transaction.transaction_type }}</td>
+                            <td class="allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
+                                {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
+                            </td>
+                            <td>
+                                {# Bouton Diviser #}
+                                {% comment %} 
+                                    Le bouton "Diviser" redirige vers la page de division de transaction
+                                    en passant l'ID de la transaction pour pré-remplir le formulaire.
+                                    Les transferts (TRF) ne sont pas divisibles, donc le bouton n'apparaît pas pour eux.
+                                {% endcomment %}
+                                {% if transaction.transaction_type != 'Transfert' %} {# Utilisez la chaîne de caractères si get_transaction_type_display() renvoie "Transfert" #}
+                                <a href="{% url 'split_transaction_view_with_id' transaction_id=transaction.id %}" class="split-button">
+                                    Diviser
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="no-transactions-message">Aucune transaction trouvée.</p>
+    {% endif %}
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+{% endblock %}

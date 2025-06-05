@@ -1,7 +1,7 @@
 # webapp/urls.py
 # Ce fichier définit les chemins d'URL pour les vues de l'application 'webapp'.
 
-from django.urls import path
+from django.urls import path, re_path # Importez re_path pour les regex dans les URLs
 # Importe les vues directement depuis leurs modules
 from .views import dashboard, transactions, imports, budgets, review_transactions, glossary 
 
@@ -37,9 +37,22 @@ urlpatterns = [
     # URL pour le glossaire
     path('glossary/', glossary.glossary_view, name='glossary_view'),
 
-    # URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
+    # Nouvelle URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
     path('suggest-categorization/', transactions.suggest_transaction_categorization, name='suggest_transaction_categorization'),
 
-    # URL pour le récapitulatif des transactions par catégorie
-    path('category-transactions-summary/', transactions.category_transactions_summary_view, name='category_transactions_summary_view'),
+    # URLs pour le récapitulatif des transactions par catégorie avec filtres de période
+    re_path(r'^category-transactions-summary/(?:(?P<year>\d{4})/)?(?:(?P<month>\d{1,2})/)?$', 
+            transactions.category_transactions_summary_view, 
+            name='category_transactions_summary_view'),
+
+    # URL pour le récapitulatif de toutes les transactions
+    path('all-transactions-summary/', transactions.all_transactions_summary_view, name='all_transactions_summary_view'),
+
+    # URLs pour la fonctionnalité de division de transaction
+    # On utilise un seul path avec un paramètre optionnel pour l'ID,
+    # ce qui est plus propre que deux paths avec le même préfixe et des noms différents.
+    # L'ID est maintenant optionnel directement dans la vue.
+    re_path(r'^split-transaction/(?:(?P<transaction_id>\d+)/)?$', 
+            transactions.split_transaction_view, 
+            name='split_transaction_view'), # Le nom unique sera 'split_transaction_view'
 ]

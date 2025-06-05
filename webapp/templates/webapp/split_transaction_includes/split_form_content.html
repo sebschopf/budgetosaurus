@@ -1,0 +1,63 @@
+{# webapp/templates/webapp/split_transaction_includes/split_form_content.html #}
+{# Ce fichier contient le contenu principal du formulaire de division de transaction #}
+
+<form method="post" id="splitTransactionForm">
+    {% csrf_token %}
+    <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
+
+    {# Management form pour le formset Django #}
+    {{ formset.management_form }} 
+
+    <div class="form-row-header">
+        <span>Description</span>
+        <span>Montant</span>
+        <span>Catégorie</span>
+        <span></span> {# Pour le bouton supprimer #}
+    </div>
+
+    <div id="split-lines-container">
+        {% for form in formset %}
+            <div class="split-line {% if form.errors %}has-error{% endif %}" id="form-{{ forloop.counter0 }}">
+                {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
+                {% if form.errors %}
+                    <ul class="errorlist">
+                        {% for field_name, errors in form.errors.items %}
+                            <li>{{ form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
+                        {% endfor %}
+                        {% if form.non_field_errors %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endif %}
+                    </ul>
+                {% endif %}
+
+                {# Rendu des champs du formulaire de ligne #}
+                {{ form.id }} {# Champ caché pour l'ID du formulaire de ligne, nécessaire pour can_delete #}
+                {{ form.description }}
+                {{ form.amount }}
+                <div>
+                    {{ form.main_category }}
+                    {{ form.subcategory }}
+                </div>
+                {% if formset.can_delete %}
+                    <div class="flex items-center justify-center">
+                        {{ form.DELETE }} {# Case à cocher pour la suppression (peut être cachée via CSS) #}
+                        <label for="{{ form.DELETE.id_for_label }}" class="sr-only">Supprimer</label>
+                        <button type="button" class="delete-split-btn">X</button>
+                    </div>
+                {% else %}
+                    <div></div> {# Espace vide si pas de bouton supprimer #}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <button type="button" id="add-split-line-btn" class="add-split-btn">Ajouter une ligne de division</button>
+
+    <div id="split-summary-box" class="split-summary">
+        Montant restant à diviser: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
+    </div>
+
+    <button type="submit" class="main-submit-btn">Diviser la Transaction</button>
+</form>
