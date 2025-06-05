@@ -118,6 +118,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+# NOUVEAU: Chemin absolu vers le répertoire où 'collectstatic' va rassembler tous les fichiers statiques.
+# Il est recommandé de le mettre en dehors du répertoire de votre projet.
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
