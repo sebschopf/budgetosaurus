@@ -1,10 +1,21 @@
 {# webapp/templates/webapp/budget_overview_includes/funds_display.html #}
-<h2>Soldes des Fonds Budgétaires</h2>
+{# Le titre h2 a été déplacé dans le template parent pour une meilleure hiérarchie #}
+
 {% if fund_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté pour une meilleure aération #}
         {% for fund in fund_data %}
-            <div class="fund-card">
-                <h3>{{ fund.category_name }}</h3>
+            <div class="fund-card card"> {# Réutilise la classe 'card' pour le style commun, ajoute 'fund-card' pour les spécificités #}
+                <h3>
+                    {{ fund.category_name }}
+                    {# NOUVEAU : Ajoute une petite icône basée sur le statut du fonds #}
+                    {% if fund.status == 'healthy' %}
+                        <span title="Fonds sain" class="text-green-500 ml-2 text-xl">&#10003;</span> {# Icône de coche #}
+                    {% elif fund.status == 'low' %}
+                        <span title="Solde faible, à surveiller" class="text-yellow-500 ml-2 text-xl">&#9888;</span> {# Icône d'avertissement #}
+                    {% elif fund.status == 'critical' %}
+                        <span title="Solde critique/négatif" class="text-red-500 ml-2 text-xl">&#10060;</span> {# Icône croix rouge #}
+                    {% endif %}
+                </h3>
                 <p class="balance {% if fund.current_balance >= 0 %}positive{% else %}negative{% endif %}">
                     {{ fund.current_balance|floatformat:2 }} CHF
                 </p>

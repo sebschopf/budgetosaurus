@@ -9,6 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter pour une typographie moderne -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {# NOUVEAU : Lien vers toast.css pour le style des notifications #}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'webapp/css/toast.css' %}">
     <style>
         /* Styles de base pour la police et l'arrière-plan */
         body { 
@@ -19,11 +22,12 @@
             display: flex; 
             flex-direction: column; 
         }
-        /* Styles des messages Django (succès, erreur, etc.) */
+        /* Styles des messages Django statiques (seront masqués si JS est actif) */
         .messages {
             list-style: none;
             padding: 0;
             margin-bottom: 1rem;
+            display: none; /* Masque l'ancienne liste de messages si JavaScript est actif */
         }
         .messages li {
             padding: 0.75rem 1rem;
@@ -105,14 +109,24 @@
     {% include 'webapp/includes/navbar.html' %}
 
     <div class="container mx-auto max-w-4xl my-5 p-6 bg-white rounded-lg shadow-md flex-grow">
-        {# Inclure les messages Django #}
-        {% include 'webapp/includes/messages.html' %}
+        {# NOUVEAU : Passe les messages Django au JavaScript pour l'affichage des toasts #}
+        {% if messages %}
+        <script id="django-messages" type="application/json">
+            [
+                {% for message in messages %}
+                {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        </script>
+        {% endif %}
 
         {% block content %}
             {# Le contenu spécifique de chaque page ira ici #}
         {% endblock %}
     </div>
 
+    {# NOUVEAU : Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
+    <script src="{% static 'webapp/js/toast.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -2,9 +2,9 @@
 from datetime import date
 import calendar
 from django.shortcuts import render
-from django.db.models import Sum, F # Import F for annotations if needed
+from django.db.models import Sum, F
 
-from ..models import Budget, Transaction, Fund, Category # Import Category
+from ..models import Budget, Transaction, Fund, Category
 
 def budget_overview(request):
     """
@@ -54,6 +54,8 @@ def budget_overview(request):
         fund_data.append({
             'category_name': fund.category.name,
             'current_balance': fund.current_balance,
+            # Ajoute un 'status' pour la coloration : 'healthy' (sain), 'low' (faible), 'critical' (critique)
+            'status': 'healthy' if fund.current_balance > 100 else ('low' if fund.current_balance > 0 else 'critical')
         })
 
     # --- NOUVEAU: Calcul du récapitulatif mensuel par catégorie (dépenses et revenus du mois) ---

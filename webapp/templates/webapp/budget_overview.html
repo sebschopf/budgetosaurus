@@ -93,7 +93,7 @@
 
         /* Styles pour les cartes de fonds et récapitulatif mensuel */
         .card { 
-            background-color: #f0f8ff; /* Bleu-blanc dégueux, mais c'est comme ça selon la norme dicté par le dicta...*/
+            background-color: #f0f8ff; /* Bleu-blanc */
             border-radius: 12px;
             padding: 25px;
             text-align: center;
@@ -124,6 +124,16 @@
             gap: 25px; /* Espacement plus grand */
             margin-bottom: 40px; 
         }
+
+        /* Styles pour les indicateurs de statut des fonds (NOUVEAU) */
+        .fund-card h3 span {
+            vertical-align: middle; /* Aligne les icônes avec le texte */
+        }
+        .text-green-500 { color: #22c55e; } /* Couleur Tailwind green-500 */
+        .text-yellow-500 { color: #eab308; } /* Couleur Tailwind yellow-500 */
+        .text-red-500 { color: #ef4444; } /* Couleur Tailwind red-500 */
+        .text-xl { font-size: 1.25rem; } /* Taille de police Tailwind text-xl */
+
 
         /* Style du lien de retour */
         .back-link { 
