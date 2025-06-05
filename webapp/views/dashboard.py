@@ -25,3 +25,14 @@ def dashboard_view(request):
         'form': form, # Le formulaire est inclus pour être affiché dans le template
     }
     return render(request, 'webapp/index.html', context)
+
+
+def recap_overview_view(request):
+    """
+    Vue pour la page d'aperçu des différents récapitulatifs et outils de gestion.
+    Sert de hub pour les vues de transactions détaillées et de division.
+    """
+    context = {
+        'page_title': 'Vos Récapitulatifs et Outils',
+    }
+    return render(request, 'webapp/recap_overview.html', context)

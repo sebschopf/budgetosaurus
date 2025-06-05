@@ -1,0 +1,103 @@
+{# webapp/templates/webapp/recap_overview.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .recap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-top: 30px;
+        }
+        .recap-card {
+            background-color: #f0f8ff; /* Bleu-blanc pour les cartes */
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .recap-card:hover {
+            transform: translateY(-5px);
+            background-color: #e6f7ff; /* Légèrement plus foncé au survol */
+        }
+        .recap-card h2 {
+            font-size: 1.8em;
+            color: #34495e;
+            margin-bottom: 15px;
+            font-weight: 700;
+            border-bottom: none; /* Supprimer la bordure des h2 car ils sont dans une carte */
+            padding-bottom: 0;
+        }
+        .recap-card p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .recap-card a {
+            display: inline-block;
+            background-color: #4f46e5;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        .recap-card a:hover {
+            background-color: #4338ca;
+            transform: scale(1.05);
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 15px;
+        }
+        .section-header h1 {
+            font-size: 2.8em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        .section-header p {
+            font-size: 1.2em;
+            color: #60a5fa;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="section-header">
+        <h1>{{ page_title }}</h1>
+        <p>Explorez les différents récapitulatifs de vos transactions et accédez aux outils avancés.</p>
+    </div>
+
+    <div class="recap-grid">
+        <div class="recap-card">
+            <h2>Récapitulatif par Catégorie</h2>
+            <p>Visualisez vos transactions regroupées par catégories (celles qui gèrent un fonds) pour le mois ou l'année de votre choix.</p>
+            <a href="{% url 'category_transactions_summary_view' %}" class="btn">Voir le récapitulatif</a>
+        </div>
+
+        <div class="recap-card">
+            <h2>Toutes les Transactions</h2>
+            <p>Consultez la liste complète de toutes vos transactions enregistrées, avec l'indication de leur statut de ventilation.</p>
+            <a href="{% url 'all_transactions_summary_view' %}" class="btn">Voir toutes les transactions</a>
+        </div>
+
+        <div class="recap-card">
+            <h2>Diviser une Transaction</h2>
+            <p>Utilisez cet outil pour diviser une transaction unique (par exemple, un paiement groupé) en plusieurs transactions distinctes et catégorisées. (Fonctionnalité en développement)</p>
+            <a href="{% url 'split_transaction_view' %}" class="btn">Accéder à l'outil</a>
+        </div>
+    </div>
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+{% endblock %}

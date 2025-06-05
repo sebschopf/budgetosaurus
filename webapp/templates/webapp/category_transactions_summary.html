@@ -69,7 +69,7 @@
             border-bottom: 2px solid #ecf0f1;
             padding-bottom: 10px;
         }
-        .section-header h2 {
+        .section-header h1 {
             font-size: 2.2em;
             font-weight: bold;
             color: #34495e;
@@ -79,13 +79,55 @@
             font-size: 1.1em;
             color: #60a5fa;
         }
+
+        /* Styles pour les boutons de période */
+        .period-selection-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+        .period-selection-buttons a {
+            background-color: #4f46e5; /* Couleur principale */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .period-selection-buttons a:hover {
+            background-color: #4338ca; /* Teinte plus foncée au survol */
+            transform: translateY(-2px);
+        }
+        .period-selection-buttons a.active {
+            background-color: #312e81; /* Couleur plus foncée pour le bouton actif */
+            cursor: default;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); /* Ombre interne pour l'actif */
+            transform: none;
+        }
     </style>
 {% endblock %}
 
 {% block content %}
     <div class="section-header">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
-        <p class="text-lg text-gray-700">Pour le mois de {{ current_month_name }} {{ current_year }}</p>
+        <p class="text-lg text-gray-700">Pour la période : <span class="font-bold text-indigo-600">{{ current_period_display }}</span></p>
+    </div>
+
+    <div class="period-selection-buttons">
+        {# Pour le mois courant, passer year et month nommés #}
+        <a href="{% url 'category_transactions_summary_view' year=today_year month=today_month %}" 
+           class="{% if selected_year == today_year and selected_month == today_month %}active{% endif %}">
+            Mois Courant
+        </a>
+        {# Pour l'année courante, passer seulement year nommé #}
+        <a href="{% url 'category_transactions_summary_view' year=today_year %}"
+           class="{% if selected_year == today_year and selected_month is None %}active{% endif %}">
+            Année Courante
+        </a>
     </div>
 
     {% if category_transactions_summary %}
@@ -99,14 +141,14 @@
                             <span class="amount {% if transaction.amount >= 0 %}positive{% else %}negative{% endif %}">
                                 {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
                             </span>
-                            <span class="date">{{ transaction.date|date:"d M" }}</span>
+                            <span class="date">{{ transaction.date|date:"d M Y" }}</span> {# Afficher l'année aussi pour les vues annuelles #}
                         </div>
                     {% endfor %}
                 </div>
             </div>
         {% endfor %}
     {% else %}
-        <p class="no-transactions-found">Aucune transaction trouvée pour les catégories gérant des fonds ce mois-ci.</p>
+        <p class="no-transactions-found">Aucune transaction trouvée pour les catégories gérant des fonds pour cette période.</p>
     {% endif %}
 
     <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
