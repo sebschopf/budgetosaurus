@@ -1,0 +1,37 @@
+{# webapp/templates/webapp/budget_overview_includes/budgets_planning_display.html #}
+<h2>Budgets Mensuels (Planification)</h2>
+{% if budget_data %}
+    {% for budget in budget_data %}
+        <div class="budget-card">
+            <h3>{{ budget.category_name }}</h3>
+            <p>Budgété : {{ budget.budgeted_amount|floatformat:2 }} CHF</p>
+            <p>Dépensé : {{ budget.spent_amount|floatformat:2 }} CHF</p>
+            <p>Restant : <span class="{% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
+
+            <div class="progress-bar-container">
+                {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
+                {% if budget.percentage_spent < 75 %}
+                    {% with color_class="green" %}
+                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                            {{ budget.percentage_spent|floatformat:0 }}%
+                        </div>
+                    {% endwith %}
+                {% elif budget.percentage_spent < 100 %}
+                    {% with color_class="orange" %}
+                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                            {{ budget.percentage_spent|floatformat:0 }}%
+                        </div>
+                    {% endwith %}
+                {% else %}
+                    {% with color_class="red" %}
+                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                            {{ budget.percentage_spent|floatformat:0 }}%
+                        </div>
+                    {% endwith %}
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+{% else %}
+    <p class="text-center text-gray-600">Aucun budget de planification configuré pour ce mois. Ajoutez-en via l'administration Django !</p>
+{% endif %}

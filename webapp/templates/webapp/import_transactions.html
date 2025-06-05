@@ -1,0 +1,159 @@
+{# webapp/templates/webapp/import_transactions.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}Importer Transactions{% endblock %}
+
+{% block extra_head %}
+    {# Styles spécifiques à cette page si nécessaire. Les styles génériques sont dans base.html #}
+    <style>
+        /* Styles spécifiques pour le conteneur du formulaire d'importation */
+        .container { max-width: 700px; } /* Ajuste la largeur du conteneur pour cette page */
+        /* Styles pour les champs en lecture seule */
+        input[readonly] {
+            background-color: #e2e8f0; /* Tailwind gray-200 */
+            cursor: not-allowed;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h2 class="text-center">Importer des Transactions</h2>
+
+    {# Les messages Django sont maintenant inclus via base.html #}
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        
+        {# Champ de sélection du fichier #}
+        <div class="form-field-group">
+            <label for="{{ form.csv_file.id_for_label }}">{{ form.csv_file.label }}</label>
+            {{ form.csv_file }}
+            {% if form.csv_file.errors %}<p class="text-red-500 text-xs mt-1">{{ form.csv_file.errors }}</p>{% endif %}
+            {% if form.csv_file.help_text %}<p class="helptext">{{ form.csv_file.help_text }}</p>{% endif %}
+        </div>
+
+        {# Champ de sélection du compte de destination #}
+        <div class="form-field-group">
+            <label for="{{ form.account.id_for_label }}">{{ form.account.label }}</label>
+            {{ form.account }}
+            {% if form.account.errors %}<p class="text-red-500 text-xs mt-1">{{ form.account.errors }}</p>{% endif %}
+        </div>
+
+        {# Champ de sélection du type d'importateur #}
+        <div class="form-field-group">
+            <label for="{{ form.importer_type.id_for_label }}">{{ form.importer_type.label }}</label>
+            {{ form.importer_type }}
+            {% if form.importer_type.errors %}<p class="text-red-500 text-xs mt-1">{{ form.importer_type.errors }}</p>{% endif %}
+            {# Le help_text de ce champ est géré par le JS pour les types d'importateurs #}
+        </div>
+
+        {# Section pour le mappage des colonnes - toujours visible, mais avec des hints et lecture seule #}
+        <div id="column-mapping-section">
+            <h3 class="text-lg font-semibold mt-6 mb-4 text-gray-700">Mappage des colonnes</h3>
+            <p class="text-sm text-gray-600 mb-4">Veuillez entrer le nom exact des colonnes de votre fichier. Les champs en lecture seule indiquent un format fixe.</p>
+
+            {# Champ pour le nom de la colonne Date #}
+            <div class="form-field-group">
+                <label for="{{ form.date_column.id_for_label }}">{{ form.date_column.label }}</label>
+                {{ form.date_column }}
+                {% if form.date_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.date_column.errors }}</p>{% endif %}
+                <p class="helptext" id="date_column_helptext">{{ form.date_column.help_text }}</p>
+            </div>
+
+            {# Champ pour le nom de la colonne Description #}
+            <div class="form-field-group">
+                <label for="{{ form.description_column.id_for_label }}">{{ form.description_column.label }}</label>
+                {{ form.description_column }}
+                {% if form.description_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.description_column.errors }}</p>{% endif %}
+                <p class="helptext" id="description_column_helptext">{{ form.description_column.help_text }}</p>
+            </div>
+
+            {# Champ pour le nom de la colonne Montant #}
+            <div class="form-field-group">
+                <label for="{{ form.amount_column.id_for_label }}">{{ form.amount_column.label }}</label>
+                {{ form.amount_column }}
+                {% if form.amount_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.amount_column.errors }}</p>{% endif %}
+                <p class="helptext" id="amount_column_helptext">{{ form.amount_column.help_text }}</p>
+            </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300">
+            Importer les Transactions
+        </button>
+    </form>
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const importerTypeSelect = document.getElementById('id_importer_type');
+        const dateColumnInput = document.getElementById('id_date_column');
+        const descriptionColumnInput = document.getElementById('id_description_column');
+        const amountColumnInput = document.getElementById('id_amount_column');
+
+        // Store original help texts
+        const originalHelpTexts = {
+            date_column: document.getElementById('date_column_helptext').textContent,
+            description_column: document.getElementById('description_column_helptext').textContent,
+            amount_column: document.getElementById('amount_column_helptext').textContent
+        };
+
+        function applyColumnFieldState() {
+            const selectedType = importerTypeSelect.value;
+
+            // Reset all fields to default (editable, original help text)
+            [
+                { input: dateColumnInput, helpTextId: 'date_column_helptext', originalValue: 'Date' },
+                { input: descriptionColumnInput, helpTextId: 'description_column_helptext', originalValue: 'Description' },
+                { input: amountColumnInput, helpTextId: 'amount_column_helptext', originalValue: 'Montant' }
+            ].forEach(field => {
+                field.input.readOnly = false;
+                field.input.classList.remove('bg-gray-200', 'cursor-not-allowed');
+                document.getElementById(field.helpTextId).textContent = originalHelpTexts[field.helpTextId.replace('_helptext', '')];
+                // Restore initial values if they were provided by Django (e.g., on form re-render with errors)
+                field.input.value = field.input.dataset.initialValue || field.originalValue;
+            });
+
+            // Apply specific states based on importer type
+            if (selectedType === 'raiffeisen_csv') {
+                dateColumnInput.value = 'Date comptable';
+                descriptionColumnInput.value = 'Libellé';
+                amountColumnInput.value = 'Débit/Crédit (format fixe)';
+                [dateColumnInput, descriptionColumnInput, amountColumnInput].forEach(input => {
+                    input.readOnly = true;
+                    input.classList.add('bg-gray-200', 'cursor-not-allowed');
+                });
+                document.getElementById('date_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
+                document.getElementById('description_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
+                document.getElementById('amount_column_helptext').textContent = "Ce format utilise les colonnes 'Débit' et 'Crédit' du fichier Raiffeisen.";
+            } else if (selectedType === 'xml_iso' || selectedType === 'swift_mt940') {
+                dateColumnInput.value = 'Non applicable';
+                descriptionColumnInput.value = 'Non applicable';
+                amountColumnInput.value = 'Non applicable';
+                [dateColumnInput, descriptionColumnInput, amountColumnInput].forEach(input => {
+                    input.readOnly = true;
+                    input.classList.add('bg-gray-200', 'cursor-not-allowed');
+                });
+                document.getElementById('date_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
+                document.getElementById('description_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
+                document.getElementById('amount_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
+            }
+            // For 'generic_csv', fields remain editable with their original values/help texts
+        }
+
+        // Store initial values from Django for generic_csv if form is re-rendered
+        // This ensures values persist across form re-renders (e.g., after validation errors)
+        dateColumnInput.dataset.initialValue = dateColumnInput.value;
+        descriptionColumnInput.dataset.initialValue = descriptionColumnInput.value;
+        amountColumnInput.dataset.initialValue = amountColumnInput.value;
+
+        // Écouter les changements sur le sélecteur d'importateur
+        importerTypeSelect.addEventListener('change', applyColumnFieldState);
+
+        // Appeler la fonction une fois au chargement de la page pour définir l'état initial
+        applyColumnFieldState();
+    });
+</script>
+{% endblock %}

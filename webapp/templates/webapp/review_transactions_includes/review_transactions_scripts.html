@@ -1,0 +1,258 @@
+{# webapp/templates/webapp/review_transactions_includes/review_transactions_scripts.html #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('editTransactionModal');
+        const closeButton = document.querySelector('.close-button');
+        const editButtons = document.querySelectorAll('.edit-btn');
+        const deleteButtons = document.querySelectorAll('.delete-btn');
+        const modalForm = document.getElementById('editTransactionForm');
+        const modalFormFieldsContainer = document.getElementById('modal-form-fields');
+
+        // Fonction pour charger les sous-catégories (réutilisée de index.html)
+        function loadSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
+            if (parentCategoryId) {
+                fetch(`/load-subcategories/?parent_category_id=${parentCategoryId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('La réponse du réseau n\'était pas ok.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                        if (data.length > 0) {
+                            data.forEach(subcategory => {
+                                const option = document.createElement('option');
+                                option.value = subcategory.id;
+                                option.textContent = subcategory.name;
+                                subcategorySelectElement.appendChild(option);
+                            });
+                            const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
+                            if (subcategoryContainer) subcategoryContainer.style.display = 'block';
+                        } else {
+                            const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
+                            if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                        }
+
+                        if (initialSubcategoryId) {
+                            subcategorySelectElement.value = initialSubcategoryId;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du chargement des sous-catégories:', error);
+                        subcategorySelectElement.innerHTML = '<option value="">Erreur de chargement</option>';
+                        const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
+                        if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+                    });
+            } else {
+                subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                const subcategoryContainer = subcategorySelectElement.closest('.form-field-group');
+                if (subcategoryContainer) subcategoryContainer.style.display = 'none';
+            }
+        }
+
+
+        // Ouvrir la modale et charger le formulaire
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const transactionId = this.dataset.transactionId;
+
+                modalFormFieldsContainer.innerHTML = '<p class="text-center text-gray-500">Chargement du formulaire...</p>';
+                modal.style.display = 'flex'; 
+
+                fetch(`/get-transaction-form/${transactionId}/`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur lors du chargement du formulaire de transaction.');
+                        }
+                        return response.text(); 
+                    })
+                    .then(html => {
+                        modalFormFieldsContainer.innerHTML = html; 
+                        const hiddenTransactionIdInput = modalFormFieldsContainer.querySelector('input[name="transaction_id"]');
+                        if (hiddenTransactionIdInput) {
+                            modalForm.action = `/update-transaction-category/${hiddenTransactionIdInput.value}/`;
+                        }
+
+                        // Réinitialiser la logique des sous-catégories pour le formulaire dans la modale
+                        const modalCategorySelect = modalFormFieldsContainer.querySelector('#id_category');
+                        const modalSubcategorySelect = modalFormFieldsContainer.querySelector('#id_subcategory');
+                        const modalSubcategoryContainer = modalSubcategorySelect ? modalSubcategorySelect.closest('.form-field-group') : null;
+                        const modalDescriptionInput = modalFormFieldsContainer.querySelector('#id_description'); // Récupérer le champ description de la modale
+
+
+                        if (modalCategorySelect && modalSubcategorySelect) {
+                            const initialModalSubcategoryId = modalSubcategorySelect.value; 
+                            if (modalCategorySelect.value) {
+                                loadSubcategories(modalCategorySelect.value, modalSubcategorySelect, initialModalSubcategoryId);
+                            } else {
+                                if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                            }
+
+                            modalCategorySelect.addEventListener('change', function() {
+                                loadSubcategories(this.value, modalSubcategorySelect);
+                            });
+                        }
+
+                        // --- Logique de suggestion pour la modale d'édition ---
+                        let modalSuggestionTimeout;
+                        if (modalDescriptionInput) {
+                            modalDescriptionInput.addEventListener('input', function() {
+                                clearTimeout(modalSuggestionTimeout);
+                                const description = this.value.trim();
+
+                                if (description.length < 3) {
+                                    return;
+                                }
+
+                                modalSuggestionTimeout = setTimeout(() => {
+                                    fetch(`/suggest-categorization/?description=${encodeURIComponent(description)}`)
+                                        .then(response => {
+                                            if (!response.ok) {
+                                                throw new Error('Erreur lors de la suggestion de catégorisation.');
+                                            }
+                                            return response.json();
+                                        })
+                                        .then(data => {
+                                            if (data.category_id) {
+                                                // Mettre à jour la catégorie principale de la modale
+                                                modalCategorySelect.value = data.category_id;
+                                                
+                                                // Charger les sous-catégories de la modale si une sous-catégorie est suggérée
+                                                if (data.subcategory_id) {
+                                                    modalSubcategorySelect.dataset.initialValue = data.subcategory_id;
+                                                    loadSubcategories(data.category_id, modalSubcategorySelect); 
+                                                } else {
+                                                    modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                                                    if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                                                }
+
+                                                // Mettre à jour les tags de la modale
+                                                const modalTagsCheckboxes = modalFormFieldsContainer.querySelectorAll('input[name="tags"]');
+                                                modalTagsCheckboxes.forEach(checkbox => {
+                                                    checkbox.checked = data.tag_ids.includes(parseInt(checkbox.value));
+                                                });
+
+                                                console.log('Suggestion appliquée à la modale:', data);
+                                            } else {
+                                                console.log('Aucune suggestion trouvée pour la modale.');
+                                            }
+                                        })
+                                        .catch(error => {
+                                            console.error('Erreur lors de la suggestion dans la modale:', error);
+                                        });
+                                }, 500); 
+                            });
+                        }
+                        // --- Fin de la logique de suggestion pour la modale ---
+
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        modalFormFieldsContainer.innerHTML = `<p class="text-red-500">Erreur de chargement: ${error.message}</p>`;
+                    });
+            });
+        });
+
+        // Fermer la modale
+        closeButton.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+
+        // Fermer la modale si on clique en dehors
+        window.addEventListener('click', function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // --- GESTION DE LA SOUMISSION DU FORMULAIRE D'ÉDITION VIA AJAX ---
+        modalForm.addEventListener('submit', function(event) {
+            event.preventDefault(); 
+
+            const formData = new FormData(modalForm); 
+            const transactionId = formData.get('transaction_id'); 
+
+            fetch(modalForm.action, { 
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value 
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json(); 
+            })
+            .then(data => {
+                if (data.success) {
+                    modal.style.display = 'none'; 
+                    location.reload(); 
+                } else {
+                    modalFormFieldsContainer.innerHTML = data.errors_html; 
+                    
+                    const modalCategorySelect = modalFormFieldsContainer.querySelector('#id_category');
+                    const modalSubcategorySelect = modalFormFieldsContainer.querySelector('#id_subcategory');
+                    const modalSubcategoryContainer = modalSubcategorySelect ? modalSubcategorySelect.closest('.form-field-group') : null;
+
+                    if (modalCategorySelect && modalSubcategorySelect) {
+                        const initialModalSubcategoryId = modalSubcategorySelect.value; 
+                        if (modalCategorySelect.value) {
+                            loadSubcategories(modalCategorySelect.value, modalSubcategorySelect, initialModalSubcategoryId);
+                        } else {
+                            if (modalSubcategoryContainer) modalSubcategoryContainer.style.display = 'none';
+                        }
+                        modalCategorySelect.addEventListener('change', function() {
+                            loadSubcategories(this.value, modalSubcategorySelect);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la soumission du formulaire:', error);
+                if (error && error.errors_html) {
+                    modalFormFieldsContainer.innerHTML = error.errors_html;
+                } else {
+                    modalFormFieldsContainer.innerHTML = `<p class="text-red-500">Une erreur inattendue est survenue: ${error.message || JSON.stringify(error)}</p>`;
+                }
+            });
+        });
+
+        // Logique de suppression (remplace window.confirm)
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const transactionId = this.dataset.transactionId;
+                
+                showConfirmationModal(
+                    "Confirmer la suppression",
+                    "Êtes-vous sûr de vouloir supprimer cette transaction ?",
+                    (confirmed) => {
+                        if (confirmed) {
+                            const tempForm = document.createElement('form');
+                            tempForm.method = 'POST';
+                            tempForm.action = `/delete-selected-transactions/`; 
+                            tempForm.style.display = 'none';
+
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = 'csrfmiddlewaretoken';
+                            csrfInput.value = document.querySelector('input[name="csrfmiddlewaretoken"]').value; 
+                            tempForm.appendChild(csrfInput);
+
+                            const idInput = document.createElement('input');
+                            idInput.type = 'hidden';
+                            idInput.name = 'transaction_ids'; 
+                            idInput.value = transactionId;
+                            tempForm.appendChild(idInput);
+
+                            document.body.appendChild(tempForm);
+                            tempForm.submit();
+                        }
+                    }
+                );
+            });
+        });
+    });
+</script>

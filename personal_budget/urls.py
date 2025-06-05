@@ -5,7 +5,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('webapp.urls')), # Assurez-vous que 'webapp' est le nom de votre app
-    # Si votre page d'accueil est directement /budget/, utilisez path('', include('webapp.urls'))
-    # ou redirigez depuis la racine si nécessaire.
+    path('', include('webapp.urls')), # 'webapp' est le nom de l'app
+    # Page d'accueil est directement /budget/, utiliser path('', include('webapp.urls'))
 ]

@@ -1,0 +1,16 @@
+{# webapp/templates/webapp/budget_overview_includes/funds_display.html #}
+<h2>Soldes des Fonds Budgétaires</h2>
+{% if fund_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {% for fund in fund_data %}
+            <div class="fund-card">
+                <h3>{{ fund.category_name }}</h3>
+                <p class="balance {% if fund.current_balance >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ fund.current_balance|floatformat:2 }} CHF
+                </p>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-center text-gray-600">Aucun fonds budgétaire configuré. Ajoutez-en via l'administration Django !</p>
+{% endif %}

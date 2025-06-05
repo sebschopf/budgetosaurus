@@ -1,0 +1,84 @@
+{# webapp/templates/webapp/glossary.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}Glossaire - Budgetosaurus{% endblock %}
+
+{% block extra_head %}
+    <style>
+        .glossary-item {
+            background-color: #f9f9f9;
+            border-left: 5px solid #3b82f6; /* Bleu */
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .glossary-item h2 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 10px;
+            border-bottom: none; /* Supprime la bordure des h2 dans les items */
+            padding-bottom: 0;
+            font-size: 1.5em;
+        }
+        .glossary-item p {
+            line-height: 1.6;
+            color: #555;
+        }
+        .glossary-item strong {
+            color: #34495e;
+        }
+        .back-link { 
+            display: block; 
+            text-align: center; 
+            margin-top: 30px; 
+            color: #3b82f6; 
+            text-decoration: none; 
+            font-weight: bold;
+        }
+        .back-link:hover { text-decoration: underline; }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-center">Glossaire des Concepts</h1>
+    <p class="text-center text-gray-700 mb-8">Comprenez les termes clés de votre application de gestion budgétaire.</p>
+
+    <div class="glossary-item">
+        <h2>Compte (Account)</h2>
+        <p>Un <strong>Compte</strong> représente un lieu physique ou logique où votre argent est détenu. Il peut s'agir d'un compte bancaire courant, d'un compte d'épargne, d'une carte de crédit, ou même d'une caisse d'espèces. Chaque compte a un solde réel qui est affecté par les transactions.</p>
+        <p><em>Analogie :</em> C'est le tiroir ou le portefeuille où se trouve l'argent.</p>
+    </div>
+
+    <div class="glossary-item">
+        <h2>Catégorie (Category)</h2>
+        <p>Une <strong>Catégorie</strong> est une étiquette descriptive qui classe la nature d'une transaction. Elle répond à la question "À quoi sert cet argent ?" (pour une dépense) ou "D'où vient cet argent ?" (pour un revenu). Les catégories peuvent être hiérarchiques (par exemple, "Dépenses Fixes" > "Loyer").</p>
+        <p><em>Analogie :</em> C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</p>
+    </div>
+
+    <div class="glossary-item">
+        <h2>Transaction</h2>
+        <p>Une <strong>Transaction</strong> est un enregistrement d'un mouvement d'argent. Chaque transaction est liée à une date, une description, un montant, un compte et une catégorie. Elle peut être de type <strong>Revenu (IN)</strong>, <strong>Dépense (OUT)</strong> ou <strong>Transfert (TRF)</strong>.</p>
+        <p><em>Analogie :</em> C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</p>
+    </div>
+
+    <div class="glossary-item">
+        <h2>Budget (Planification)</h2>
+        <p>Un <strong>Budget</strong> est un montant que vous <strong>prévoyez</strong> de ne pas dépasser pour une catégorie donnée sur une période spécifique (par exemple, mensuelle ou annuelle). C'est une <strong>cible</strong> ou une <strong>limite</strong> que vous vous fixez pour vos dépenses ou revenus.</p>
+        <p><em>Analogie :</em> C'est la limite que vous vous fixez pour la quantité de carburant que vous allez utiliser sur un trajet.</p>
+    </div>
+
+    <div class="glossary-item">
+        <h2>Fonds (Fund)</h2>
+        <p>Un <strong>Fonds</strong> (anciennement "Enveloppe") représente un montant <strong>réel d'argent que vous avez mis de côté</strong> ou alloué pour une catégorie spécifique, indépendamment de la période. C'est un "compte virtuel" ou un "pot de confiture" dédié à une dépense future ou continue. Il vous indique combien vous pouvez *réellement* dépenser pour cet objectif à un instant T.</p>
+        <p><em>Analogie :</em> C'est une tirelire dédiée à un objectif, où vous ajoutez de l'argent et en retirez au fur et à mesure des dépenses. Le solde de la tirelire vous dit combien il reste.</p>
+    </div>
+
+    <div class="glossary-item">
+        <h2>Objectif d'Épargne (SavingGoal)</h2>
+        <p>Un <strong>Objectif d'Épargne</strong> est un montant spécifique que vous <strong>voulez accumuler</strong> d'ici une certaine date pour un but précis (par exemple, acheter une voiture, payer un acompte pour une maison). Il s'agit d'un objectif d'épargne à long terme pour une dépense importante et souvent non récurrente.</p>
+        <p><em>Analogie :</em> C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture.</p>
+    </div>
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+{% endblock %}

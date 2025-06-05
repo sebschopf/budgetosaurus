@@ -1,0 +1,14 @@
+{# webapp/templates/webapp/includes/navbar.html #}
+<nav class="bg-yellow p-4 shadow-md">
+    <div class="container mx-auto flex justify-between items-center">
+        <a href="{% url 'dashboard_view' %}" class="text-white text-2xl font-bold">Budgetosaurus</a>
+        <div class="space-x-4">
+            <a href="{% url 'dashboard_view' %}" class="text-black hover:text-white transition duration-200">Tableau de Bord</a>
+            <a href="{% url 'import_transactions_view' %}" class="text-black-300 hover:text-white transition duration-200">Importer Transactions</a>
+            <a href="{% url 'review_transactions_view' %}" class="text-black-300 hover:text-white transition duration-200">Transactions à Revoir</a>
+            <a href="{% url 'budget_overview' %}" class="text-black-300 hover:text-white transition duration-200">Aperçu Budgets & Fonds</a> {# Titre mis à jour #}
+            <a href="{% url 'glossary_view' %}" class="text-black-300 hover:text-white transition duration-200">Glossaire</a> {# Nouveau lien #}
+            <a href="/admin/" class="text-black-300 hover:text-white transition duration-200">Admin Django</a>
+        </div>
+    </div>
+</nav>

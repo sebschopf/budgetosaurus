@@ -1,0 +1,267 @@
+{# webapp/templates/webapp/dashboard_includes/dashboard_scripts.html #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('id_category');
+        const subcategorySelect = document.getElementById('id_subcategory');
+        const subcategoryContainer = document.getElementById('subcategory-field-container');
+        const accountSelect = document.getElementById('id_account');
+        const descriptionInput = document.getElementById('id_description');
+        const commonDescriptionsList = document.getElementById('commonDescriptionsList');
+
+        const dateInput = document.getElementById('id_date');
+        const todayBtn = document.getElementById('today-date-btn');
+        const yesterdayBtn = document.getElementById('yesterday-date-btn');
+
+        const LAST_ACCOUNT_KEY = 'lastSelectedAccount';
+
+        // Éléments pour la suppression par lot
+        const selectAllCheckbox = document.getElementById('select-all-transactions');
+        const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
+        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+        const transactionsForm = document.getElementById('transactions-form');
+
+
+        function loadSubcategories(parentCategoryId) {
+            if (parentCategoryId) {
+                fetch(`/load-subcategories/?parent_category_id=${parentCategoryId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('La réponse du réseau n\'était pas ok.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                        if (data.length > 0) {
+                            data.forEach(subcategory => {
+                                const option = document.createElement('option');
+                                option.value = subcategory.id;
+                                option.textContent = subcategory.name;
+                                subcategorySelect.appendChild(option);
+                            });
+                            subcategoryContainer.style.display = 'block';
+                        } else {
+                            subcategoryContainer.style.display = 'none';
+                        }
+
+                        const initialSubcategoryValue = subcategorySelect.dataset.initialValue; 
+                        if (initialSubcategoryValue) {
+                            subcategorySelect.value = initialSubcategoryValue;
+                            delete subcategorySelect.dataset.initialValue; 
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du chargement des sous-catégories:', error);
+                        subcategorySelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                        subcategoryContainer.style.display = 'none';
+                    });
+            } else {
+                subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                subcategoryContainer.style.display = 'none';
+            }
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        todayBtn.addEventListener('click', function() {
+            dateInput.value = formatDate(new Date());
+        });
+
+        yesterdayBtn.addEventListener('click', function() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            dateInput.value = formatDate(yesterday);
+        });
+
+        function loadCommonDescriptions() {
+            fetch(`/get-common-descriptions/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('La réponse du réseau pour les descriptions n\'était pas ok.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    commonDescriptionsList.innerHTML = '';
+                    data.forEach(description => {
+                        const option = document.createElement('option');
+                        option.value = description;
+                        commonDescriptionsList.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Erreur lors du chargement des descriptions courantes:', error);
+                });
+        }
+
+        categorySelect.addEventListener('change', function() {
+            const selectedParentId = this.value;
+            loadSubcategories(selectedParentId);
+        });
+
+        const lastSelectedAccountId = localStorage.getItem(LAST_ACCOUNT_KEY);
+        if (lastSelectedAccountId) {
+            const optionExists = Array.from(accountSelect.options).some(option => option.value === lastSelectedAccountId);
+            if (optionExists) {
+                accountSelect.value = lastSelectedAccountId;
+            }
+        }
+
+        accountSelect.addEventListener('change', function() {
+            localStorage.setItem(LAST_ACCOUNT_KEY, this.value);
+        });
+
+        const initialParentId = categorySelect.value;
+        const initialSubcategoryValue = subcategorySelect.value; 
+        
+        if (initialSubcategoryValue) {
+            subcategorySelect.dataset.initialValue = initialSubcategoryValue;
+        }
+
+        loadSubcategories(initialParentId);
+
+        if (!initialParentId) {
+            subcategoryContainer.style.display = 'none';
+        }
+
+        loadCommonDescriptions();
+
+        // --- Logique pour la suggestion de catégorisation (Fuzzy Matching) ---
+        let suggestionTimeout;
+        descriptionInput.addEventListener('input', function() {
+            clearTimeout(suggestionTimeout); // Annule le précédent timeout
+            const description = this.value.trim();
+
+            if (description.length < 3) { // Ne suggère pas pour des descriptions trop courtes
+                return;
+            }
+
+            suggestionTimeout = setTimeout(() => {
+                fetch(`/suggest-categorization/?description=${encodeURIComponent(description)}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Erreur lors de la suggestion de catégorisation.');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.category_id) {
+                            // Mettre à jour la catégorie principale
+                            categorySelect.value = data.category_id;
+                            
+                            // Charger les sous-catégories si une sous-catégorie est suggérée
+                            if (data.subcategory_id) {
+                                // Stocker la sous-catégorie suggérée pour qu'elle soit sélectionnée après le chargement
+                                subcategorySelect.dataset.initialValue = data.subcategory_id;
+                                loadSubcategories(data.category_id); // Recharger les sous-catégories
+                            } else {
+                                // Si seule une catégorie principale est suggérée, s'assurer que la sous-catégorie est vide/cachée
+                                subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
+                                subcategoryContainer.style.display = 'none';
+                            }
+
+                            // Mettre à jour les tags
+                            const tagsCheckboxes = document.querySelectorAll('input[name="tags"]');
+                            tagsCheckboxes.forEach(checkbox => {
+                                checkbox.checked = data.tag_ids.includes(parseInt(checkbox.value));
+                            });
+
+                            console.log('Suggestion appliquée:', data);
+                        } else {
+                            // Si aucune suggestion, on ne fait rien pour ne pas effacer la saisie de l'utilisateur
+                            console.log('Aucune suggestion trouvée.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors de la suggestion:', error);
+                    });
+            }, 500); // Délai de 500ms après la dernière frappe
+        });
+        // --- Fin de la logique de suggestion ---
+
+
+        // --- Logique pour la suppression par lot ---
+        function updateDeleteButtonVisibility() {
+            const anyCheckboxChecked = Array.from(transactionCheckboxes).some(cb => cb.checked);
+            if (anyCheckboxChecked) {
+                deleteSelectedBtn.classList.remove('hidden');
+            } else {
+                deleteSelectedBtn.classList.add('hidden');
+            }
+        }
+
+        // Gérer la case à cocher "Tout sélectionner"
+        selectAllCheckbox.addEventListener('change', function() {
+            transactionCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateDeleteButtonVisibility();
+        });
+
+        // Gérer les cases à cocher individuelles
+        transactionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (!this.checked) {
+                    selectAllCheckbox.checked = false; 
+                }
+                updateDeleteButtonVisibility();
+            });
+        });
+
+        // Gérer le bouton "Supprimer la sélection"
+        deleteSelectedBtn.addEventListener('click', function(e) {
+            e.preventDefault(); 
+            const selectedIds = Array.from(transactionCheckboxes)
+                                .filter(cb => cb.checked)
+                                .map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                showConfirmationModal(
+                    "Aucune sélection",
+                    "Veuillez sélectionner au moins une transaction à supprimer.",
+                    (confirmed) => {} // Pas d'action spécifique après confirmation du message d'info
+                );
+                return;
+            }
+
+            showConfirmationModal(
+                "Confirmer la suppression",
+                `Êtes-vous sûr de vouloir supprimer les ${selectedIds.length} transaction(s) sélectionnée(s) ?`,
+                (confirmed) => {
+                    if (confirmed) {
+                        const tempForm = document.createElement('form');
+                        tempForm.method = 'POST';
+                        tempForm.action = '{% url "delete_selected_transactions" %}';
+                        tempForm.style.display = 'none';
+
+                        const csrfInput = document.createElement('input');
+                        csrfInput.type = 'hidden';
+                        csrfInput.name = 'csrfmiddlewaretoken';
+                        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                        tempForm.appendChild(csrfInput);
+
+                        selectedIds.forEach(id => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'transaction_ids'; 
+                            input.value = id;
+                            tempForm.appendChild(input);
+                        });
+
+                        document.body.appendChild(tempForm);
+                        tempForm.submit(); 
+                    }
+                }
+            );
+        });
+
+        // Initialiser la visibilité du bouton au chargement
+        updateDeleteButtonVisibility();
+        // --- Fin de la logique pour la suppression par lot ---
+    });
+</script>

@@ -39,6 +39,7 @@ class Category(models.Model):
         related_name='children', # Nom d'accès inverse pour obtenir les enfants d'une catégorie
         verbose_name="Catégorie parente"
     )
+    last_used_at = models.DateTimeField(auto_now_add=True, verbose_name="Dernière utilisation") # Pour les suggestions
 
     class Meta:
         verbose_name = "Catégorie"
@@ -56,9 +57,28 @@ class Category(models.Model):
             raise ValidationError(_("Une catégorie ne peut pas être sa propre parente."))
         # Pour une validation plus complexe des boucles (A -> B -> A), un package comme django-mptt serait utile.
 
+class Tag(models.Model):
+    """
+    Modèle pour les tags (étiquettes) qui peuvent être associés aux transactions
+    pour une classification et une analyse transversale plus flexibles.
+    """
+    name = models.CharField(max_length=50, unique=True, verbose_name="Nom du Tag")
+    description = models.TextField(blank=True, verbose_name="Description du Tag")
+    last_used_at = models.DateTimeField(auto_now_add=True, verbose_name="Dernière utilisation") # Pour les suggestions
+
+    class Meta:
+        verbose_name = "Tag"
+        verbose_name_plural = "Tags"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class Transaction(models.Model):
     """
     Modèle représentant une transaction financière (revenu, dépense, transfert).
+    La logique de normalisation du montant est gérée par un signal pre_save.
     """
     TRANSACTION_TYPES = [
         ('IN', 'Revenu'),
@@ -89,6 +109,7 @@ class Transaction(models.Model):
         default='OUT',
         verbose_name="Type de transaction"
     )
+    tags = models.ManyToManyField(Tag, blank=True, related_name='transactions', verbose_name="Tags") # Nouveau champ ManyToManyField
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Créé le") # Date de création automatique
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Mis à jour le") # Date de dernière modification automatique
 
@@ -101,20 +122,14 @@ class Transaction(models.Model):
         """Retourne une représentation en chaîne de caractères de l'objet."""
         return f"{self.date}: {self.description} ({self.amount} {self.account.currency})"
 
-    def save(self, *args, **kwargs):
-        """
-        Surcharge de la méthode save pour s'assurer que le montant a le bon signe
-        en fonction du type de transaction.
-        """
-        if self.transaction_type == 'OUT' and self.amount > 0:
-            self.amount = -self.amount # Les dépenses sont stockées comme des nombres négatifs
-        elif self.transaction_type == 'IN' and self.amount < 0:
-            self.amount = abs(self.amount) # Les revenus sont stockés comme des nombres positifs
-        super().save(*args, **kwargs)
+    # La méthode save() n'est plus surchargée ici pour la normalisation du montant.
+    # Cette logique est déplacée dans un signal (webapp/signals.py).
+
 
 class Budget(models.Model):
     """
     Modèle pour définir des budgets mensuels ou annuels pour des catégories spécifiques.
+    Ce modèle peut être utilisé pour la planification des contributions mensuelles aux fonds.
     """
     PERIOD_CHOICES = [
         ('M', 'Mensuel'),
@@ -153,6 +168,65 @@ class Budget(models.Model):
         if self.end_date and self.start_date and self.end_date < self.start_date:
             raise ValidationError(_("La date de fin ne peut pas être antérieure à la date de début."))
 
+# Manager personnalisé pour le modèle Fund
+class FundManager(models.Manager):
+    """
+    Manager personnalisé pour le modèle Fund, encapsulant la logique métier
+    d'ajout et de soustraction de fonds.
+    """
+    def add_funds_to_category(self, category, amount):
+        """
+        Ajoute des fonds à un fonds lié à une catégorie spécifique.
+        Crée le fonds s'il n'existe pas.
+        """
+        fund, created = self.get_or_create(category=category)
+        fund.current_balance += amount
+        fund.save()
+        return fund
+
+    def subtract_funds_from_category(self, category, amount):
+        """
+        Soustrait des fonds d'un fonds lié à une catégorie spécifique.
+        Crée le fonds s'il n'existe pas.
+        """
+        fund, created = self.get_or_create(category=category)
+        fund.current_balance -= amount
+        fund.save()
+        return fund
+
+class Fund(models.Model):
+    """
+    Représente un fonds budgétaire virtuel pour une catégorie donnée,
+    permettant de suivre les fonds alloués et disponibles pour cette catégorie.
+    Ceci est le "compte virtuel" que l'utilisateur souhaite suivre.
+    """
+    category = models.OneToOneField(
+        Category,
+        on_delete=models.CASCADE,
+        related_name='fund',
+        verbose_name="Catégorie de fonds"
+    )
+    # Le solde actuel disponible dans ce fonds virtuel.
+    # C'est ce que l'utilisateur veut voir comme "combien je peux utiliser".
+    current_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00,
+                                         verbose_name="Solde actuel du fonds")
+    
+    last_updated = models.DateTimeField(auto_now=True)
+
+    objects = FundManager() # Attachez votre manager personnalisé ici
+
+    class Meta:
+        verbose_name = "Fonds Budgétaire"
+        verbose_name_plural = "Fonds Budgétaires"
+        ordering = ['category__name'] # Tri par nom de catégorie
+
+    def __str__(self):
+        return f"Fonds '{self.category.name}': {self.current_balance} CHF"
+
+    # Les méthodes add_funds() et subtract_funds() ont été déplacées
+    # dans le FundManager pour une meilleure séparation des responsabilités.
+
+
 class SavingGoal(models.Model):
     """
     Modèle pour suivre les objectifs d'épargne.
@@ -185,7 +259,7 @@ class SavingGoal(models.Model):
 
     class Meta:
         verbose_name = "Objectif d'Épargne"
-        verbose_name_plural = "Objectifs d'Épargne" # Correction de 'verbose_plural_name' à 'verbose_name_plural'
+        verbose_name_plural = "Objectifs d'Épargne"
         ordering = ['target_date', 'status']
 
     def __str__(self):

@@ -1,0 +1,7 @@
+{# webapp/templates/webapp/budget_overview_includes/monthly_summary.html #}
+<div class="summary-card">
+    <h3>Résumé du mois</h3>
+    <p>Revenus Totaux : <span class="income">{{ total_income_month|floatformat:2 }} CHF</span></p>
+    <p>Dépenses Totales : <span class="expense">{{ total_expense_month|floatformat:2 }} CHF</span></p>
+    <p>Solde Net : <span class="{% if total_income_month|add:total_expense_month >= 0 %}income{% else %}expense{% endif %}">{{ total_income_month|add:total_expense_month|floatformat:2 }} CHF</span></p>
+</div>

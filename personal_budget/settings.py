@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os # Importez os pour la gestion des chemins de fichiers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-n$d3c28do7^@tm^bf2i(!iny#0*%-v3+j=%g0!88hy-29-4cni'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['budget.moustik.site', 'localhost', '127.0.0.1', '192.168.1.112']
 
@@ -37,7 +38,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',  # personnel
     'webapp',  # application centralisée
 ]
 
@@ -77,7 +77,7 @@ WSGI_APPLICATION = 'personal_budget.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/app/data/db.sqlite3',
+        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
     }
 }
 
@@ -124,9 +124,64 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-# personal_budget/settings.py
+# Configuration du système de logging de Django
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False, # Ne pas désactiver les loggers existants
 
-import os
+    # Définition des formats de messages de log
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
 
-STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # Crée un dossier 'staticfiles' à la racine
+    # Définition des destinations des messages de log (handlers)
+    'handlers': {
+        'console': { # Affiche les logs dans la console
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'file': { # Écrit les logs généraux de Django dans un fichier
+            'level': 'DEBUG', # Capture tous les messages de débogage et plus
+            'class': 'logging.handlers.RotatingFileHandler', # Rotation des fichiers de log
+            'filename': os.path.join(BASE_DIR, 'logs', 'django_debug.log'), # Chemin du fichier de log
+            'maxBytes': 1024*1024*5, # Taille maximale du fichier (5 MB)
+            'backupCount': 5, # Nombre de fichiers de sauvegarde
+            'formatter': 'verbose',
+        },
+        'importer_file': { # Handler spécifique pour les importateurs
+            'level': 'DEBUG', # Capture tous les messages de débogage pour les importateurs
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'importer.log'),
+            'maxBytes': 1024*1024*2, # 2 MB
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
+    },
+
+    # Définition des loggers et de leurs handlers associés
+    'loggers': {
+        'django': { # Logger pour Django lui-même
+            'handlers': ['console', 'file'],
+            'level': 'INFO', # Niveau par défaut pour Django
+            'propagate': False, # Empêche les messages d'être transmis aux loggers parents
+        },
+        'webapp.importers': { # Logger spécifique pour le paquet d'importateurs
+            'handlers': ['console', 'importer_file'],
+            'level': 'DEBUG', # Capture tous les messages de débogage pour les importateurs
+            'propagate': False,
+        },
+        '': { # Logger par défaut (pour toutes les autres parties de votre code)
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

@@ -1,0 +1,36 @@
+{# webapp/templates/webapp/dashboard_includes/latest_transactions_table.html #}
+<h2>Dernières Transactions</h2>
+{% if transactions %}
+    <div class="batch-actions">
+        <button id="delete-selected-btn" class="hidden">Supprimer la sélection</button>
+    </div>
+    <form id="transactions-form" method="post" action="{% url 'delete_selected_transactions' %}">
+        {% csrf_token %}
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all-transactions"></th> {# Checkbox "Tout sélectionner" #}
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Montant</th>
+                    <th>Catégorie</th>
+                    <th>Compte</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transaction in transactions %}
+                    <tr>
+                        <td><input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox"></td> {# Checkbox pour chaque transaction #}
+                        <td>{{ transaction.date|date:"d M Y" }}</td>
+                        <td>{{ transaction.description }}</td>
+                        <td class="transaction-amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">{{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}</td>
+                        <td>{{ transaction.category.name|default:'N/A' }}</td>
+                        <td>{{ transaction.account.name|default:'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+{% else %}
+    <p class="no-transactions">Aucune transaction trouvée. Ajoutez-en une pour commencer !</p>
+{% endif %}

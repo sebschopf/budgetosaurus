@@ -1,0 +1,97 @@
+{# webapp/templates/webapp/review_transactions.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}Transactions à Revoir{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* Styles spécifiques pour cette page */
+        /* La plupart des styles de tableau et h1/h2 sont maintenant dans base.html ou gérés par Tailwind */
+        .no-transactions { text-align: center; color: #7f8c8d; padding: 20px; } /* gray-600 */
+
+        /* Styles pour les boutons d'action dans le tableau */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center; /* Centrer les boutons dans la cellule */
+        }
+        .action-buttons button, .action-buttons a {
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+            padding: 6px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            text-decoration: none; /* Pour les liens */
+            display: inline-block; /* Pour que padding s'applique bien aux liens */
+            text-align: center;
+            border: none;
+        }
+        .action-buttons button:hover, .action-buttons a:hover {
+            background-color: #2563eb; /* blue-600 */
+        }
+        .action-buttons .delete-btn {
+            background-color: #e74c3c; /* Rouge pour supprimer */
+        }
+        .action-buttons .delete-btn:hover {
+            background-color: #c0392b; /* red-700 */
+        }
+
+        /* Styles pour la modale d'édition */
+        .modal {
+            display: none; /* Caché par défaut */
+            position: fixed; /* Reste en place même en scrollant */
+            z-index: 1000; /* Au-dessus de tout le reste */
+            left: 0;
+            top: 0;
+            width: 100%; /* Pleine largeur */
+            height: 100%; /* Pleine hauteur */
+            overflow: auto; /* Permet le défilement si nécessaire */
+            background-color: rgba(0,0,0,0.4); /* Fond semi-transparent */
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe; /* white */
+            margin: auto; /* Centré verticalement et horizontalement */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Largeur de la modale */
+            max-width: 600px; /* Largeur maximale */
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .close-button {
+            color: #aaa; /* gray-400 */
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
+
+    {# Inclure la table des transactions #}
+    {% include 'webapp/review_transactions_includes/transaction_list_table.html' %}
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+
+    {# Inclure la modale d'édition de transaction #}
+    {% include 'webapp/review_transactions_includes/edit_transaction_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+    {# Inclure les scripts spécifiques à la page de révision des transactions #}
+    {% include 'webapp/review_transactions_includes/review_transactions_scripts.html' %}
+{% endblock %}
