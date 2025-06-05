@@ -6,6 +6,7 @@ from webapp.importers import BaseTransactionImporter
 from datetime import date
 import logging
 from django.utils import timezone 
+from decimal import Decimal, InvalidOperation # Assurez-vous d'importer Decimal et InvalidOperation
 
 # Import pour le fuzzy matching
 from fuzzywuzzy import fuzz
@@ -22,7 +23,8 @@ class TransactionService:
         """
         Crée et sauvegarde une nouvelle transaction.
         Met à jour le solde du fonds budgétaire associé si la transaction est une dépense
-        ou un revenu (hors compte de type 'COMMON' ou 'SAVINGS' pour les revenus).
+        ou un revenu (hors compte de type 'COMMON' ou 'SAVINGS' pour les revenus) ET si la catégorie
+        est marquée comme gérant un fonds (`is_fund_managed`).
         Apprend de la transaction pour les règles de catégorisation.
         
         Args:
@@ -40,12 +42,9 @@ class TransactionService:
             transaction.tags.set(tags_data) # Associe les tags à la transaction
 
             # Logique de mise à jour des fonds :
-            # - Les dépenses (OUT) affectent toujours les fonds catégorisés si une catégorie est associée.
-            # - Les revenus (IN) n'affectent les fonds catégorisés QUE s'ils proviennent d'un compte 'INDIVIDUAL'.
-            #   Les revenus sur les comptes 'COMMON' sont destinés à être ventilés via des Allocations.
-            #   Les revenus sur les comptes 'SAVINGS' ne sont généralement pas affectés par les fonds budgétaires.
-            # - Les transferts (TRF) n'affectent jamais les fonds catégorisés.
-            if transaction.category and transaction.transaction_type != 'TRF':
+            # UNIQUEMENT si la catégorie est marquée comme "gérant un fonds" (`is_fund_managed`)
+            # et si le type de transaction n'est pas 'TRF'.
+            if transaction.category and transaction.transaction_type != 'TRF' and transaction.category.is_fund_managed:
                 if transaction.transaction_type == 'OUT':
                     try:
                         Fund.objects.subtract_funds_from_category(transaction.category, abs(transaction.amount))
@@ -64,6 +63,10 @@ class TransactionService:
                             logger.error(f"Erreur lors de la mise à jour du fonds (revenu individuel) pour la transaction {transaction.id}: {e}", exc_info=True)
                     else:
                         logger.info(f"Revenu sur compte de type '{transaction.account.account_type}' (transaction {transaction.id}) ne met pas à jour un fonds directement. Attente de ventilation ou hors budget.")
+            elif transaction.category and not transaction.category.is_fund_managed:
+                logger.info(f"Transaction {transaction.id} (cat: {transaction.category.name}) n'affecte pas de fonds car 'is_fund_managed' est False.")
+            else:
+                logger.info(f"Transaction {transaction.id} (type: {transaction.transaction_type}) n'affecte pas de fonds (pas de catégorie ou est un TRF).")
             
             # Apprendre de cette transaction pour la catégorisation automatique
             self._update_categorization_rule(transaction)
@@ -73,7 +76,8 @@ class TransactionService:
     def update_transaction(self, transaction: Transaction, data: dict) -> Transaction:
         """
         Met à jour une transaction existante.
-        Gère l'ajustement des soldes des fonds budgétaires si la catégorie, le montant ou le type de transaction change.
+        Gère l'ajustement des soldes des fonds budgétaires si la catégorie, le montant ou le type de transaction change,
+        ET si la catégorie est marquée comme gérant un fonds (`is_fund_managed`).
         Apprend de la transaction mise à jour pour les règles de catégorisation.
 
         Args:
@@ -102,11 +106,10 @@ class TransactionService:
 
             # --- Logique d'ajustement des fonds lors d'une mise à jour ---
             # Les fonds ne sont affectés que par les transactions de type 'IN' et 'OUT'
-            # et selon le type de compte pour les revenus.
-            # Les 'TRF' sont considérés comme des mouvements internes entre comptes qui ne modifient pas les fonds catégorisés.
+            # et selon le type de compte pour les revenus, ET si la catégorie est "fund_managed".
 
-            # 1. Annuler l'impact de l'ancienne transaction sur l'ancien fonds (si elle était 'IN' ou 'OUT' et avait une catégorie)
-            if original_category and original_type != 'TRF':
+            # 1. Annuler l'impact de l'ancienne transaction sur l'ancien fonds (si elle était 'IN' ou 'OUT' et avait une catégorie fund_managed)
+            if original_category and original_type != 'TRF' and original_category.is_fund_managed:
                 if original_type == 'OUT':
                     try:
                         # Annuler la dépense précédente en ajoutant le montant (positif) à l'ancien fonds
@@ -122,10 +125,15 @@ class TransactionService:
                     except Exception as e:
                         logger.error(f"Erreur lors de l'annulation du fonds (ancien revenu individuel) pour la transaction {transaction.id}: {e}", exc_info=True)
                 else:
-                    logger.info(f"Ancienne transaction {transaction.id} (type: {original_type}, compte: {original_account.get_account_type_display()}) n'a pas affecté les fonds catégorisés, pas d'annulation nécessaire.")
+                    logger.info(f"Ancienne transaction {transaction.id} (type: {original_type}, compte: {original_account.get_account_type_display()}) n'a pas affecté les fonds catégorisés (ou catégorie non fund_managed), pas d'annulation nécessaire.")
+            elif original_category and not original_category.is_fund_managed:
+                 logger.info(f"Ancienne transaction {transaction.id} (cat: {original_category.name}) n'affectait pas de fonds car 'is_fund_managed' était False.")
+            else:
+                logger.info(f"Ancienne transaction {transaction.id} (pas de catégorie ou TRF) n'a pas affecté les fonds.")
 
-            # 2. Appliquer l'impact de la nouvelle transaction sur le nouveau fonds (si elle est 'IN' ou 'OUT' et a une catégorie)
-            if transaction.category and transaction.transaction_type != 'TRF':
+
+            # 2. Appliquer l'impact de la nouvelle transaction sur le nouveau fonds (si elle est 'IN' ou 'OUT' et a une catégorie fund_managed)
+            if transaction.category and transaction.transaction_type != 'TRF' and transaction.category.is_fund_managed:
                 if transaction.transaction_type == 'OUT':
                     try:
                         # Appliquer la nouvelle dépense en soustrayant le montant (positif) du nouveau fonds
@@ -144,8 +152,10 @@ class TransactionService:
                             logger.error(f"Erreur lors de la mise à jour du fonds (nouvel revenu individuel) pour la transaction {transaction.id}: {e}", exc_info=True)
                     else:
                         logger.info(f"Nouveau revenu sur compte de type '{transaction.account.account_type}' (transaction {transaction.id}) ne met pas à jour un fonds directement. Attente de ventilation ou hors budget.")
+            elif transaction.category and not transaction.category.is_fund_managed:
+                logger.info(f"Nouvelle transaction {transaction.id} (cat: {transaction.category.name}) n'affecte pas de fonds car 'is_fund_managed' est False.")
             else:
-                logger.info(f"Nouvelle transaction {transaction.id} (type: {transaction.transaction_type}, compte: {transaction.account.get_account_type_display()}) n'affecte pas les fonds catégorisés.")
+                logger.info(f"Nouvelle transaction {transaction.id} (pas de catégorie ou TRF) n'affecte pas les fonds catégorisés.")
 
             # Apprendre de cette transaction mise à jour pour la catégorisation automatique
             self._update_categorization_rule(transaction)
@@ -224,6 +234,64 @@ class TransactionService:
         et prefetch_related pour les relations ManyToMany (tags).
         """
         return Transaction.objects.all().select_related('category', 'account').prefetch_related('tags').order_by('-date', '-created_at')[:limit]
+
+    def split_transaction(self, original_transaction: Transaction, split_lines_data: list[dict]):
+        """
+        Divise une transaction originale en plusieurs nouvelles transactions.
+        Supprime la transaction originale après la création réussie des nouvelles.
+        Assure l'atomicité de l'opération.
+
+        Args:
+            original_transaction (Transaction): La transaction à diviser.
+            split_lines_data (list[dict]): Une liste de dictionnaires, où chaque dict
+                                           contient les données (description, amount, category, etc.)
+                                           pour une nouvelle transaction de division.
+        Raises:
+            ValueError: Si la somme des montants divisés ne correspond pas au montant original.
+            Exception: Pour d'autres erreurs lors de la création ou suppression.
+        """
+        with db_transaction.atomic():
+            total_split_amount = Decimal('0.00')
+            for line_data in split_lines_data:
+                # S'assurer que les signes des montants sont corrects pour les nouvelles transactions
+                # Si la transaction originale est une dépense, les divisions doivent être des dépenses
+                # Si la transaction originale est un revenu, les divisions doivent être des revenus
+                # Les montants doivent être positifs pour la création (le signal pre_save s'occupe du signe final)
+                amount = line_data['amount']
+                if original_transaction.transaction_type == 'OUT':
+                    if amount > 0:
+                        amount = -amount
+                elif original_transaction.transaction_type == 'IN':
+                    if amount < 0:
+                        amount = abs(amount)
+                
+                total_split_amount += abs(amount) # Utiliser l'absolu pour la somme de comparaison
+
+            # Validation du montant total (avec tolérance)
+            if abs(total_split_amount - abs(original_transaction.amount)) > Decimal('0.01'):
+                raise ValueError(
+                    f"La somme des montants divisés ({total_split_amount:.2f} CHF) "
+                    f"ne correspond pas au montant original ({abs(original_transaction.amount):.2f} CHF)."
+                )
+
+            # Créer les nouvelles transactions
+            for line_data in split_lines_data:
+                # Construire les données pour la nouvelle transaction
+                new_tx_data = {
+                    'date': original_transaction.date,
+                    'description': line_data['description'],
+                    'amount': line_data['amount'], # Le signal pre_save ajustera le signe
+                    'category': line_data['category'], # C'est déjà l'objet Category final
+                    'account': original_transaction.account,
+                    'transaction_type': original_transaction.transaction_type,
+                    'tags': line_data.get('tags', []), # Assurez-vous d'avoir les tags si pertinents
+                }
+                self.create_transaction(new_tx_data) # Appelle la méthode existante pour créer et mettre à jour les fonds
+
+            # Supprimer la transaction originale après la création réussie des nouvelles transactions
+            original_transaction.delete()
+            logger.info(f"Transaction originale {original_transaction.id} divisée et supprimée.")
+
 
     def suggest_categorization(self, description: str):
         """
@@ -389,10 +457,11 @@ class TransactionImportService:
                 raise e
             except Exception as e:
                 logger.critical(f"Erreur inattendue lors du traitement d'une transaction importée: {e}", exc_info=True)
-                errors.append(f"Erreur inattendue lors du traitement d'une transaction: {e}")
+                errors.append(f"Erreur lors de l'importation des transactions: {e}")
                 raise Exception(f"Erreur lors de l'importation des transactions: {e}")
 
         if errors:
             raise Exception("Des erreurs sont survenues lors de l'importation: " + "; ".join(errors))
             
         return imported_count
+

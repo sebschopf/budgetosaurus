@@ -5,9 +5,12 @@
 from .transaction_form import TransactionForm
 from .category_import_form import CategoryImportForm
 from .transaction_import_form import TransactionImportForm
+from .transaction_split_form import SplitTransactionLineForm, SplitTransactionFormset # Importation des formulaires de division de transaction
 
 __all__ = [
-    'TransactionForm',
-    'CategoryImportForm',
-    'TransactionImportForm',
+    'TransactionForm', # Formulaire principal de transaction
+    'CategoryImportForm', # Formulaire d'importation de catégories
+    'TransactionImportForm', # Formulaire d'importation de transactions
+    'SplitTransactionLineForm', # Formulaire pour une ligne de division de transaction
+    'SplitTransactionFormset', # Formset pour gérer plusieurs lignes de division de transaction
 ]
