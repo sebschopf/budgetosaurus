@@ -6,78 +6,113 @@
 {% block extra_head %}
     <style>
         .glossary-item {
-            background-color: #f9f9f9;
-            border-left: 5px solid #3b82f6; /* Bleu */
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            background-color: #fcfcfc; /* Un blanc légèrement plus doux */
+            border-left: 6px solid #4f46e5; /* Un bleu indigo plus prononcé */
+            padding: 25px; /* Augmenter le padding */
+            margin-bottom: 30px; /* Augmenter l'espace entre les éléments */
+            border-radius: 12px; /* Coins plus arrondis */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); /* Ombre plus douce */
+            transition: transform 0.2s ease-in-out; /* Effet de survol */
+        }
+        .glossary-item:hover {
+            transform: translateY(-3px); /* Légère élévation au survol */
         }
         .glossary-item h2 {
-            color: #2c3e50;
+            color: #1a202c; /* Couleur de texte plus foncée pour le titre */
             margin-top: 0;
-            margin-bottom: 10px;
+            margin-bottom: 15px; /* Plus d'espace sous le titre */
+            font-size: 1.8em; /* Taille de police légèrement augmentée */
+            font-weight: 700; /* Plus gras */
             border-bottom: none; /* Supprime la bordure des h2 dans les items */
             padding-bottom: 0;
-            font-size: 1.5em;
         }
         .glossary-item p {
-            line-height: 1.6;
-            color: #555;
+            line-height: 1.8; /* Augmenter l'interligne pour aérer */
+            color: #4a5568; /* Couleur de texte plus douce */
+            margin-bottom: 15px; /* Espace sous les paragraphes */
+            font-size: 1.05em; /* Légèrement plus grand */
+        }
+        .glossary-item p:last-child {
+            margin-bottom: 0; /* Pas de marge en bas du dernier paragraphe */
         }
         .glossary-item strong {
-            color: #34495e;
+            color: #2d3748; /* Couleur de texte plus foncée pour le gras */
         }
+        .glossary-item em { /* Pour les analogies */
+            display: block; /* Séparer l'analogie sur une nouvelle ligne */
+            margin-top: 15px; /* Plus d'espace au-dessus */
+            padding-top: 10px;
+            border-top: 1px dashed #cbd5e0; /* Petite bordure pour la séparer */
+            font-style: normal; /* Retirer l'italique par défaut de <em> */
+            color: #5a67d8; /* Couleur distincte pour l'analogie */
+            font-weight: 500;
+        }
+
         .back-link { 
             display: block; 
             text-align: center; 
-            margin-top: 30px; 
-            color: #3b82f6; 
+            margin-top: 40px; /* Plus d'espace */
+            color: #4f46e5; /* Couleur en accord avec la nav bar */
             text-decoration: none; 
             font-weight: bold;
+            font-size: 1.1em;
+            padding: 10px 20px;
+            border: 2px solid #4f46e5;
+            border-radius: 8px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            transition: all 0.3s ease;
         }
-        .back-link:hover { text-decoration: underline; }
+        .back-link:hover { 
+            background-color: #4f46e5; 
+            color: white; 
+            text-decoration: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <h1 class="text-center">Glossaire des Concepts</h1>
-    <p class="text-center text-gray-700 mb-8">Comprenez les termes clés de votre application de gestion budgétaire.</p>
+    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Glossaire des Concepts</h1>
+    <p class="text-center text-gray-700 text-lg mb-10">Comprenez les termes clés de votre application de gestion budgétaire.</p>
 
     <div class="glossary-item">
         <h2>Compte (Account)</h2>
         <p>Un <strong>Compte</strong> représente un lieu physique ou logique où votre argent est détenu. Il peut s'agir d'un compte bancaire courant, d'un compte d'épargne, d'une carte de crédit, ou même d'une caisse d'espèces. Chaque compte a un solde réel qui est affecté par les transactions.</p>
-        <p><em>Analogie :</em> C'est le tiroir ou le portefeuille où se trouve l'argent.</p>
+        <em>Analogie : C'est le tiroir ou le portefeuille où se trouve l'argent.</em>
     </div>
 
     <div class="glossary-item">
         <h2>Catégorie (Category)</h2>
         <p>Une <strong>Catégorie</strong> est une étiquette descriptive qui classe la nature d'une transaction. Elle répond à la question "À quoi sert cet argent ?" (pour une dépense) ou "D'où vient cet argent ?" (pour un revenu). Les catégories peuvent être hiérarchiques (par exemple, "Dépenses Fixes" > "Loyer").</p>
-        <p><em>Analogie :</em> C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</p>
+        <em>Analogie : C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</em>
     </div>
 
     <div class="glossary-item">
         <h2>Transaction</h2>
         <p>Une <strong>Transaction</strong> est un enregistrement d'un mouvement d'argent. Chaque transaction est liée à une date, une description, un montant, un compte et une catégorie. Elle peut être de type <strong>Revenu (IN)</strong>, <strong>Dépense (OUT)</strong> ou <strong>Transfert (TRF)</strong>.</p>
-        <p><em>Analogie :</em> C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</p>
+        <em>Analogie : C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</em>
     </div>
 
     <div class="glossary-item">
         <h2>Budget (Planification)</h2>
         <p>Un <strong>Budget</strong> est un montant que vous <strong>prévoyez</strong> de ne pas dépasser pour une catégorie donnée sur une période spécifique (par exemple, mensuelle ou annuelle). C'est une <strong>cible</strong> ou une <strong>limite</strong> que vous vous fixez pour vos dépenses ou revenus.</p>
-        <p><em>Analogie :</em> C'est la limite que vous vous fixez pour la quantité de carburant que vous allez utiliser sur un trajet.</p>
+        <em>Analogie : C'est la limite que vous vous fixez pour la quantité de carburant que vous allez utiliser sur un trajet.</em>
     </div>
 
     <div class="glossary-item">
-        <h2>Fonds (Fund)</h2>
-        <p>Un <strong>Fonds</strong> (anciennement "Enveloppe") représente un montant <strong>réel d'argent que vous avez mis de côté</strong> ou alloué pour une catégorie spécifique, indépendamment de la période. C'est un "compte virtuel" ou un "pot de confiture" dédié à une dépense future ou continue. Il vous indique combien vous pouvez *réellement* dépenser pour cet objectif à un instant T.</p>
-        <p><em>Analogie :</em> C'est une tirelire dédiée à un objectif, où vous ajoutez de l'argent et en retirez au fur et à mesure des dépenses. Le solde de la tirelire vous dit combien il reste.</p>
+        <h2>Fonds (Fund) - Enveloppe budgétaire</h2>
+        <p>Un <strong>Fonds</strong> représente une "enveloppe" budgétaire virtuelle pour une catégorie spécifique. Son solde cumulatif est <strong>automatiquement ajusté</strong> par les transactions qui lui sont associées.</p>
+        <p>Ce concept est utile si vous souhaitez <strong>mettre de côté de l'argent</strong> pour des dépenses futures ou gérer un solde roulant pour certains objectifs (par exemple, "Fonds Vacances", "Fonds Impôts").</p>
+        <p>Le suivi des fonds est <strong>optionnel</strong> et activé par catégorie. Si une catégorie n'est pas configurée pour gérer un fonds, ses transactions impacteront uniquement le "Récapitulatif Mensuel par Catégorie" et le solde de votre compte, sans ajuster un fonds dédié.</p>
+        <em>Analogie : C'est une tirelire dédiée à un objectif. Vous y ajoutez de l'argent (revenus, allocations) et en retirez (dépenses). Le solde de la tirelire vous indique combien il reste pour cet objectif.</em>
     </div>
 
     <div class="glossary-item">
         <h2>Objectif d'Épargne (SavingGoal)</h2>
         <p>Un <strong>Objectif d'Épargne</strong> est un montant spécifique que vous <strong>voulez accumuler</strong> d'ici une certaine date pour un but précis (par exemple, acheter une voiture, payer un acompte pour une maison). Il s'agit d'un objectif d'épargne à long terme pour une dépense importante et souvent non récurrente.</p>
-        <p><em>Analogie :</em> C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture.</p>
+        <em>Analogie : C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture.</em>
     </div>
 
     <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>

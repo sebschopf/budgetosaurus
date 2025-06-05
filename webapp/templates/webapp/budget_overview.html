@@ -1,92 +1,179 @@
 {# webapp/templates/webapp/budget_overview.html #}
 {% extends 'webapp/base.html' %}
 
-{% block title %}Aperçu des Budgets et Fonds{% endblock %}
+{% block title %}Aperçu du Budget et Suivi{% endblock %} {# Titre de la page mis à jour #}
 
 {% block extra_head %}
     {# Styles spécifiques à cette page si nécessaire. Les styles génériques sont dans base.html #}
     <style>
         /* Styles spécifiques pour le conteneur du budget overview */
-        .container { max-width: 960px; } /* Ajuste la largeur du conteneur pour cette page */
+        .container { 
+            max-width: 1000px; /* Augmenter légèrement la largeur du conteneur */
+            padding: 30px; /* Plus de padding pour aérer */
+        } 
         /* Styles des titres h1 et h2 */
-        h1, h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-bottom: 20px; }
+        h1 { 
+            font-size: 2.8em; /* Plus grand */
+            margin-bottom: 10px; /* Plus d'espace */
+            padding-bottom: 15px; /* Plus d'espace sous la bordure */
+        }
+        h2 { 
+            border-bottom: 2px solid #e0e0e0; /* Couleur plus douce pour la bordure */
+            padding-bottom: 15px; /* Augmenter l'espace sous le titre */
+            margin-top: 40px; /* Plus d'espace avant les nouvelles sections */
+            margin-bottom: 25px; /* Plus d'espace après le titre */
+            font-size: 2.2em; /* Taille plus grande */
+            font-weight: 600; /* Un peu plus gras */
+            color: #34495e; /* Couleur plus douce */
+        }
         /* Style des cartes de budget */
         .budget-card {
-            background-color: #ecf0f1;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            background-color: #f8f8f8; /* Légèrement plus clair que #ecf0f1 */
+            border-radius: 12px; /* Coins plus arrondis */
+            padding: 25px; /* Augmenter le padding interne */
+            margin-bottom: 20px; /* Plus d'espace entre les cartes */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* Ombre plus prononcée et douce */
+            transition: transform 0.2s ease-in-out;
         }
-        .budget-card h3 { margin-top: 0; color: #34495e; font-size: 1.2em; }
+        .budget-card:hover {
+            transform: translateY(-5px); /* Légère élévation au survol */
+        }
+        .budget-card h3 { 
+            margin-top: 0; 
+            color: #2c3e50; 
+            font-size: 1.4em; /* Plus grand */
+            margin-bottom: 15px; /* Plus d'espace */
+            font-weight: 700;
+        }
+        .budget-card p {
+            margin-bottom: 8px; /* Espacement entre les lignes de texte */
+            font-size: 1.05em;
+            color: #555;
+        }
         /* Conteneur de la barre de progression */
         .progress-bar-container {
             width: 100%;
             background-color: #e0e0e0;
-            border-radius: 5px;
+            border-radius: 10px; /* Plus arrondi */
             overflow: hidden;
-            height: 20px;
-            margin-top: 10px;
+            height: 25px; /* Plus haut */
+            margin-top: 15px; /* Plus d'espace */
         }
         /* Style de la barre de progression elle-même */
         .progress-bar {
             height: 100%;
-            border-radius: 5px;
+            border-radius: 10px;
             text-align: center;
             color: white;
             font-weight: bold;
-            line-height: 20px;
+            line-height: 25px; /* Centrer le texte verticalement */
             transition: width 0.5s ease-in-out; /* Animation pour le changement de largeur */
+            font-size: 0.9em;
         }
         /* Couleurs des barres de progression en fonction du statut */
-        .progress-bar.green { background-color: #27ae60; } /* OK */
-        .progress-bar.orange { background-color: #f39c12; } /* Près du budget */
-        .progress-bar.red { background-color: #e74c3c; } /* Dépassé */
+        .progress-bar.green { background-color: #28a745; } /* Vert vif */
+        .progress-bar.orange { background-color: #ffc107; } /* Orange vif */
+        .progress-bar.red { background-color: #dc3545; } /* Rouge vif */
 
         /* Style de la carte de résumé du mois */
         .summary-card {
-            background-color: #dbeafe; /* blue-100 */
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background-color: #e6f7ff; /* Bleu très clair */
+            border-radius: 12px;
+            padding: 30px; 
+            margin-bottom: 40px; 
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
         }
-        .summary-card p { font-size: 1.1em; margin: 5px 0; }
-        .summary-card .income { color: #27ae60; font-weight: bold; }
-        .summary-card .expense { color: #e74c3c; font-weight: bold; }
+        .summary-card p { 
+            font-size: 1.2em; 
+            margin: 10px 0; 
+        }
+        .summary-card .income { color: #198754; font-weight: bold; } /* Vert foncé */
+        .summary-card .expense { color: #dc3545; font-weight: bold; } /* Rouge foncé */
 
-        /* Styles pour les cartes de fonds */
-        .fund-card { /* Renommé de .envelope-card */
-            background-color: #e0f2fe; /* light blue for funds */
-            border-radius: 8px;
-            padding: 20px;
+        /* Styles pour les cartes de fonds et récapitulatif mensuel */
+        .card { 
+            background-color: #f0f8ff; /* Bleu-blanc dégueux, mais c'est comme ça selon la norme dicté par le dicta...*/
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        .card h3 { 
+            margin-top: 0; 
+            color: #2d3748; 
+            font-size: 1.5em; /* Taille de titre de carte */
             margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        .fund-card h3 { margin-top: 0; color: #34495e; font-size: 1.2em; }
-        .fund-card .balance { font-size: 1.5em; font-weight: bold; }
-        .fund-card .positive { color: #27ae60; }
-        .fund-card .negative { color: #e74c3c; }
-
+        .card p.balance { 
+            font-size: 2em; /* Très grand pour le montant */
+            font-weight: bold; 
+            margin: 0; 
+        }
+        .card .positive { color: #27ae60; }
+        .card .negative { color: #e74c3c; }
+        
+        /* Grid styling */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 25px; /* Espacement plus grand */
+            margin-bottom: 40px; 
+        }
 
         /* Style du lien de retour */
-        .back-link { display: block; text-align: center; margin-top: 20px; color: #3b82f6; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
+        .back-link { 
+            display: block; 
+            text-align: center; 
+            margin-top: 50px; 
+            color: #4f46e5; 
+            text-decoration: none; 
+            font-weight: bold;
+            font-size: 1.1em;
+            padding: 12px 25px; /* Plus de padding */
+            border: 2px solid #4f46e5;
+            border-radius: 10px; /* Plus arrondi */
+            max-width: 350px; /* Plus large */
+            margin-left: auto;
+            margin-right: auto;
+            transition: all 0.3s ease;
+        }
+        .back-link:hover { 
+            background-color: #4f46e5; 
+            color: white; 
+            text-decoration: none; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        }
     </style>
 {% endblock %}
 
 {% block content %}
-    <h1>{{ page_title }}</h1>
+    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
     <p class="text-lg text-gray-700 mb-6 text-center">Aperçu pour {{ current_month_name }} {{ current_year }}</p>
 
     {# Inclure le résumé du mois #}
     {% include 'webapp/budget_overview_includes/monthly_summary.html' %}
 
+    {# Inclure le récapitulatif mensuel par catégorie #}
+    {# C'est la section qui montre les totaux réels des transactions par catégorie pour le mois #}
+    {% include 'webapp/budget_overview_includes/monthly_category_summary_display.html' %}
+
     {# Inclure l'affichage des soldes des fonds #}
-    {% include 'webapp/budget_overview_includes/funds_display.html' %}
+    {# Renommage interne du titre pour clarifier que ce sont des soldes cumulatifs ou "enveloppes" #}
+    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Soldes des Enveloppes Budgétaires (Fonds Cumulatifs)</h2>
+    <p class="text-gray-600 mb-6">Ces fonds représentent l'argent alloué et disponible pour chaque catégorie, ajusté par les transactions au fil du temps. Leur suivi est activé par catégorie.</p>
+    {# Le fichier funds_display.html ne contient plus de <h2> propre #}
+    {% include 'webapp/budget_overview_includes/funds_display.html' %} 
 
     {# Inclure l'affichage des budgets mensuels (planification) #}
+    {# Renommage interne du titre pour clarifier que c'est la planification vs le réel #}
+    <h2 class="text-2xl font-semibold text-gray-700 mb-4">Budgets Mensuels (Planification vs Réel)</h2>
+    <p class="text-gray-600 mb-6">Votre budget planifié pour le mois comparé à vos dépenses réelles par catégorie. Les barres de progression vous indiquent votre avancement.</p>
+    {# Le fichier budgets_planning_display.html ne contient plus de <h2> propre #}
     {% include 'webapp/budget_overview_includes/budgets_planning_display.html' %}
 
     <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>

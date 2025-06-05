@@ -1,0 +1,18 @@
+{# webapp/templates/webapp/budget_overview_includes/monthly_category_summary_display.html #}
+<h2 class="text-2xl font-semibold text-gray-700 mb-4">Récapitulatif Mensuel par Catégorie</h2>
+<p class="text-gray-600 mb-6">Totaux des transactions pour {{ current_month_name }} {{ current_year }}.</p>
+
+{% if monthly_category_summary_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {% for item in monthly_category_summary_data %}
+            <div class="card"> {# Réutilise la classe 'card' pour un style cohérent #}
+                <h3>{{ item.category_name }}</h3>
+                <p class="balance {% if item.total_amount >= 0 %}positive{% else %}negative{% endif %}">
+                    {{ item.total_amount|floatformat:2 }} CHF
+                </p>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="text-center text-gray-600">Aucune transaction catégorisée ce mois-ci pour le récapitulatif.</p>
+{% endif %}

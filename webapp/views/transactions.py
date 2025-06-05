@@ -5,6 +5,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from django.db.models import F
 from django.db import transaction as db_transaction
+from datetime import date, timedelta # Importez date et timedelta
+import calendar # Importez calendar pour le nom du mois et le dernier jour du mois
 
 from webapp.models import Category, Transaction, Account, Tag # Assurez-vous d'importer Tag
 from webapp.forms import TransactionForm
@@ -141,3 +143,82 @@ def suggest_transaction_categorization(request):
     suggestion = transaction_service.suggest_categorization(description)
     return JsonResponse(suggestion)
 
+
+@require_GET
+def category_transactions_summary_view(request, year=None, month=None):
+    """
+    Vue affichant un récapitulatif des transactions,
+    regroupées par catégories qui sont désignées comme "gérant un fonds" (`is_fund_managed`).
+    Affiche les transactions individuelles pour chaque catégorie pour la période spécifiée.
+    """
+    today = date.today()
+    
+    # Déterminer l'année et le mois à filtrer
+    if year is None:
+        selected_year = today.year
+    else:
+        selected_year = int(year) # Convertir en int
+        
+    selected_month = None # Initialiser à None pour le cas "année courante"
+
+    if month is None:
+        # Si le mois n'est pas spécifié, on est en mode "année courante"
+        period_type = 'year'
+        start_date = date(selected_year, 1, 1)
+        end_date = date(selected_year, 12, 31)
+        period_display = f"Année {selected_year}"
+    else:
+        # Si le mois est spécifié, on est en mode "mois courant"
+        period_type = 'month'
+        selected_month = int(month) # Convertir en int
+        start_date = date(selected_year, selected_month, 1)
+        # Calculer le dernier jour du mois
+        _, last_day = calendar.monthrange(selected_year, selected_month)
+        end_date = date(selected_year, selected_month, last_day)
+        period_display = f"{calendar.month_name[selected_month]} {selected_year}"
+
+
+    # Récupérer uniquement les catégories marquées comme gérant un fonds
+    fund_managed_categories = Category.objects.filter(is_fund_managed=True).order_by('name')
+
+    category_transactions_summary = []
+
+    for category in fund_managed_categories:
+        # Obtenir les IDs de la catégorie et de ses enfants
+        category_ids_for_query = [category.id] + list(category.children.values_list('id', flat=True))
+
+        # Filtrer les transactions pour la période donnée
+        transactions_in_category = Transaction.objects.filter(
+            category__id__in=category_ids_for_query,
+            date__gte=start_date, # Date supérieure ou égale à la date de début
+            date__lte=end_date # Date inférieure ou égale à la date de fin
+        ).order_by('date', 'created_at') # Ordonner pour un affichage cohérent
+
+        # Si des transactions existent pour cette catégorie dans la période
+        if transactions_in_category.exists():
+            transaction_list_data = []
+            for transaction in transactions_in_category:
+                transaction_list_data.append({
+                    'date': transaction.date,
+                    'description': transaction.description,
+                    'amount': transaction.amount, # Le montant est déjà normalisé (négatif pour dépenses)
+                    'transaction_type': transaction.get_transaction_type_display(),
+                    'account_name': transaction.account.name,
+                    'account_currency': transaction.account.currency,
+                })
+            
+            category_transactions_summary.append({
+                'category_name': category.name,
+                'transactions': transaction_list_data
+            })
+    
+    context = {
+        'page_title': 'Récapitulatif des Transactions par Catégorie',
+        'current_period_display': period_display,
+        'category_transactions_summary': category_transactions_summary,
+        'today_year': today.year, # Pour les boutons "Mois Courant" / "Année Courante"
+        'today_month': today.month,
+        'selected_year': selected_year, # Pour savoir quelle période est actuellement affichée
+        'selected_month': selected_month, # None si c'est l'année entière
+    }
+    return render(request, 'webapp/category_transactions_summary.html', context)

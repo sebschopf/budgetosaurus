@@ -1,0 +1,113 @@
+{# webapp/templates/webapp/category_transactions_summary.html #}
+{% extends 'webapp/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+    <style>
+        /* Styles spécifiques pour cette page */
+        .category-summary-section {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .category-summary-section h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+            text-align: center;
+        }
+        .transaction-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* 3 colonnes flexibles */
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .transaction-item {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .transaction-item .amount {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 5px;
+        }
+        .transaction-item .description {
+            font-size: 0.8em;
+            color: #555;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+        }
+        .transaction-item .date {
+            font-size: 0.7em;
+            color: #888;
+            margin-top: 5px;
+        }
+        .positive { color: #27ae60; } /* Vert pour positif */
+        .negative { color: #e74c3c; } /* Rouge pour négatif */
+        .no-transactions-found {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+        }
+        .section-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+        .section-header h2 {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #34495e;
+            margin-bottom: 5px;
+        }
+        .section-header p {
+            font-size: 1.1em;
+            color: #60a5fa;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="section-header">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">Pour le mois de {{ current_month_name }} {{ current_year }}</p>
+    </div>
+
+    {% if category_transactions_summary %}
+        {% for category_data in category_transactions_summary %}
+            <div class="category-summary-section">
+                <h3>{{ category_data.category_name }}</h3>
+                <div class="transaction-list-grid">
+                    {% for transaction in category_data.transactions %}
+                        <div class="transaction-item">
+                            <span class="description">{{ transaction.description }}</span>
+                            <span class="amount {% if transaction.amount >= 0 %}positive{% else %}negative{% endif %}">
+                                {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
+                            </span>
+                            <span class="date">{{ transaction.date|date:"d M" }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <p class="no-transactions-found">Aucune transaction trouvée pour les catégories gérant des fonds ce mois-ci.</p>
+    {% endif %}
+
+    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+{% endblock %}

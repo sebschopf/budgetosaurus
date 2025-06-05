@@ -37,6 +37,9 @@ urlpatterns = [
     # URL pour le glossaire
     path('glossary/', glossary.glossary_view, name='glossary_view'),
 
-    # Nouvelle URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
+    # URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
     path('suggest-categorization/', transactions.suggest_transaction_categorization, name='suggest_transaction_categorization'),
+
+    # URL pour le récapitulatif des transactions par catégorie
+    path('category-transactions-summary/', transactions.category_transactions_summary_view, name='category_transactions_summary_view'),
 ]
