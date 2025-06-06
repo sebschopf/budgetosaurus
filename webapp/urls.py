@@ -1,7 +1,7 @@
 # webapp/urls.py
 # Ce fichier définit les chemins d'URL pour les vues de l'application 'webapp'.
 
-from django.urls import path, re_path # Importez re_path pour les regex dans les URLs
+from django.urls import path, re_path # re_path pour les regex dans les URLs
 # Importe les vues directement depuis leurs modules refactorisés
 from .views import (
     general_transactions, # Contient dashboard_view, add_transaction_submit, load_subcategories, get_common_descriptions
@@ -10,10 +10,10 @@ from .views import (
     split_transactions_views, # Contient split_transaction_view, process_split_transaction
     fund_allocations_views,   # Contient allocate_income_view, process_allocation_income
     fund_debits_views,        # Contient debit_funds_view, process_fund_debit
-    imports,              # Reste inchangé
-    budgets,              # Reste inchangé
-    review_transactions,  # Reste inchangé (pour l'instant, update_transaction_category reste ici)
-    glossary              # Reste inchangé
+    imports,              # 
+    budgets,              # 
+    review_transactions,  # !!!! pour l'instant, update_transaction_category reste ici mais cela peut changer
+    glossary              # 
 )
 
 urlpatterns = [
@@ -49,8 +49,11 @@ urlpatterns = [
     # URL pour le glossaire
     path('glossary/', glossary.glossary_view, name='glossary_view'),
 
-    # Nouvelle URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
+    # URL pour la suggestion de catégorisation via AJAX (Fuzzy Matching)
     path('suggest-categorization/', transaction_actions.suggest_transaction_categorization, name='suggest_transaction_categorization'),
+
+    # URL pour la page d'aperçu des différents récapitulatifs et outils de gestion.
+    path('recap-overview/', summary_views.recap_overview_view, name='recap_overview_view'),
 
     # URLs pour le récapitulatif des transactions par catégorie avec filtres de période
     re_path(r'^category-transactions-summary/(?:(?P<year>\d{4})/)?(?:(?P<month>\d{1,2})/)?$', 
@@ -73,4 +76,3 @@ urlpatterns = [
     path('debit-funds/<int:transaction_id>/', fund_debits_views.debit_funds_view, name='debit_funds_view'),
     path('process-fund-debit/<int:transaction_id>/', fund_debits_views.process_fund_debit, name='process_fund_debit'),
 ]
-

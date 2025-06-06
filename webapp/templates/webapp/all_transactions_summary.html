@@ -12,6 +12,10 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
             padding: 20px;
+            
+            /* NOUVEAU: Hauteur maximale et défilement vertical */
+            max-height: 70vh; /* Ajustez cette valeur si nécessaire (ex: 60vh, 80vh) */
+            overflow-y: auto; /* Active le défilement vertical si le contenu dépasse */
         }
         .transactions-table {
             width: 100%;
@@ -23,6 +27,7 @@
         .transactions-table td {
             padding: 12px 15px;
             border-bottom: 1px solid #e0e0e0;
+            vertical-align: top; /* Alignement en haut pour les descriptions */
         }
         .transactions-table th {
             background-color: #f5f5f5;
@@ -30,6 +35,9 @@
             color: #555;
             text-transform: uppercase;
             font-size: 0.85em;
+            position: sticky; /* NOUVEAU: Fixe l'en-tête du tableau lors du défilement */
+            top: 0;
+            z-index: 1; /* S'assure qu'il reste au-dessus du contenu défilant */
         }
         .transactions-table tbody tr:hover {
             background-color: #fcfcfc;
@@ -107,9 +115,30 @@
         /* Style pour le conteneur des boutons d'action */
         .action-buttons-cell {
             display: flex;
-            gap: 5px; /* Espacement entre les boutons à l'intérieur de la cellule */
-            flex-wrap: wrap; /* Permet aux boutons de passer à la ligne si l'espace est limité */
+            flex-direction: column; /* NOUVEAU: Les boutons s'empilent verticalement */
+            gap: 5px; /* Espacement entre les boutons */
             justify-content: flex-start; /* Aligner les boutons à gauche */
+            align-items: flex-start; /* Aligner les éléments au début de la ligne */
+        }
+
+        /* NOUVEAU: Styles pour la description tronquée */
+        .truncated-description {
+            white-space: nowrap; /* Empêche le texte de passer à la ligne */
+            overflow: hidden;    /* Cache ce qui dépasse */
+            text-overflow: ellipsis; /* Affiche "..." si le texte est tronqué */
+            max-width: 200px; /* Largeur maximale avant troncation, ajustez si nécessaire */
+            display: block; /* S'assure que le span prend sa propre ligne pour overflow */
+        }
+
+        .truncated-description:hover {
+            white-space: normal; /* Affiche tout le texte au survol */
+            overflow: visible;   /* Rend le contenu visible */
+            text-overflow: clip; /* Retire les points de suspension */
+            position: relative; /* Permet le z-index */
+            z-index: 10; /* Assure que le texte survolé est au-dessus */
+            background-color: #fff; /* Fond blanc pour la lisibilité */
+            padding: 2px 0; /* Petit padding pour éviter que le texte ne colle les bords */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Ombre pour mettre en évidence */
         }
     </style>
 {% endblock %}
@@ -139,47 +168,35 @@
                     {% for transaction in transactions %}
                         <tr>
                             <td>{{ transaction.date|date:"d M Y" }}</td>
-                            <td>{{ transaction.description }}</td>
+                            <td><span class="truncated-description" title="{{ transaction.description }}">{{ transaction.description }}</span></td>
                             <td class="amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">
                                 {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
                             </td>
                             <td>{{ transaction.category_name }}</td>
                             <td>{{ transaction.account_name }}</td>
-                            <td>{{ transaction.transaction_type }}</td>
+                            <td>{{ transaction.get_transaction_type_display }}</td> {# Utilise get_transaction_type_display pour l'affichage #}
                             <td class="allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
                                 {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
                             </td>
                             <td class="action-buttons-cell">
                                 {# Bouton "Ventiler" pour les revenus des comptes communs (s'il n'est pas déjà alloué) #}
-                                {% if transaction.transaction_type == 'Revenu' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
+                                {% if transaction.transaction_type == 'IN' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
                                     <a href="{% url 'allocate_income_view' transaction_id=transaction.id %}" class="action-button allocate-btn">
                                         Ventiler
                                     </a>
                                 {% endif %}
 
-                                {# Bouton "Débiter des fonds" pour les dépenses (si la catégorie est fund_managed?) #}
-                                {# Pour l'instant, on n'a pas encore la logique "débiter des fonds", mais le bouton est là #}
-                                {# On pourrait le faire apparaître si la transaction est une dépense et liée à une catégorie fund_managed #}
-                                {% comment %} 
-                                    La logique pour "débiter des fonds" n'est pas encore implémentée au niveau des vues.
-                                    Ce bouton sera fonctionnel après la prochaine étape d'implémentation de cette logique.
-                                    Pour le moment, il est affiché pour les dépenses des comptes communs (ou individuels).
-                                {% endcomment %}
-                                {% if transaction.transaction_type == 'Dépense' and (transaction.account_type == 'COMMON' or transaction.account_type == 'INDIVIDUAL') %}
-                                    {# NOTE: Le comportement exact de ce bouton (lien vers quelle vue) sera défini plus tard #}
-                                    <a href="#" class="action-button debit-btn" onclick="alert('Fonctionnalité Débiter des fonds à venir !'); return false;">
-                                        Débiter Fonds
-                                    </a>
+                                {# Bouton "Débiter des fonds" pour les dépenses #}
+                                {% if transaction.transaction_type == 'OUT' %}
+                                    {% if transaction.account_type == 'COMMON' or transaction.account_type == 'INDIVIDUAL' %}
+                                        <a href="{% url 'debit_funds_view' transaction_id=transaction.id %}" class="action-button debit-btn">
+                                            Débiter Fonds
+                                        </a>
+                                    {% endif %}
                                 {% endif %}
 
-                                {# Bouton "Diviser" pour les dépenses (qui ne sont pas des transferts et n'ont pas de lien direct avec les fonds pour l'instant) #}
-                                {% comment %} 
-                                    Le bouton Diviser est destiné aux transactions de dépense qui peuvent être décomposées
-                                    en plusieurs sous-transactions (par exemple, un paiement groupé).
-                                    On le masque pour les transferts (TRF) et potentiellement pour les transactions
-                                    qui seront gérées par le bouton "Débiter Fonds" (si la catégorie gère un fonds).
-                                {% endcomment %}
-                                {% if transaction.transaction_type == 'Dépense' and transaction.transaction_type != 'Transfert' %} 
+                                {# Bouton "Diviser" pour les dépenses (qui ne sont pas des transferts) #}
+                                {% if transaction.transaction_type == 'OUT' %}
                                 <a href="{% url 'split_transaction_view_with_id' transaction_id=transaction.id %}" class="action-button">
                                     Diviser
                                 </a>

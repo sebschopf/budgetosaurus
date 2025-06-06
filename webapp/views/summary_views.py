@@ -119,7 +119,7 @@ def all_transactions_summary_view(request):
             'category_name': transaction.category.name if transaction.category else 'N/A',
             'account_name': transaction.account.name,
             'account_currency': transaction.account.currency,
-            'transaction_type': transaction.get_transaction_type_display(),
+            'transaction_type': transaction.transaction_type, # MODIFIÉ: Utilise la valeur interne ('IN', 'OUT', 'TRF')
             'is_allocated': is_allocated,
             'is_fund_debited': is_fund_debited,
             'account_type': transaction.account.account_type,
@@ -130,4 +130,3 @@ def all_transactions_summary_view(request):
         'transactions': transactions_data,
     }
     return render(request, 'webapp/all_transactions_summary.html', context)
-
