@@ -1,45 +1,43 @@
 // webapp/static/webapp/js/split_transaction.js
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Vérifier si la transaction originale existe avant d'initialiser le JS
     const originalTransactionInfoElement = document.querySelector('.original-transaction-info');
     if (!originalTransactionInfoElement) {
         console.log("No original transaction to split. Skipping split transaction JS initialization.");
         return; 
     }
 
-    const originalTransactionAmount = parseFloat(document.getElementById('originalTransactionAmountData').textContent);
+    // Montant de la transaction originale (sera toujours positif pour les calculs de division)
+    const originalTransactionAmount = Math.abs(parseFloat(document.getElementById('originalTransactionAmountData')?.textContent || '0'));
 
     const splitLinesContainer = document.getElementById('split-lines-container');
     const addSplitLineBtn = document.getElementById('add-split-line-btn');
     const splitSummaryBox = document.getElementById('split-summary-box');
     const remainingAmountSpan = document.getElementById('remaining-amount');
     const splitTransactionForm = document.getElementById('splitTransactionForm');
+    const splitGuidanceText = document.getElementById('split-guidance');
+    const mainSubmitBtn = document.querySelector('.main-submit-btn'); // Sélection du bouton de soumission
 
     // Récupérer toutes les catégories et sous-catégories en parsant le JSON du DOM
-    const allCategories = JSON.parse(document.getElementById('allCategoriesData').textContent);
-    const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData').textContent);
+    const allCategories = JSON.parse(document.getElementById('allCategoriesData')?.textContent || '[]');
+    const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData')?.textContent || '[]');
     
-    // Gérer le compteur total de formulaires et le nombre de formulaires initiaux pour le formset
     const totalFormsInput = document.querySelector('#id_split_lines-TOTAL_FORMS');
-    const initialFormsInput = document.querySelector('#id_split_lines-INITIAL_FORMS');
-    const maxNumFormsInput = document.querySelector('#id_split_lines-MAX_NUM_FORMS'); // Nécessaire pour formset
+
+    // Récupérer la description originale une fois pour toutes, de manière robuste
+    const originalDescription = originalTransactionInfoElement.querySelector('p:nth-of-type(2)')?.textContent.replace('Description: ', '').trim() || '';
 
     /**
-     *Ajouter un badge d'icône à la catégorie principale ou sous-catégorie.
-     * @param {string} categoryName Le nom de la catégorie.
-     * @param {boolean} isFundManaged Indique si la catégorie est gérée par un fonds.
-     * @returns {string} L'HTML formaté de la catégorie avec l'icône.
+     * Crée un élément span pour un badge de catégorie.
+     * @param {string} text Le texte du badge (ex: "Fonds", "Budget", "Objectif").
+     * @param {string} className La classe CSS pour la couleur (ex: "fund-managed", "budgeted", "goal-linked").
+     * @returns {HTMLElement} L'élément span du badge.
      */
-    function formatCategoryNameWithIcon(categoryName, isFundManaged) {
-        let iconClass = 'no-special'; // Default
-        let iconText = 'Autre'; // Default text pour l'icône
-
-        if (isFundManaged) {
-            iconClass = 'fund-managed';
-            iconText = 'Fonds';
-        } 
-        return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
+    function createCategoryBadge(text, className) {
+        const span = document.createElement('span');
+        span.classList.add('category-info-icon', className);
+        span.textContent = text;
+        return span;
     }
 
     /**
@@ -53,14 +51,15 @@ document.addEventListener('DOMContentLoaded', function() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
-            option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
-            option.dataset.isFundManaged = category.is_fund_managed; // ajouter pour l'icône si nécessaire
+            option.textContent = category.name; 
+            option.dataset.isFundManaged = category.is_fund_managed;
+            option.dataset.isBudgeted = category.is_budgeted; 
+            option.dataset.isGoalLinked = category.is_goal_linked; // NOUVEAU: info is_goal_linked
             selectElement.appendChild(option);
         });
         if (initialValue) {
             selectElement.value = initialValue;
         }
-        // Déclencher l'événement 'change' pour mettre à jour les sous-catégories et l'icône
         selectElement.dispatchEvent(new Event('change'));
     }
 
@@ -78,73 +77,98 @@ document.addEventListener('DOMContentLoaded', function() {
             childrenOfParent.forEach(subcategory => {
                 const option = document.createElement('option');
                 option.value = subcategory.id;
-                option.innerHTML = formatCategoryNameWithIcon(subcategory.name, subcategory.is_fund_managed);
+                option.textContent = subcategory.name; 
                 option.dataset.isFundManaged = subcategory.is_fund_managed;
+                option.dataset.isBudgeted = subcategory.is_budgeted; 
+                option.dataset.isGoalLinked = subcategory.is_goal_linked; // NOUVEAU: info is_goal_linked
                 subcategorySelectElement.appendChild(option);
             });
-            subcategorySelectElement.classList.remove('subcategory-hidden'); // montrer le champ
+            subcategorySelectElement.classList.remove('subcategory-hidden');
         } else {
-            subcategorySelectElement.classList.add('subcategory-hidden'); // cacher le champ s'il n'y a pas de sous-catégories
+            subcategorySelectElement.classList.add('subcategory-hidden');
         }
 
         if (initialSubcategoryId) {
-            // S'assurer que la sous-catégorie initiale existe avant de la sélectionner
             const optionExists = Array.from(subcategorySelectElement.options).some(option => option.value == initialSubcategoryId);
             if (optionExists) {
                 subcategorySelectElement.value = initialSubcategoryId;
             }
         }
-        updateCategoryIconDisplay(subcategorySelectElement); // Mettre à jour l'icône pour la sous-catégorie
+        updateCategoryIconDisplay(subcategorySelectElement);
     }
 
     /**
-     * Ajoute ou met à jour l'icône d'information de la catégorie à côté du sélecteur.
-     * @param {HTMLElement} selectElement élément <select> pour lequel mettre à jour l'icône.
+     * Ajoute ou met à jour les icônes d'information de la catégorie à côté de l'élément select.
+     * Permet d'afficher plusieurs badges (Fonds, Budget, Objectif).
+     * @param {HTMLElement} selectElement élément <select> pour lequel mettre à jour les icônes.
      */
     function updateCategoryIconDisplay(selectElement) {
-        let currentIcon = selectElement.nextElementSibling;
-        if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
-            currentIcon.remove();
+        // Supprimer tous les badges existants associés à ce select
+        let currentNextSibling = selectElement.nextElementSibling;
+        while (currentNextSibling && currentNextSibling.classList.contains('category-info-icon')) {
+            const temp = currentNextSibling.nextElementSibling;
+            currentNextSibling.remove();
+            currentNextSibling = temp;
         }
 
         const selectedOption = selectElement.options[selectElement.selectedIndex];
-        if (selectedOption && selectedOption.value) { // Ajouter seulement si une option est sélectionnée
-            const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' est la valeur attendue pour un fonds géré
+        if (selectedOption && selectedOption.value) {
+            const isFundManaged = selectedOption.dataset.isFundManaged === 'true';
+            const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
+            const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true'; // RÉCUPÉRÉ: Info is_goal_linked
             
-            const iconSpan = document.createElement('span');
-            iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Formatage de l'icône sans texte initial
-            iconSpan.classList.add('category-info-icon'); // basique class pour le style
-            iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
-            iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // texte par défaut
+            const parentNode = selectElement.parentNode;
 
-            // Insérer l'icône après le sélecteur
-            selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
+            // Ajouter les badges pertinents
+            if (isFundManaged) {
+                parentNode.insertBefore(createCategoryBadge('Fonds', 'fund-managed'), selectElement.nextSibling);
+            }
+            if (isBudgeted) {
+                parentNode.insertBefore(createCategoryBadge('Budget', 'budgeted'), selectElement.nextSibling);
+            }
+            if (isGoalLinked) { // Badge pour objectif
+                parentNode.insertBefore(createCategoryBadge('Objectif', 'goal-linked'), selectElement.nextSibling);
+            }
+            // Si aucune des conditions n'est vraie, aucun badge n'est ajouté.
         }
     }
 
 
     /**
      * Créer et ajoute une nouvelle ligne de division au formulaire.
+     * @param {object} initialData Données pour pré-remplir la nouvelle ligne (optionnel).
+     * @returns {HTMLElement|null} La nouvelle ligne div ou null si erreur.
      */
-    function createSplitLine() {
-        const currentTotalForms = parseInt(totalFormsInput.value);
+    function createSplitLine(initialData = {}) {
+        if (!totalFormsInput) {
+            console.error("Erreur: L'élément #id_split_lines-TOTAL_FORMS est introuvable. Impossible de créer de nouvelles lignes.");
+            return null;
+        }
+
+        let currentTotalForms = parseInt(totalFormsInput.value);
+        if (isNaN(currentTotalForms)) {
+            console.error("Erreur: La valeur de totalFormsInput n'est pas un nombre valide:", totalFormsInput.value);
+            totalFormsInput.value = '0'; 
+            currentTotalForms = 0;
+        }
+
         const newFormIndex = currentTotalForms;
+        const formPrefix = 'split_lines'; 
 
         const div = document.createElement('div');
         div.classList.add('split-line');
-        div.setAttribute('id', `form-${newFormIndex}`); // Important pour le formset Django
+        div.setAttribute('id', `form-${newFormIndex}`); 
+        div.setAttribute('data-form-index', newFormIndex);
 
-        const formPrefix = 'split_lines'; // Doit être le même que le préfixe utilisé dans le formset Django !
         div.innerHTML = `
             <input type="hidden" name="${formPrefix}-${newFormIndex}-id" id="id_${formPrefix}-${newFormIndex}-id">
             <input type="text" name="${formPrefix}-${newFormIndex}-description" id="id_${formPrefix}-${newFormIndex}-description" placeholder="Description" required>
             <input type="number" name="${formPrefix}-${newFormIndex}-amount" id="id_${formPrefix}-${newFormIndex}-amount" step="0.01" placeholder="Montant" required>
             <div>
-                <select name="${formPrefix}-${newFormIndex}-main_category" id="id_${formPrefix}-${newFormIndex}-main_category" class="split-category-main" required>
+                <select name="${formPrefix}-${newFormIndex}-main_category" id="id_${formPrefix}-${newFormIndex}-main_category" class="p-2 border rounded-md w-full split-category-main" required>
                     <option value="">Sélectionner Catégorie Principale</option>
-                    ${allCategories.map(cat => `<option value="${cat.id}">${cat.html}</option>`).join('')}
                 </select>
-                <select name="${formPrefix}-${newFormIndex}-subcategory" id="id_${formPrefix}-${newFormIndex}-subcategory" class="split-category subcategory-hidden">
+                <select name="${formPrefix}-${newFormIndex}-subcategory" id="id_${formPrefix}-${newFormIndex}-subcategory" class="p-2 border rounded-md w-full split-category subcategory-hidden">
                     <option value="">Sélectionner Sous-catégorie</option>
                 </select>
             </div>
@@ -156,46 +180,84 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         
         splitLinesContainer.appendChild(div);
-        totalFormsInput.value = newFormIndex + 1; // Update TOTAL_FORMS
+        totalFormsInput.value = newFormIndex + 1;
 
-        addSplitLineEventListeners(div); // lier les événements à la nouvelle ligne
-        initializeSplitCategoryDropdowns(div); // Initialise les sélecteurs de catégorie pour la nouvelle ligne
-        calculateRemainingAmount(); // Recalculer le montant restant après l'ajout d'une nouvelle ligne
+        const descriptionInput = div.querySelector(`#id_${formPrefix}-${newFormIndex}-description`);
+        const amountInput = div.querySelector(`#id_${formPrefix}-${newFormIndex}-amount`);
+        const mainCategorySelect = div.querySelector(`#id_${formPrefix}-${newFormIndex}-main_category`);
+        const subcategorySelect = div.querySelector(`#id_${formPrefix}-${newFormIndex}-subcategory`);
+
+        if (descriptionInput) descriptionInput.value = initialData.description || '';
+        if (amountInput) amountInput.value = (initialData.amount !== undefined && initialData.amount !== null) ? parseFloat(initialData.amount).toFixed(2) : '';
+        
+        if (mainCategorySelect) {
+            populateMainCategories(mainCategorySelect, allCategories, initialData.main_category);
+            if (initialData.subcategory && mainCategorySelect.value) { 
+                populateSubcategories(mainCategorySelect.value, subcategorySelect, initialData.subcategory);
+            }
+        }
+
+        addSplitLineEventListeners(div);
+        calculateRemainingAmount();
+
+        return div;
     }
 
     /**
-     * Ajoute les écouteurs d'événements nécessaires à une ligne de division.
+     * Attache les écouteurs d'événements nécessaires à une ligne de division.
      * @param {HTMLElement} lineElement The DOM element de la ligne de division.
      */
     function addSplitLineEventListeners(lineElement) {
-        const amountInput = lineElement.querySelector('input[name$="-amount"]'); // Selection de l'input de montant
+        const formIndex = lineElement.dataset.formIndex;
+        const formPrefix = 'split_lines';
+
+        const amountInput = lineElement.querySelector(`#id_${formPrefix}-${formIndex}-amount`);
         const deleteBtn = lineElement.querySelector('.delete-split-btn');
-        const mainCategorySelect = lineElement.querySelector('select[name$="-main_category"]');
-        const subCategorySelect = lineElement.querySelector('select[name$="-subcategory"]');
-        const deleteCheckbox = lineElement.querySelector('input[name$="-DELETE"]');
+        const mainCategorySelect = lineElement.querySelector(`#id_${formPrefix}-${formIndex}-main_category`);
+        const subCategorySelect = lineElement.querySelector(`#id_${formPrefix}-${formIndex}-subcategory`);
+        const deleteCheckbox = lineElement.querySelector(`#id_${formPrefix}-${formIndex}-DELETE`);
+        const descriptionInput = lineElement.querySelector(`#id_${formPrefix}-${formIndex}-description`);
+
 
         if (amountInput) {
             amountInput.addEventListener('input', calculateRemainingAmount);
+            amountInput.addEventListener('blur', function() {
+                if (this.value !== '') {
+                    this.value = parseFloat(this.value.replace(',', '.')).toFixed(2);
+                }
+            });
         }
 
         if (deleteBtn && deleteCheckbox) {
             deleteBtn.addEventListener('click', function() {
-                // Hide the line visually and check the DELETE checkbox
                 lineElement.style.display = 'none';
                 deleteCheckbox.checked = true;
-                calculateRemainingAmount(); // Recalculate, as this line no longer counts
+                calculateRemainingAmount();
+                updateSubmitButtonState(); 
             });
         }
         
         if (mainCategorySelect) {
             mainCategorySelect.addEventListener('change', function() {
                 populateSubcategories(this.value, subCategorySelect);
-                updateCategoryIconDisplay(this); // Update icon for main category
+                updateCategoryIconDisplay(this);
+                calculateRemainingAmount(); 
             });
         }
         if (subCategorySelect) {
             subCategorySelect.addEventListener('change', function() {
-                updateCategoryIconDisplay(this); // Update icon for subcategory
+                updateCategoryIconDisplay(this);
+                calculateRemainingAmount(); 
+            });
+        }
+
+        if (descriptionInput) {
+            let debounceTimeout;
+            descriptionInput.addEventListener('input', () => {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(() => {
+                    calculateRemainingAmount();
+                }, 300);
             });
         }
     }
@@ -206,110 +268,210 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {HTMLElement} splitLineElement The DOM element of the split line.
      */
     function initializeSplitCategoryDropdowns(splitLineElement) {
-        const prefix = splitLineElement.querySelector('input[name$="-description"]').name.split('-')[0]; // Ex: split_lines
-        const mainCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-main_category"]`);
-        const subCategorySelect = splitLineElement.querySelector(`select[name="${prefix}-subcategory"]`);
+        const formIndex = splitLineElement.dataset.formIndex;
+        const formPrefix = 'split_lines';
+
+        const mainCategorySelect = splitLineElement.querySelector(`#id_${formPrefix}-${formIndex}-main_category`);
+        const subCategorySelect = splitLineElement.querySelector(`#id_${formPrefix}-${formIndex}-subcategory`);
         
-        // Populate main categories with icons
-        const initialMainCategoryValue = mainCategorySelect.value; // Get initial value from Django form
+        const initialMainCategoryValue = mainCategorySelect?.value; 
         populateMainCategories(mainCategorySelect, allCategories, initialMainCategoryValue);
 
-        // If there was an initial subcategory value, populateSubcategories will handle selecting it
-        const initialSubcategoryId = subCategorySelect ? subCategorySelect.value : null;
+        const initialSubcategoryId = subCategorySelect?.value; 
 
-        if (mainCategorySelect.value) {
+        if (mainCategorySelect?.value) { 
             populateSubcategories(mainCategorySelect.value, subCategorySelect, initialSubcategoryId);
         } else {
-            subCategorySelect.classList.add('subcategory-hidden');
-            updateCategoryIconDisplay(subCategorySelect); // Clear icon if subcategory is hidden
+            subCategorySelect?.classList.add('subcategory-hidden'); 
         }
-        updateCategoryIconDisplay(mainCategorySelect); // Initial display for main category
+        updateCategoryIconDisplay(mainCategorySelect);
     }
 
 
     /**
      * Calculates the remaining amount to split and updates the summary display.
+     * Also manages button visibility and prompts.
      */
     function calculateRemainingAmount() {
         let currentSplitSum = 0;
-        // Selects all amount inputs FOR LINES NOT MARKED FOR DELETION
         const splitAmountInputs = document.querySelectorAll('.split-line:not([style*="display: none"]) input[name$="-amount"]');
         splitAmountInputs.forEach(input => {
-            let value = parseFloat(input.value.replace(',', '.')) || 0;
-            currentSplitSum += Math.abs(value);
+            let value = parseFloat(input.value.replace(',', '.')) || 0; 
+            currentSplitSum += value;
         });
 
         let remaining = originalTransactionAmount - currentSplitSum;
         remainingAmountSpan.textContent = remaining.toFixed(2);
-        splitSummaryBox.classList.remove('balanced'); // Reset balanced class
-        
-        if (Math.abs(remaining) < 0.01) {
+
+        splitSummaryBox.classList.remove('balanced', 'negative-remaining', 'positive-remaining');
+        splitGuidanceText.classList.remove('text-red-500', 'text-green-500', 'text-gray-600'); 
+
+        if (Math.abs(remaining) < 0.01) { // Utiliser une tolérance pour la comparaison à zéro
             splitSummaryBox.classList.add('balanced');
+            splitGuidanceText.textContent = "Le montant est entièrement divisé. Vous pouvez maintenant valider.";
+            splitGuidanceText.classList.add('text-green-500');
+        } else if (remaining < 0) {
+            splitSummaryBox.classList.add('negative-remaining');
+            splitGuidanceText.textContent = `Attention : Vous avez alloué ${Math.abs(remaining).toFixed(2)} CHF de trop !`;
+            splitGuidanceText.classList.add('text-red-500');
+        } else {
+            splitSummaryBox.classList.add('positive-remaining');
+            splitGuidanceText.textContent = `Il reste ${remaining.toFixed(2)} CHF à diviser.`;
+            splitGuidanceText.classList.add('text-gray-600'); 
         }
 
-        remainingAmountSpan.classList.remove('positive', 'negative');
-        if (remaining > 0.01) {
-            remainingAmountSpan.classList.add('positive');
-        } else if (remaining < -0.01) {
-            remainingAmountSpan.classList.add('negative');
+        updateAddLineOrPrefillLogic(); 
+        updateSubmitButtonState(); 
+    }
+
+    /**
+     * Gère la logique d'ajout automatique de ligne ou de pré-remplissage.
+     */
+    function updateAddLineOrPrefillLogic() {
+        const activeLines = document.querySelectorAll('.split-line:not([style*="display: none"])');
+        const currentRemaining = parseFloat(remainingAmountSpan.textContent);
+        const lastActiveLine = activeLines[activeLines.length - 1];
+    
+        // Si le montant est balancé, cacher le bouton d'ajout de ligne
+        if (Math.abs(currentRemaining) < 0.01) {
+            addSplitLineBtn.classList.add('hidden'); 
+            return;
+        }
+
+        // Si la dernière ligne est remplie et qu'il reste du montant, ajouter une nouvelle ligne
+        if (lastActiveLine) {
+            const amountInput = lastActiveLine.querySelector('input[name$="-amount"]');
+            const descriptionInput = lastActiveLine.querySelector('input[name$="-description"]');
+            const mainCategorySelect = lastActiveLine.querySelector('select[name$="-main_category"]');
+            const subcategorySelect = lastActiveLine.querySelector('select[name$="-subcategory"]');
+    
+            const isLastLineFilled = (amountInput && parseFloat(amountInput.value.replace(',', '.')) > 0) && 
+                                     (descriptionInput && descriptionInput.value.trim() !== '') &&
+                                     (mainCategorySelect && mainCategorySelect.value !== '') &&
+                                     (subcategorySelect ? subcategorySelect.value !== '' || subcategorySelect.classList.contains('subcategory-hidden') : true);
+            
+            // Vérifier s'il n'y a pas déjà une ligne vide non supprimée juste après la dernière active
+            const lastLineIndex = parseInt(lastActiveLine.dataset.formIndex);
+            const nextFormIndex = lastLineIndex + 1;
+            const nextLineElement = document.getElementById(`form-${nextFormIndex}`);
+            const nextLineIsActive = nextLineElement && !nextLineElement.querySelector('input[name$="-DELETE"]')?.checked;
+            
+            if (isLastLineFilled && !nextLineIsActive) {
+                const newSplitLine = createSplitLine({
+                    amount: currentRemaining.toFixed(2) 
+                });
+                if (newSplitLine) { 
+                    newSplitLine.querySelector('input[name$="-description"]').focus(); 
+                }
+            } else if (isLastLineFilled && nextLineIsActive) {
+                // Si la dernière ligne est remplie, il reste du montant, et la ligne suivante existe et est active,
+                // alors on met à jour le montant de cette ligne suivante avec le restant.
+                nextLineElement.querySelector('input[name$="-amount"]').value = currentRemaining.toFixed(2);
+            }
         }
     }
 
-    // --- Initialization on page load ---
-    // Attach events to existing formset lines (including those pre-filled by Django)
-    document.querySelectorAll('.split-line').forEach(line => {
-        addSplitLineEventListeners(line);
-        initializeSplitCategoryDropdowns(line);
-    });
+    /**
+     * Met à jour l'état activé/désactivé du bouton de soumission.
+     */
+    function updateSubmitButtonState() {
+        const currentRemaining = parseFloat(remainingAmountSpan.textContent);
+        const activeLines = document.querySelectorAll('.split-line:not([style*="display: none"])');
 
-    if (addSplitLineBtn) {
-        addSplitLineBtn.addEventListener('click', createSplitLine);
-    }
-
-    calculateRemainingAmount(); // Initial calculation
-
-    // Handle split form submission
-    if (splitTransactionForm) {
-        splitTransactionForm.addEventListener('submit', function(event) {
-            // Final client-side validation, based on remaining amount calculation
-            let currentRemaining = parseFloat(remainingAmountSpan.textContent);
-            if (Math.abs(currentRemaining) > 0.01) {
-                event.preventDefault(); 
-                alert("Attention: La somme des montants divisés ne correspond pas au montant original. Veuillez ajuster avant de soumettre.");
-                return; 
-            }
-
-            // Client-side validation: Ensure each non-deleted line has a description, amount, and valid category
-            const splitLines = splitLinesContainer.querySelectorAll('.split-line:not([style*="display: none"])');
-            let allLinesValid = true;
-            if (splitLines.length === 0) { // Do not allow submitting without any non-deleted lines
-                allLinesValid = false;
-            }
-
-            splitLines.forEach(line => {
+        let allActiveLinesValid = true;
+        if (activeLines.length === 0) {
+            allActiveLinesValid = false; 
+        } else {
+            activeLines.forEach(line => {
                 const descriptionInput = line.querySelector('input[name$="-description"]');
                 const amountInput = line.querySelector('input[name$="-amount"]');
                 const mainCategorySelect = line.querySelector('select[name$="-main_category"]');
-                const subCategorySelect = line.querySelector('select[name$="-subcategory"]');
-
-                line.classList.remove('has-error'); // Reset visual error state
-
-                if (!descriptionInput.value.trim() || !amountInput.value.trim()) {
+                const subcategorySelect = line.querySelector('select[name$="-subcategory"]');
+    
+                const isDescriptionValid = descriptionInput && descriptionInput.value.trim() !== '';
+                const isAmountValid = amountInput && parseFloat(amountInput.value.replace(',', '.')) > 0; 
+                const isMainCategorySelected = mainCategorySelect && mainCategorySelect.value !== '';
+                const isSubcategoryValid = (subcategorySelect && !subcategorySelect.classList.contains('subcategory-hidden')) ? subcategorySelect.value !== '' : true; 
+    
+                if (!isDescriptionValid || !isAmountValid || !isMainCategorySelected || !isSubcategoryValid) {
                     allLinesValid = false;
-                    line.classList.add('has-error');
+                    line.classList.add('has-error'); 
+                } else {
+                    line.classList.remove('has-error'); 
                 }
+            });
+        }
+    
+        // Le bouton est activé si le montant restant est quasi nul ET toutes les lignes actives sont valides
+        if (Math.abs(currentRemaining) < 0.01 && allActiveLinesValid) {
+            mainSubmitBtn.disabled = false;
+            mainSubmitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            mainSubmitBtn.disabled = true;
+            mainSubmitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    }
 
-                let finalCategorySelected = false;
-                if (subCategorySelect.value) { // A subcategory is chosen
-                    const selectedSub = allSubcategories.find(s => s.id === parseInt(subCategorySelect.value));
-                    if (selectedSub && selectedSub.parent === parseInt(mainCategorySelect.value)) {
-                        finalCategorySelected = true;
-                    }
-                } else if (mainCategorySelect.value) { // Only the main category is chosen
-                        finalCategorySelected = true;
+
+    // --- Initialization on page load ---
+    const prefilledLines = document.querySelectorAll('.split-line');
+    if (prefilledLines.length > 0) {
+        prefilledLines.forEach(line => {
+            addSplitLineEventListeners(line);
+            initializeSplitCategoryDropdowns(line);
+        });
+        calculateRemainingAmount(); 
+    } else {
+        // Si aucune ligne n'est pré-remplie (premier chargement), créer la première ligne
+        createSplitLine({
+            description: originalDescription, 
+            amount: '' 
+        });
+    }
+
+    if (addSplitLineBtn) {
+        addSplitLineBtn.addEventListener('click', () => {
+            const newLine = createSplitLine();
+            if (newLine) {
+                newLine.querySelector('input[name$="-description"]').focus();
+            }
+        });
+    }
+
+    // Gestion de la soumission du formulaire (remplace les alertes par des toasts)
+    if (splitTransactionForm) {
+        splitTransactionForm.addEventListener('submit', function(event) {
+            const currentRemaining = parseFloat(remainingAmountSpan.textContent);
+            if (Math.abs(currentRemaining) > 0.01) { 
+                event.preventDefault(); 
+                if (typeof showToast !== 'undefined') { 
+                    showToast("La somme des montants divisés ne correspond pas exactement au montant original. Veuillez ajuster avant de soumettre.", 'error');
+                } else {
+                    alert("Attention: La somme des montants divisés ne correspond pas exactement au montant original. Veuillez ajuster avant de soumettre.");
                 }
+                return; 
+            }
+
+            const activeLines = document.querySelectorAll('.split-line:not([style*="display: none"])');
+            let allLinesValid = true;
+            if (activeLines.length === 0) {
+                allLinesValid = false;
+            }
+
+            activeLines.forEach(line => {
+                const descriptionInput = line.querySelector('input[name$="-description"]');
+                const amountInput = line.querySelector('input[name$="-amount"]');
+                const mainCategorySelect = line.querySelector('select[name$="-main_category"]');
+                const subcategorySelect = line.querySelector('select[name$="-subcategory"]');
+
+                line.classList.remove('has-error'); 
+
+                const isDescriptionValid = descriptionInput && descriptionInput.value.trim() !== '';
+                const isAmountValid = amountInput && parseFloat(amountInput.value.replace(',', '.')) > 0; 
+                const isMainCategorySelected = mainCategorySelect && mainCategorySelect.value !== '';
+                const isSubcategoryValid = (subcategorySelect && !subcategorySelect.classList.contains('subcategory-hidden')) ? subcategorySelect.value !== '' : true;
                 
-                if (!finalCategorySelected) {
+                if (!isDescriptionValid || !isAmountValid || !isMainCategorySelected || !isSubcategoryValid) {
                     allLinesValid = false;
                     line.classList.add('has-error');
                 }
@@ -317,9 +479,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!allLinesValid) {
                 event.preventDefault(); 
-                alert("Veuillez remplir toutes les informations requises (description, montant, catégorie) pour chaque ligne de division, et vérifier la cohérence des catégories.");
+                if (typeof showToast !== 'undefined') { 
+                    showToast("Veuillez remplir toutes les informations requises (description, montant, catégorie) pour chaque ligne de division.", 'error');
+                } else {
+                    alert("Veuillez remplir toutes les informations requises (description, montant, catégorie) pour chaque ligne de division.");
+                }
             }
-            // The rest of the validation is handled server-side by the formset.
         });
     }
+
+    calculateRemainingAmount(); // Ceci déclenchera updateAddLineOrPrefillLogic et updateSubmitButtonState.
 });

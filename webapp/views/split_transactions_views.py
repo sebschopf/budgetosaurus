@@ -4,67 +4,86 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 import json
 from decimal import Decimal
+from datetime import date 
 
-from webapp.models import Transaction, Category # Importez les modèles nécessaires
-from webapp.forms import SplitTransactionFormset # Importez le formset de division
-from webapp.services import TransactionService # Importez le service
+from webapp.models import Transaction, Category, Budget, SavingGoal # NOUVEAU: Importez SavingGoal
+from webapp.forms import SplitTransactionFormset
+from webapp.services import TransactionService
 
 @require_GET
 def split_transaction_view(request, transaction_id=None):
-    """
-    Vue pour la fonctionnalité de division de transaction.
-    Si un transaction_id est fourni, le formulaire est pré-rempli avec les données de la transaction.
-    """
     original_transaction = None
-    formset = SplitTransactionFormset() # Formset vide par défaut
+    formset = SplitTransactionFormset() 
 
     if transaction_id:
         original_transaction = get_object_or_404(Transaction, pk=transaction_id)
-        # Pré-remplir la première ligne du formset avec la description de la transaction originale
-        # et une quantité égale à l'originale si c'est une dépense.
-        if original_transaction.transaction_type == 'OUT': # Uniquement pour les dépenses
+        if original_transaction.transaction_type == 'OUT': 
             initial_data = []
             initial_data.append({
                 'description': original_transaction.description,
-                'amount': abs(original_transaction.amount), # Montant absolu pour la saisie
+                'amount': abs(original_transaction.amount),
                 'main_category': original_transaction.category.parent.id if original_transaction.category and original_transaction.category.parent else (original_transaction.category.id if original_transaction.category else None),
                 'subcategory': original_transaction.category.id if original_transaction.category and original_transaction.category.parent else None,
             })
             formset = SplitTransactionFormset(initial=initial_data)
 
-    # Récupérer toutes les catégories pour le JS, incluant l'info is_fund_managed
     all_categories_data = []
     all_subcategories_data = []
 
+    current_year = date.today().year
+    current_month = date.today().month
+    budgeted_category_ids_for_current_period = set(
+        Budget.objects.filter(
+            period_type='M', 
+            start_date__year=current_year,
+            start_date__month=current_month
+        ).values_list('category__id', flat=True)
+    )
+
+    # NOUVEAU: Préparez un ensemble des IDs de catégories liées à des objectifs d'épargne
+    goal_linked_category_ids = set(
+        SavingGoal.objects.filter(
+            status='OU' # Seulement les objectifs ouverts/actifs
+        ).values_list('category__id', flat=True)
+    )
+
     for cat in Category.objects.filter(parent__isnull=True).order_by('name'):
+        is_budgeted_for_display = cat.is_budgeted 
+        is_fund_managed_for_display = cat.is_fund_managed
+        is_goal_linked_for_display = cat.id in goal_linked_category_ids
+
         all_categories_data.append({
             'id': cat.id,
             'name': cat.name,
-            'is_fund_managed': cat.is_fund_managed
+            'is_fund_managed': is_fund_managed_for_display,
+            'is_budgeted': is_budgeted_for_display,
+            'is_goal_linked': is_goal_linked_for_display 
         })
         for child_cat in cat.children.all().order_by('name'):
+            child_is_budgeted_for_display = child_cat.is_budgeted
+            child_is_fund_managed_for_display = child_cat.is_fund_managed
+            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids
+
             all_subcategories_data.append({
                 'id': child_cat.id,
                 'name': child_cat.name,
                 'parent': cat.id,
-                'is_fund_managed': child_cat.is_fund_managed
+                'is_fund_managed': child_is_fund_managed_for_display,
+                'is_budgeted': child_is_budgeted_for_display,
+                'is_goal_linked': child_is_goal_linked_for_display
             })
     
     context = {
         'page_title': 'Diviser une Transaction',
         'original_transaction': original_transaction,
         'formset': formset,
-        'all_categories_data_json': json.dumps(all_categories_data), # Données pour le JS
-        'all_subcategories_data_json': json.dumps(all_subcategories_data), # Données pour le JS
+        'all_categories_data_json': json.dumps(all_categories_data), 
+        'all_subcategories_data_json': json.dumps(all_subcategories_data), 
     }
     return render(request, 'webapp/split_transaction.html', context)
 
 @require_POST
 def process_split_transaction(request):
-    """
-    Gère la soumission du formulaire de division de transaction.
-    Crée de nouvelles transactions et supprime l'originale.
-    """
     original_transaction_id = request.POST.get('original_transaction_id')
     original_transaction = get_object_or_404(Transaction, pk=original_transaction_id)
 
@@ -74,9 +93,12 @@ def process_split_transaction(request):
     if formset.is_valid():
         split_lines_data = []
         for form in formset:
-            if not form.cleaned_data.get('DELETE', False): # Ignorer les lignes marquées pour suppression
-                # La catégorie finale est dans 'final_category' grâce à la méthode clean du formulaire
-                final_category = form.cleaned_data['final_category']
+            if not form.cleaned_data.get('DELETE', False): 
+                final_category = form.cleaned_data.get('final_category')
+                if not final_category: 
+                    messages.error(request, "Une catégorie valide est requise pour chaque ligne de division non supprimée.")
+                    return _render_split_transaction_page_with_errors(request, original_transaction, formset)
+
                 split_lines_data.append({
                     'description': form.cleaned_data['description'],
                     'amount': form.cleaned_data['amount'],
@@ -95,31 +117,59 @@ def process_split_transaction(request):
     else:
         messages.error(request, "Veuillez corriger les erreurs dans le formulaire de division.")
     
-    # Si le formulaire n'est pas valide ou s'il y a une erreur, re-rendre la page de division
-    # avec les erreurs et les données du formset.
+    return _render_split_transaction_page_with_errors(request, original_transaction, formset)
+
+def _render_split_transaction_page_with_errors(request, original_transaction, formset):
     all_categories_data = []
     all_subcategories_data = []
 
+    current_year = date.today().year
+    current_month = date.today().month
+    budgeted_category_ids_for_current_period = set(
+        Budget.objects.filter(
+            period_type='M', 
+            start_date__year=current_year,
+            start_date__month=current_month
+        ).values_list('category__id', flat=True)
+    )
+
+    goal_linked_category_ids = set(
+        SavingGoal.objects.filter(
+            status='OU' 
+        ).values_list('category__id', flat=True)
+    )
+
     for cat in Category.objects.filter(parent__isnull=True).order_by('name'):
-        all_categories_data.append({
+        is_budgeted_for_display = cat.is_budgeted 
+        is_fund_managed_for_display = cat.is_fund_managed
+        is_goal_linked_for_display = cat.id in goal_linked_category_ids
+
+        all_categories_data.append({ # Passe l'info des catégories
             'id': cat.id,
             'name': cat.name,
-            'is_fund_managed': cat.is_fund_managed
+            'is_fund_managed': is_fund_managed_for_display,
+            'is_budgeted': is_budgeted_for_display,
+            'is_goal_linked': is_goal_linked_for_display
         })
         for child_cat in cat.children.all().order_by('name'):
+            child_is_budgeted_for_display = child_cat.is_budgeted # Vérifie si la sous-catégorie est budgétée pour le mois en cours
+            child_is_fund_managed_for_display = child_cat.is_fund_managed
+            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids # Vérifie si la sous-catégorie est liée à un objectif
+
             all_subcategories_data.append({
                 'id': child_cat.id,
                 'name': child_cat.name,
                 'parent': cat.id,
-                'is_fund_managed': child_cat.is_fund_managed
+                'is_fund_managed': child_is_fund_managed_for_display, # Passe l'info is_fund_managed
+                'is_budgeted': child_is_budgeted_for_display,
+                'is_goal_linked': child_is_goal_linked_for_display # Passe l'info is_goal_linked
             })
 
     context = {
         'page_title': 'Diviser une Transaction',
-        'original_transaction': original_transaction,
-        'formset': formset, # Le formset avec les erreurs
+        'original_transaction': original_transaction, # Transaction originale à diviser
+        'formset': formset,  # Formset pour la division de transaction
         'all_categories_data_json': json.dumps(all_categories_data), 
-        'all_subcategories_data_json': json.dumps(all_subcategories_data),
+        'all_subcategories_data_json': json.dumps(all_subcategories_data), 
     }
     return render(request, 'webapp/split_transaction.html', context)
-

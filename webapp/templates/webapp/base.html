@@ -101,6 +101,35 @@
         .date-quick-buttons button:hover {
             background-color: #3b82f6; /* blue-500 */
         }
+        /* NOUVEAU: Styles pour les pictogrammes / badges de catégorie, réutilisés ici */
+        .category-info-icon {
+            font-size: 0.8em;
+            margin-left: 5px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: white;
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1; /* Aligner le texte */
+        }
+        .category-info-icon.fund-managed {
+            background-color: #28a745; /* Vert pour les fonds */
+        }
+        .category-info-icon.budgeted {
+            background-color: #007bff; /* Bleu pour les budgets */
+        }
+        .category-info-icon.goal-linked { /* NOUVEAU: Style pour les objectifs */
+            background-color: #ffc107; /* Jaune/Orange pour les objectifs */
+        }
+        /* MODIFIÉ: Retiré .no-special car nous ne voulons plus de badge par défaut */
+        /* .category-info-icon.no-special {
+            background-color: #6c757d; 
+        } */
+        /* Masquer initialement les icônes dans les options du select (géré par JS) */
+        .form-field-group select option .category-info-icon {
+            display: none;
+        }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
