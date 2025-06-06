@@ -1,92 +1,65 @@
-{# webapp/templates/webapp/split_transaction.html #}
-{% extends 'webapp/base.html' %}
+    {# webapp/templates/webapp/split_transaction.html #}
+    {% extends 'webapp/base.html' %}
 
-{% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
-{% load webapp_filters %} {# Charge les filtres de template personnalisés #}
+    {% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
+    {% load webapp_filters %} {# Charge les filtres de template personnalisés #}
 
-{% block title %}{{ page_title }}{% endblock %}
+    {% block title %}{{ page_title }}{% endblock %}
 
-{% block extra_head %}
-    {# Lien vers le fichier CSS externe #}
-    <link rel="stylesheet" href="{% static 'webapp/css/split_transaction.css' %}">
-    <style>
-        /* Styles pour les pictogrammes / badges de catégorie, réutilisés ici */
-        .category-info-icon {
-            font-size: 0.8em;
-            margin-left: 5px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: white;
-            display: inline-block;
-            vertical-align: middle;
-            line-height: 1; /* Aligner le texte */
-        }
-        .category-info-icon.fund-managed {
-            background-color: #28a745; /* Vert pour les fonds */
-        }
-        .category-info-icon.budgeted {
-            background-color: #007bff; /* Bleu pour les budgets */
-        }
-        .category-info-icon.no-special {
-            background-color: #6c757d; /* Gris pour les autres */
-        }
-        /* Masquer initialement les icônes dans les options du select (géré par JS) */
-        .split-line select option .category-info-icon {
-            display: none;
-        }
-    </style>
-{% endblock %}
+    {% block extra_head %}
+    {% endblock %}
 
-{% block content %}
-    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
+    {% block content %}
+        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
 
-    {% if original_transaction %}
-        <div class="split-form-container">
-            <div class="original-transaction-info">
-                <h2>Transaction Originale à Diviser</h2>
-                <p>Date: {{ original_transaction.date|date:"d M Y" }}</p>
-                <p>Description: {{ original_transaction.description }}</p>
-                <p>Montant: <span class="amount {% if original_transaction.amount >= 0 %}positive{% else %}negative{% endif %}">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
-                <p>Compte: {{ original_transaction.account.name }}</p>
+        {% if original_transaction %}
+            <div class="split-form-container">
+                <div class="original-transaction-info">
+                    <h2>Transaction Originale à Diviser</h2>
+                    <p>Date: {{ original_transaction.date|date:"d M Y" }}</p>
+                    <p>Description: {{ original_transaction.description }}</p>
+                    {# .amount et .positive/.negative sont stylés dans pages/_split_transaction.css et _base.css #}
+                    <p>Montant: <span class="amount {% if original_transaction.amount >= 0 %}positive{% else %}negative{% endif %}">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
+                    <p>Compte: {{ original_transaction.account.name }}</p>
+                </div>
+
+                {# Affichage des messages d'erreur Django (gérés par toast.js) #}
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                {# Inclure le contenu du formulaire principal depuis un fichier séparé #}
+                {% include 'webapp/split_transaction_includes/split_form_content.html' %}
             </div>
+        {% else %}
+            <p class="text-center text-gray-700 text-lg my-10">
+                Veuillez sélectionner une transaction à diviser. Vous pouvez le faire depuis la page
+                <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
+                Cliquez sur le montant d'une transaction pour la pré-remplir ici.
+            </p>
+        {% endif %}
 
-            {# Affichage des messages d'erreur Django #}
-            {% if messages %}
-                <ul class="messages">
-                    {% for message in messages %}
-                        <li class="{{ message.tags }}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
+        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    {% endblock %}
 
-            {# Inclure le contenu du formulaire principal depuis un fichier séparé #}
-            {% include 'webapp/split_transaction_includes/split_form_content.html' %}
-        </div>
-    {% else %}
-        <p class="text-center text-gray-700 text-lg my-10">
-            Veuillez sélectionner une transaction à diviser. Vous pouvez le faire depuis la page
-            <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
-            Cliquez sur le montant d'une transaction pour la pré-remplir ici.
-        </p>
-    {% endif %}
+    {% block extra_js %}
+        {# Passer le montant original au JavaScript via un élément de script masqué #}
+        <script id="originalTransactionAmountData" type="application/json">
+            {{ original_transaction.amount|floatformat:2 }}
+        </script>
+        {# Définir les données des catégories et sous-catégories en JSON à l'aide de json_script #}
+        <script id="allCategoriesData" type="application/json">
+            {{ all_categories_data_json|safe }}
+        </script>
+        <script id="allSubcategoriesData" type="application/json">
+            {{ all_subcategories_data_json|safe }}
+        </script>
 
-    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-{% endblock %}
-
-{% block extra_js %}
-    {# Passer le montant original au JavaScript via un élément de script masqué #}
-    <script id="originalTransactionAmountData" type="application/json">
-        {{ original_transaction.amount|floatformat:2 }}
-    </script>
-    {# Définir les données des catégories et sous-catégories en JSON à l'aide de json_script #}
-    <script id="allCategoriesData" type="application/json">
-        {{ all_categories_data_json|safe }}
-    </script>
-    <script id="allSubcategoriesData" type="application/json">
-        {{ all_subcategories_data_json|safe }}
-    </script>
-
-    {# Lien vers le fichier JavaScript externe #}
-    <script src="{% static 'webapp/js/split_transaction.js' %}"></script>
-{% endblock %}
+        {# Lien vers le fichier JavaScript externe #}
+        <script src="{% static 'webapp/js/split_transaction.js' %}"></script>
+    {% endblock %}
+    

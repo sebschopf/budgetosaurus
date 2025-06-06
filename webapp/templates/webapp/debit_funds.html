@@ -1,296 +1,132 @@
-{# webapp/templates/webapp/debit_funds.html #}
-{% extends 'webapp/base.html' %}
+    {# webapp/templates/webapp/debit_funds.html #}
+    {% extends 'webapp/base.html' %}
 
-{% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
-{% load webapp_filters %} {# Charge les filtres de template personnalisés #}
+    {% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
+    {% load webapp_filters %} {# Charge les filtres de template personnalisés #}
 
-{% block title %}{{ page_title }}{% endblock %}
+    {% block title %}{{ page_title }}{% endblock %}
 
-{% block extra_head %}
-    {# Styles spécifiques pour cette page #}
-    <style>
-        .debit-form-container {
-            background-color: #f8f8f8;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        .original-transaction-info {
-            background-color: #ffe0e0; /* Light red for expense */
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            border: 1px solid #ff9090;
-            text-align: center;
-        }
-        .original-transaction-info h2 {
-            font-size: 1.6em;
-            color: #2d3748;
-            margin-bottom: 10px;
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        .original-transaction-info p {
-            font-size: 1.1em;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        .original-transaction-info .amount {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-        .debit-line {
-            display: grid;
-            grid-template-columns: 1.5fr 0.8fr 1.5fr 0.2fr; /* Cat, Montant, Notes, Suppr */
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 8px;
-            background-color: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .debit-line label {
-            display: none; /* Hide individual labels in debit lines */
-        }
-        .debit-line input, .debit-line select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .add-line-btn, .delete-line-btn {
-            background-color: #28a745; /* Green for add */
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-            font-weight: 600;
-        }
-        .add-line-btn:hover {
-            background-color: #218838;
-            transform: translateY(-2px);
-        }
-        .delete-line-btn {
-            background-color: #dc3545; /* Red for delete */
-            font-size: 1.5em; /* Bigger X */
-            padding: 5px 10px;
-            width: 40px; /* fixed width for X button */
-            height: 40px; /* fixed height for X button */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%; /* Round button */
-            box-shadow: none;
-            transition: background-color 0.2s ease;
-        }
-        .delete-line-btn:hover {
-            background-color: #c82333;
-            transform: translateY(-2px);
-        }
-        .debit-summary {
-            background-color: #fff3cd; /* Light yellow for warning/info */
-            border: 1px solid #ffeeba;
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 20px;
-            text-align: center;
-            font-weight: bold;
-            color: #856404;
-        }
-        .debit-summary.balanced {
-            background-color: #d4edda; /* Light green for success */
-            border-color: #c3e6cb;
-            color: #155724;
-        }
-        .main-submit-btn {
-            background-color: #007bff; /* Blue */
-            color: white;
-            padding: 15px 30px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 30px;
-            font-size: 1.2em;
-            font-weight: bold;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-        }
-        .main-submit-btn:hover {
-            background-color: #0056b3;
-            transform: translateY(-2px);
-        }
-        .form-row-header {
-            display: grid;
-            grid-template-columns: 1.5fr 0.8fr 1.5fr 0.2fr;
-            gap: 15px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            padding: 0 15px;
-            color: #4a5568;
-        }
-        /* Styles pour les erreurs de formset */
-        .errorlist {
-            list-style-type: none;
-            padding: 0;
-            color: #e74c3c; /* Red */
-            font-size: 0.9em;
-            margin-top: 5px;
-            margin-bottom: 10px;
-        }
-        .errorlist li {
-            margin-bottom: 3px;
-        }
-        .debit-line .errorlist {
-            grid-column: 1 / -1; /* Error takes full width of the line */
-            text-align: left;
-            margin-left: 0;
-            padding-left: 0;
-        }
-        .has-error input, .has-error select {
-            border-color: #e74c3c !important;
-        }
+    {% block extra_head %}
+    {% endblock %}
 
-        /* Styles pour les pictogrammes / badges de catégorie, réutilisés ici */
-        .category-info-icon {
-            font-size: 0.8em;
-            margin-left: 5px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: white;
-            display: inline-block;
-            vertical-align: middle;
-            line-height: 1; /* Aligner le texte */
-        }
-        .category-info-icon.fund-managed {
-            background-color: #28a745; /* Vert pour les fonds */
-        }
-        .category-info-icon.budgeted {
-            background-color: #007bff; /* Bleu pour les budgets */
-        }
-        .category-info-icon.no-special {
-            background-color: #6c757d; /* Gris pour les autres */
-        }
-    </style>
-{% endblock %}
+    {% block content %}
+        {# h1 stylé par h1 dans _base.css #}
+        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
 
-{% block content %}
-    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
-
-    {% if original_transaction %}
-        <div class="debit-form-container">
-            <div class="original-transaction-info">
-                <h2>Transaction à Débiter des Fonds</h2>
-                <p>Date: {{ original_transaction.date|date:"d M Y" }}</p>
-                <p>Description: {{ original_transaction.description }}</p>
-                <p>Montant: <span class="amount negative">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
-                <p>Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
-            </div>
-
-            {# Affichage des messages d'erreur Django #}
-            {% if messages %}
-                <ul class="messages">
-                    {% for message in messages %}
-                        <li class="{{ message.tags }}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-
-            <form method="post" id="debitFundsForm" action="{% url 'process_fund_debit' original_transaction.id %}">
-                {% csrf_token %}
-                <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
-
-                {# Formulaire principal de FundDebitRecord (pour les notes globales par exemple) #}
-                <div class="form-field-group mb-4">
-                    <label for="{{ form.notes.id_for_label }}">Notes générales sur le débit (optionnel)</label>
-                    {{ form.notes }}
-                    {% if form.notes.errors %}<p class="text-red-500 text-xs mt-1">{{ form.notes.errors }}</p>{% endif %}
+        {% if original_transaction %}
+            <div class="debit-form-container">
+                <div class="original-transaction-info">
+                    <h2>Transaction à Débiter des Fonds</h2>
+                    <p>Date: {{ original_transaction.date|date:"d M Y" }}</p>
+                    <p>Description: {{ original_transaction.description }}</p>
+                    <p>Montant: <span class="amount negative">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
+                    <p>Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
                 </div>
 
-                <h3 class="text-lg font-semibold text-gray-700 mb-4">Lignes de Débit</h3>
+                {# Affichage des messages d'erreur Django (gérés par toast.js) #}
+                {% if messages %}
+                    <ul class="messages">
+                        {% for message in messages %}
+                            <li class="{{ message.tags }}">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
 
-                {# Management form pour le formset Django #}
-                {{ formset.management_form }} 
+                <form method="post" id="debitFundsForm" action="{% url 'process_fund_debit' original_transaction.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
 
-                <div class="form-row-header">
-                    <span>Fonds / Enveloppe</span>
-                    <span>Montant</span>
-                    <span>Notes (ligne)</span>
-                    <span></span> {# For delete button #}
-                </div>
+                    {# Formulaire principal de FundDebitRecord (pour les notes globales par exemple) #}
+                    <div class="form-field-group mb-4">
+                        <label for="{{ form.notes.id_for_label }}">Notes générales sur le débit (optionnel)</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}<p class="text-red-500 text-xs mt-1">{{ form.notes.errors }}</p>{% endif %}
+                    </div>
 
-                <div id="debit-lines-container">
-                    {% for line_form in formset %}
-                        <div class="debit-line {% if line_form.errors %}has-error{% endif %}" id="form-{{ forloop.counter0 }}">
-                            {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
-                            {% if line_form.errors %}
-                                <ul class="errorlist">
-                                    {% for field_name, errors in line_form.errors.items %}
-                                        <li>{{ line_form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
-                                    {% endfor %}
-                                    {% if line_form.non_field_errors %}
-                                        {% for error in line_form.non_field_errors %}
-                                            <li>{{ error }}</li>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Lignes de Débit</h3>
+
+                    {# Management form pour le formset Django #}
+                    {{ formset.management_form }}
+
+                    {# .form-row-header est stylé dans pages/_debit_funds.css #}
+                    <div class="form-row-header">
+                        <span>Fonds / Enveloppe</span>
+                        <span>Montant</span>
+                        <span>Notes (ligne)</span>
+                        <span></span> {# For delete button #}
+                    </div>
+
+                    <div id="debit-lines-container">
+                        {% for line_form in formset %}
+                            <div class="debit-line {% if line_form.errors %}has-error{% endif %}" id="form-{{ forloop.counter0 }}">
+                                {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
+                                {% if line_form.errors %}
+                                    <ul class="errorlist">
+                                        {% for field_name, errors in line_form.errors.items %}
+                                            <li>{{ line_form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
                                         {% endfor %}
+                                        {% if line_form.non_field_errors %}
+                                            {% for error in line_form.non_field_errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </ul>
+                                {% endif %}
+
+                                {# Rendering form fields #}
+                                {{ line_form.id }} {# Hidden field for line form ID, needed for can_delete #}
+                                <div>
+                                    {{ line_form.category }}
+                                    {# Une icone ou un texte pour indiquer que c'est une catégorie gérée par les fonds #}
+                                    {% if line_form.category.value in fund_managed_categories %}
+                                        <span class="fund-managed-icon" title="Catégorie gérée par les fonds">🟢</span>
                                     {% endif %}
-                                </ul>
-                            {% endif %}
-
-                            {# Rendering form fields #}
-                            {{ line_form.id }} {# Hidden field for line form ID, needed for can_delete #}
-                            <div>
-                                {{ line_form.category }}
-                                {# An icon will be injected here by JS after selection #}
-                            </div>
-                            {{ line_form.amount }}
-                            {{ line_form.notes }}
-                            {% if formset.can_delete %}
-                                <div class="flex items-center justify-center">
-                                    {{ line_form.DELETE }} {# Checkbox for deletion (can be hidden via CSS) #}
-                                    <label for="{{ line_form.DELETE.id_for_label }}" class="sr-only">Supprimer</label>
-                                    <button type="button" class="delete-line-btn">X</button>
                                 </div>
-                            {% else %}
-                                <div></div> {# Empty space if no delete button #}
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
+                                {{ line_form.amount }}
+                                {{ line_form.notes }}
+                                {% if formset.can_delete %}
+                                    <div class="flex items-center justify-center">
+                                        {{ line_form.DELETE }} {# Checkbox for deletion (can be hidden via CSS) #}
+                                        <label for="{{ line_form.DELETE.id_for_label }}" class="sr-only">Supprimer</label>
+                                        <button type="button" class="delete-line-btn">X</button>
+                                    </div>
+                                {% else %}
+                                    <div></div> {# Empty space if no delete button #}
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
 
-                <button type="button" id="add-debit-line-btn" class="add-line-btn">Ajouter une ligne de débit</button>
+                    <button type="button" id="add-debit-line-btn" class="add-line-btn">Ajouter une ligne de débit</button>
 
-                <div id="debit-summary-box" class="debit-summary">
-                    Montant restant à débiter: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
-                </div>
+                    <div id="debit-summary-box" class="debit-summary">
+                        Montant restant à débiter: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
+                    </div>
 
-                <button type="submit" class="main-submit-btn">Débiter les Fonds</button>
-            </form>
-        </div>
-    {% else %}
-        <p class="text-center text-gray-700 text-lg my-10">
-            Aucune transaction de dépense à débiter des fonds. Veuillez sélectionner une transaction de type 'Dépense'
-            depuis la page <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
-        </p>
-    {% endif %}
+                    <button type="submit" class="main-submit-btn">Débiter les Fonds</button>
+                </form>
+            </div>
+        {% else %}
+            <p class="text-center text-gray-700 text-lg my-10">
+                Aucune transaction de dépense à débiter des fonds. Veuillez sélectionner une transaction de type 'Dépense'
+                depuis la page <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
+            </p>
+        {% endif %}
 
-    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-{% endblock %}
+        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    {% endblock %}
 
-{% block extra_js %}
-    {# Pass original transaction amount to JavaScript via a hidden script element #}
-    <script id="originalTransactionAmountData" type="application/json">
-        {{ original_transaction.amount|floatformat:2 }}
-    </script>
-    {# Pass fund managed categories data to JavaScript #}
-    <script id="fundManagedCategoriesData" type="application/json">
-        {{ fund_managed_categories_json|safe }}
-    </script>
+    {% block extra_js %}
+        {# Passer le montant original au JavaScript via un élément de script masqué #}
+        <script id="originalTransactionAmountData" type="application/json">
+            {{ original_transaction.amount|floatformat:2 }}
+        </script>
+        {# Passer les données des catégories gérées par les fonds au JavaScript #}
+        <script id="fundManagedCategoriesData" type="application/json">
+            {{ fund_managed_categories_json|safe }}
+        </script>
 
-    {# Link to the external JavaScript file for debiting funds #}
-    <script src="{% static 'webapp/js/debit_funds.js' %}"></script>
-{% endblock %}
+        {# Lien vers le fichier JavaScript externe #}
+        <script src="{% static 'webapp/js/debit_funds.js' %}"></script>
+    {% endblock %}
+    

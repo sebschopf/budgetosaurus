@@ -1,139 +1,73 @@
-{# webapp/templates/webapp/glossary.html #}
-{% extends 'webapp/base.html' %}
+    {# webapp/templates/webapp/glossary.html #}
+    {% extends 'webapp/base.html' %}
 
-{% block title %}Glossaire - Budgetosaurus{% endblock %}
+    {% block title %}Glossaire - Budgetosaurus{% endblock %}
 
-{% block extra_head %}
-    <style>
-        .glossary-item {
-            background-color: #fcfcfc; /* Un blanc légèrement plus doux */
-            border-left: 6px solid #4f46e5; /* Un bleu indigo plus prononcé */
-            padding: 25px; /* Augmenter le padding */
-            margin-bottom: 30px; /* Augmenter l'espace entre les éléments */
-            border-radius: 12px; /* Coins plus arrondis */
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08); /* Ombre plus douce */
-            transition: transform 0.2s ease-in-out; /* Effet de survol */
-        }
-        .glossary-item:hover {
-            transform: translateY(-3px); /* Légère élévation au survol */
-        }
-        .glossary-item h2 {
-            color: #1a202c; /* Couleur de texte plus foncée pour le titre */
-            margin-top: 0;
-            margin-bottom: 15px; /* Plus d'espace sous le titre */
-            font-size: 1.8em; /* Taille de police légèrement augmentée */
-            font-weight: 700; /* Plus gras */
-            border-bottom: none; /* Supprime la bordure des h2 dans les items */
-            padding-bottom: 0;
-        }
-        .glossary-item p {
-            line-height: 1.8; /* Augmenter l'interligne pour aérer */
-            color: #4a5568; /* Couleur de texte plus douce */
-            margin-bottom: 15px; /* Espace sous les paragraphes */
-            font-size: 1.05em; /* Légèrement plus grand */
-        }
-        .glossary-item p:last-child {
-            margin-bottom: 0; /* Pas de marge en bas du dernier paragraphe */
-        }
-        .glossary-item strong {
-            color: #2d3748; /* Couleur de texte plus foncée pour le gras */
-        }
-        .glossary-item em { /* Pour les analogies */
-            display: block; /* Séparer l'analogie sur une nouvelle ligne */
-            margin-top: 15px; /* Plus d'espace au-dessus */
-            padding-top: 10px;
-            border-top: 1px dashed #cbd5e0; /* Petite bordure pour la séparer */
-            font-style: normal; /* Retirer l'italique par défaut de <em> */
-            color: #5a67d8; /* Couleur distincte pour l'analogie */
-            font-weight: 500;
-        }
+    {% block extra_head %}
+    {% endblock %}
 
-        .back-link { 
-            display: block; 
-            text-align: center; 
-            margin-top: 40px; /* Plus d'espace */
-            color: #4f46e5; /* Couleur en accord avec la nav bar */
-            text-decoration: none; 
-            font-weight: bold;
-            font-size: 1.1em;
-            padding: 10px 20px;
-            border: 2px solid #4f46e5;
-            border-radius: 8px;
-            max-width: 300px;
-            margin-left: auto;
-            margin-right: auto;
-            transition: all 0.3s ease;
-        }
-        .back-link:hover { 
-            background-color: #4f46e5; 
-            color: white; 
-            text-decoration: none; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-        }
-    </style>
-{% endblock %}
+    {% block content %}
+        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Glossaire des Concepts</h1>
+        <p class="text-center text-gray-700 text-lg mb-10">Comprenez les termes clés de votre application de gestion budgétaire.</p>
 
-{% block content %}
-    <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Glossaire des Concepts</h1>
-    <p class="text-center text-gray-700 text-lg mb-10">Comprenez les termes clés de votre application de gestion budgétaire.</p>
+        <div class="glossary-item">
+            <h2>Compte (Account)</h2>
+            <p>Un <strong>Compte</strong> représente un lieu physique ou logique où votre argent est détenu. Il peut s'agir d'un compte bancaire courant, d'un compte d'épargne, d'une carte de crédit, ou même d'une caisse d'espèces. Chaque compte a un solde réel qui est affecté par les transactions.</p>
+            <em>Analogie : C'est le tiroir ou le portefeuille où se trouve l'argent.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Compte (Account)</h2>
-        <p>Un <strong>Compte</strong> représente un lieu physique ou logique où votre argent est détenu. Il peut s'agir d'un compte bancaire courant, d'un compte d'épargne, d'une carte de crédit, ou même d'une caisse d'espèces. Chaque compte a un solde réel qui est affecté par les transactions.</p>
-        <em>Analogie : C'est le tiroir ou le portefeuille où se trouve l'argent.</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Catégorie (Category)</h2>
+            <p>Une <strong>Catégorie</strong> est une étiquette descriptive qui classe la nature d'une transaction. Elle répond à la question "À quoi sert cet argent ?" (pour une dépense) ou "D'où vient cet argent ?" (pour un revenu). Les catégories peuvent être hiérarchiques (par exemple, "Dépenses Fixes" > "Loyer").</p>
+            <p>Les catégories sont au cœur de votre gestion financière, car elles peuvent être associées à des <strong>Fonds</strong>, faire partie d'un <strong>Budget</strong>, ou être liées à un <strong>Objectif d'Épargne</strong>. Leur statut est indiqué par des <strong>tags visuels (flags)</strong> à côté de leur nom dans les menus déroulants.</p>
+            <em>Analogie : C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Catégorie (Category)</h2>
-        <p>Une <strong>Catégorie</strong> est une étiquette descriptive qui classe la nature d'une transaction. Elle répond à la question "À quoi sert cet argent ?" (pour une dépense) ou "D'où vient cet argent ?" (pour un revenu). Les catégories peuvent être hiérarchiques (par exemple, "Dépenses Fixes" > "Loyer").</p>
-        <p>Les catégories sont au cœur de votre gestion financière, car elles peuvent être associées à des <strong>Fonds</strong>, faire partie d'un <strong>Budget</strong>, ou être liées à un <strong>Objectif d'Épargne</strong>. Leur statut est indiqué par des <strong>tags visuels (flags)</strong> à côté de leur nom dans les menus déroulants.</p>
-        <em>Analogie : C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Transaction</h2>
+            <p>Une <strong>Transaction</strong> est un enregistrement d'un mouvement d'argent. Chaque transaction est liée à une date, une description, un montant, un compte et une catégorie. Elle peut être de différents types :</p>
+            <ul>
+                <li><strong>Revenu (IN) :</strong> Représente de l'argent entrant sur votre compte. C'est utilisé pour votre salaire, des remboursements reçus, des intérêts, etc.</li>
+                <li><strong>Dépense (OUT) :</strong> Représente de l'argent sortant de votre compte. C'est utilisé pour vos achats, factures, retraits, etc.</li>
+                <li><strong>Transfert (TRF) :</strong> Représente un mouvement d'argent entre deux de vos propres comptes (par exemple, d'un compte courant à un compte d'épargne). Ce type est important pour éviter de compter deux fois l'argent dans vos totaux de revenus/dépenses, car il ne s'agit pas d'un vrai revenu ou d'une vraie dépense, mais d'un simple déplacement.</li>
+            </ul>
+            <p>Il est crucial de choisir le bon type de transaction pour que vos récapitulatifs financiers soient précis.</p>
+            <em>Analogie : C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Transaction</h2>
-        <p>Une <strong>Transaction</strong> est un enregistrement d'un mouvement d'argent. Chaque transaction est liée à une date, une description, un montant, un compte et une catégorie. Elle peut être de différents types :</p>
-        <ul>
-            <li><strong>Revenu (IN) :</strong> Représente de l'argent entrant sur votre compte. C'est utilisé pour votre salaire, des remboursements reçus, des intérêts, etc.</li>
-            <li><strong>Dépense (OUT) :</strong> Représente de l'argent sortant de votre compte. C'est utilisé pour vos achats, factures, retraits, etc.</li>
-            <li><strong>Transfert (TRF) :</strong> Représente un mouvement d'argent entre deux de vos propres comptes (par exemple, d'un compte courant à un compte d'épargne). Ce type est important pour éviter de compter deux fois l'argent dans vos totaux de revenus/dépenses, car il ne s'agit pas d'un vrai revenu ou d'une vraie dépense, mais d'un simple déplacement.</li>
-        </ul>
-        <p>Il est crucial de choisir le bon type de transaction pour que vos récapitulatifs financiers soient précis.</p>
-        <em>Analogie : C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Budget (Planification)</h2>
+            <p>Un <strong>Budget</strong> est un montant que vous <strong>prévoyez</strong> de ne pas dépasser pour une catégorie donnée sur une période spécifique (par exemple, mensuelle ou annuelle). C'est une <strong>cible</strong> ou une <strong>limite</strong> que vous vous fixez pour vos dépenses. Une catégorie est "budgétisée" si un budget lui est associé, et est identifiée par un tag visuel de couleur **Bleu** dans les menus déroulants.</p>
+            <em>Analogie : C'est la limite que vous vous fixez pour la quantité d'argent que vous allez dépenser pour le "carburant" ce mois-ci.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Budget (Planification)</h2>
-        <p>Un <strong>Budget</strong> est un montant que vous <strong>prévoyez</strong> de ne pas dépasser pour une catégorie donnée sur une période spécifique (par exemple, mensuelle ou annuelle). C'est une <strong>cible</strong> ou une <strong>limite</strong> que vous vous fixez pour vos dépenses. Une catégorie est "budgétisée" si un budget lui est associé, et est identifiée par un tag visuel de couleur **Bleu** dans les menus déroulants.</p>
-        <em>Analogie : C'est la limite que vous vous fixez pour la quantité d'argent que vous allez dépenser pour le "carburant" ce mois-ci.</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Fonds (Provision)</h2>
+            <p>Un <strong>Fonds</strong> représente une "enveloppe" budgétaire virtuelle pour une catégorie spécifique, dont le solde est <strong>cumulatif</strong> et <strong>automatiquement ajusté</strong> par les transactions qui lui sont associées.</p>
+            <p>Ce concept est utile si vous souhaitez <strong>mettre de côté de l'argent</strong> pour des dépenses futures ou gérer un solde roulant pour certains objectifs (par exemple, "Fonds Vacances", "Fonds Impôts"). Une catégorie est dite "gérant un fonds" si elle est configurée pour ce suivi de provision, et est identifiée par un tag visuel de couleur **Verte** dans les menus déroulants.</p>
+            <p>Les transactions d'une catégorie qui ne gère pas de fonds impacteront uniquement le "Récapitulatif Mensuel par Catégorie" et le solde de votre compte, sans ajuster un fonds dédié.</p>
+            <em>Analogie : C'est une tirelire dédiée à un objectif spécifique (ex: "Vacances"). Vous y ajoutez de l'argent (revenus, allocations) et en retirez (dépenses). Le solde de la tirelire vous indique combien il reste pour cet objectif.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Fonds (Provision)</h2>
-        <p>Un <strong>Fonds</strong> représente une "enveloppe" budgétaire virtuelle pour une catégorie spécifique, dont le solde est <strong>cumulatif</strong> et <strong>automatiquement ajusté</strong> par les transactions qui lui sont associées.</p>
-        <p>Ce concept est utile si vous souhaitez <strong>mettre de côté de l'argent</strong> pour des dépenses futures ou gérer un solde roulant pour certains objectifs (par exemple, "Fonds Vacances", "Fonds Impôts"). Une catégorie est dite "gérant un fonds" si elle est configurée pour ce suivi de provision, et est identifiée par un tag visuel de couleur **Verte** dans les menus déroulants.</p>
-        <p>Les transactions d'une catégorie qui ne gère pas de fonds impacteront uniquement le "Récapitulatif Mensuel par Catégorie" et le solde de votre compte, sans ajuster un fonds dédié.</p>
-        <em>Analogie : C'est une tirelire dédiée à un objectif spécifique (ex: "Vacances"). Vous y ajoutez de l'argent (revenus, allocations) et en retirez (dépenses). Le solde de la tirelire vous indique combien il reste pour cet objectif.</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Objectif d'Épargne (SavingGoal)</h2>
+            <p>Un <strong>Objectif d'Épargne</strong> est un montant spécifique que vous <strong>voulez accumuler</strong> d'ici une certaine date pour un but précis (par exemple, acheter une voiture, payer un acompte pour une maison). Il s'agit d'un objectif à long terme pour une dépense importante et souvent non récurrente.</p>
+            <p>Une catégorie est "liée à un objectif" si elle est associée à un objectif d'épargne actif, et est identifiée par un tag visuel de couleur **Orange/Jaune** dans les menus déroulants.</p>
+            <em>Analogie : C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture, et vous y contribuez de diverses manières.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Objectif d'Épargne (SavingGoal)</h2>
-        <p>Un <strong>Objectif d'Épargne</strong> est un montant spécifique que vous <strong>voulez accumuler</strong> d'ici une certaine date pour un but précis (par exemple, acheter une voiture, payer un acompte pour une maison). Il s'agit d'un objectif à long terme pour une dépense importante et souvent non récurrente.</p>
-        <p>Une catégorie est "liée à un objectif" si elle est associée à un objectif d'épargne actif, et est identifiée par un tag visuel de couleur **Orange/Jaune** dans les menus déroulants.</p>
-        <em>Analogie : C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture, et vous y contribuez de diverses manières.</em>
-    </div>
+        <div class="glossary-item">
+            <h2>Tag / Flag (Indicateur Visuel de Catégorie)</h2>
+            <p>Les <strong>Tags / Flags</strong> sont de petits badges colorés qui apparaissent à côté du nom des catégories dans les menus déroulants. Ils servent d'indicateurs visuels rapides pour vous informer de la nature ou de l'impact particulier de la catégorie sélectionnée :</p>
+            <ul>
+                <li><strong><span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Fonds</span> (Vert) :</strong> Indique que la catégorie gère une provision ou une "enveloppe" budgétaire cumulative.</li>
+                <li><strong><span style="background-color: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Budget</span> (Bleu) :</strong> Indique que la catégorie est associée à un budget planifié.</li>
+                <li><strong><span style="background-color: #ffc107; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Objectif</span> (Orange/Jaune) :</strong> Indique que la catégorie est liée à un objectif d'épargne spécifique.</li>
+            </ul>
+            <p>Une catégorie peut avoir plusieurs de ces tags si elle répond à plusieurs critères (par exemple, une catégorie peut être à la fois un "Fonds" et avoir un "Budget" si vous planifiez d'y verser un certain montant chaque mois).</p>
+            <em>Analogie : Ce sont comme de petits autocollants de couleur sur vos étiquettes de tiroir qui vous donnent des informations supplémentaires d'un coup d'œil.</em>
+        </div>
 
-    <div class="glossary-item">
-        <h2>Tag / Flag (Indicateur Visuel de Catégorie)</h2>
-        <p>Les <strong>Tags / Flags</strong> sont de petits badges colorés qui apparaissent à côté du nom des catégories dans les menus déroulants. Ils servent d'indicateurs visuels rapides pour vous informer de la nature ou de l'impact particulier de la catégorie sélectionnée :</p>
-        <ul>
-            <li><strong><span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Fonds</span> (Vert) :</strong> Indique que la catégorie gère une provision ou une "enveloppe" budgétaire cumulative.</li>
-            <li><strong><span style="background-color: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Budget</span> (Bleu) :</strong> Indique que la catégorie est associée à un budget planifié.</li>
-            <li><strong><span style="background-color: #ffc107; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Objectif</span> (Orange/Jaune) :</strong> Indique que la catégorie est liée à un objectif d'épargne spécifique.</li>
-        </ul>
-        <p>Une catégorie peut avoir plusieurs de ces tags si elle répond à plusieurs critères (par exemple, une catégorie peut être à la fois un "Fonds" et avoir un "Budget" si vous planifiez d'y verser un certain montant chaque mois).</p>
-        <em>Analogie : Ce sont comme de petits autocollants de couleur sur vos étiquettes de tiroir qui vous donnent des informations supplémentaires d'un coup d'œil.</em>
-    </div>
-
-    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-{% endblock %}
+        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    {% endblock %}
+    

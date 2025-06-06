@@ -1,155 +1,45 @@
-{# webapp/templates/webapp/base.html #}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Mon Budget Personnel{% endblock %} - Budgetosaurus</title>
-    <!-- Tailwind CSS CDN pour un style moderne et réactif -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter pour une typographie moderne -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    {# NOUVEAU : Lien vers toast.css pour le style des notifications #}
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'webapp/css/toast.css' %}">
-    <style>
-        /* Styles de base pour la police et l'arrière-plan */
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f3f4f6; /* gray-100 */
-            color: #333; 
-            min-height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-        }
-        /* Styles des messages Django statiques (seront masqués si JS est actif) */
-        .messages {
-            list-style: none;
-            padding: 0;
-            margin-bottom: 1rem;
-            display: none; /* Masque l'ancienne liste de messages si JavaScript est actif */
-        }
-        .messages li {
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.5rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-        }
-        .messages .success { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; } /* green-100, green-800, green-400 */
-        .messages .error { background-color: #fee2e2; color: #991b1b; border: 1px solid #ef4444; } /* red-100, red-800, red-500 */
-        .messages .info { background-color: #dbeafe; color: #1e40af; border: 1px solid #60a5fa; } /* blue-100, blue-800, blue-400 */
-        .messages .warning { background-color: #fffbeb; color: #92400e; border: 1px solid #fbbf24; } /* amber-100, amber-800, amber-400 */
+    {# webapp/templates/webapp/base.html #}
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}Mon Budget Personnel{% endblock %} - Budgetosaurus</title>
+        <!-- Tailwind CSS CDN pour un style moderne et réactif -->
+        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Google Fonts: Inter pour une typographie moderne -->
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        {# Lien vers le fichier CSS principal centralisé #}
+        {% load static %}
+        <link rel="stylesheet" href="{% static 'webapp/css/main.css' %}">
+        {% block extra_head %}{% endblock %}
+    </head>
+    <body>
+        {# Inclure la barre de navigation #}
+        {% include 'webapp/includes/navbar.html' %}
 
-        /* Styles pour les groupes de champs de formulaire */
-        .form-field-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #4a5568; /* gray-700 */
-        }
-        /* Styles pour les champs input et select */
-        .form-field-group input[type="text"],
-        .form-field-group input[type="number"],
-        .form-field-group input[type="date"],
-        .form-field-group input[type="file"],
-        .form-field-group select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #cbd5e0; /* gray-300 */
-            border-radius: 0.375rem; /* rounded-md */
-            font-size: 1em;
-            box-sizing: border-box;
-        }
-        /* Styles du bouton de soumission */
-        .form-field-group button {
-            background-color: #28a745; /* Vert par défaut pour les boutons de soumission */
-            color: white;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease;
-        }
-        .form-field-group button:hover {
-            background-color: #218838;
-        }
-        /* Styles pour les listes d'erreurs de formulaire */
-        .errorlist {
-            color: #e74c3c; /* red-500 */
-            margin-bottom: 10px;
-            list-style-type: none;
-            padding: 0;
-        }
-        /* Styles spécifiques pour les boutons de date (si inclus dans base.html) */
-        .date-quick-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: -10px;
-            margin-bottom: 15px;
-        }
-        .date-quick-buttons button {
-            background-color: #60a5fa; /* blue-400 */
-            color: white;
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .date-quick-buttons button:hover {
-            background-color: #3b82f6; /* blue-500 */
-        }
-        /* DÉBUT DES STYLES POUR LES PICTOGRAMMES / BADGES DE CATÉGORIE */
-        .category-info-icon {
-            font-size: 0.8em;
-            margin-left: 5px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            color: white;
-            display: inline-block;
-            vertical-align: middle;
-            line-height: 1; /* Aligner le texte */
-        }
-        .category-info-icon.fund-managed {
-            background-color: #28a745; /* Vert pour les fonds */
-        }
-        .category-info-icon.budgeted {
-            background-color: #007bff; /* Bleu pour les budgets */
-        }
-        .category-info-icon.goal-linked { /* Style pour les objectifs */
-            background-color: #ffc107; /* Jaune/Orange pour les objectifs */
-        }
-        /* FIN DES STYLES POUR LES PICTOGRAMMES / BADGES DE CATÉGORIE */
-    </style>
-    {% block extra_head %}{% endblock %}
-</head>
-<body>
-    {# Inclure la barre de navigation #}
-    {% include 'webapp/includes/navbar.html' %}
+        {# Utilisation de la classe 'container' définie dans _base.css. #}
+        {# Les classes Tailwind 'my-5 p-6 bg-white rounded-lg shadow-md flex-grow' sont maintenant gérées par la classe '.container' dans _base.css. #}
+        <div class="container">
+            {# Passe les messages Django au JavaScript pour l'affichage des toasts #}
+            {% if messages %}
+            <script id="django-messages" type="application/json">
+                [
+                    {% for message in messages %}
+                    {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            </script>
+            {% endif %}
 
-    {# MODIFIÉ: Agrandir la largeur maximale du conteneur pour donner plus de place au tableau #}
-    <div class="container mx-auto max-w-6xl my-5 p-6 bg-white rounded-lg shadow-md flex-grow">
-        {# NOUVEAU : Passe les messages Django au JavaScript pour l'affichage des toasts #}
-        {% if messages %}
-        <script id="django-messages" type="application/json">
-            [
-                {% for message in messages %}
-                {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ]
-        </script>
-        {% endif %}
+            {% block content %}
+                {# Le contenu spécifique de chaque page ira ici #}
+            {% endblock %}
+        </div>
 
-        {% block content %}
-            {# Le contenu spécifique de chaque page ira ici #}
-        {% endblock %}
-    </div>
-
-    {# NOUVEAU : Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
-    <script src="{% static 'webapp/js/toast.js' %}"></script>
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+        {# Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
+        <script src="{% static 'webapp/js/toast.js' %}"></script>
+        {% block extra_js %}{% endblock %}
+    </body>
+    </html>
+    

@@ -1,3 +1,5 @@
+// webapp/static/webapp/js/dashboard_scripts.js
+
 document.addEventListener('DOMContentLoaded', function() {
     const categorySelect = document.getElementById('id_category');
     const subcategorySelect = document.getElementById('id_subcategory');
@@ -22,27 +24,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const allCategories = JSON.parse(document.getElementById('allCategoriesData').textContent);
     const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData').textContent);
 
-    /**
-     * Ajoute un pictogramme/badge à côté d'un nom de catégorie.
-     * NOTE IMPORTANTE: Le HTML à l'intérieur des balises <option> est souvent ignoré ou mal rendu par les navigateurs.
-     * Cette fonction est conservée pour la clarté du code et pour les "data-" attributs, mais l'affichage réel des badges
-     * à côté du champ sélectionné est géré par `updateCategoryIconDisplay` en dehors de l'élément <select>.
-     * @param {string} categoryName Le nom de la catégorie.
-     * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
-     * @param {boolean} isBudgeted Indique si la catégorie est associée à un budget.
-     * @param {boolean} isGoalLinked Indique si la catégorie est liée à un objectif d'épargne.
-     * @returns {string} Le HTML du nom de catégorie avec le pictogramme. (Visuellement, seul le nom sera affiché dans le dropdown)
-     */
-    function formatCategoryNameWithIcon(categoryName, isFundManaged, isBudgeted, isGoalLinked) {
-        // Les navigateurs ne rendent pas correctement le HTML à l'intérieur des <option>.
-        // Nous allons juste retourner le nom de la catégorie.
-        // Les informations `isFundManaged`, `isBudgeted`, `isGoalLinked` seront stockées dans les `dataset` de l'option
-        // et utilisées par `updateCategoryIconDisplay` pour afficher les badges *à côté* du select.
-        return categoryName;
+    // Cette fonction sera supprimée :
+    /*
+    function formatCategoryNameWithIcon(categoryName, isFundManaged) {
+        // ... (code de la fonction qui sera supprimée) ...
     }
+    */
 
     /**
-     * Peuple le dropdown des catégories principales avec les icônes.
+     * Peuple le dropdown des catégories principales.
      * @param {HTMLElement} selectElement L'élément <select> à peupler.
      * @param {Array} categoriesData Les données des catégories.
      * @param {string|number|null} initialValue La valeur initiale à sélectionner.
@@ -52,9 +42,8 @@ document.addEventListener('DOMContentLoaded', function() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
-            // Le texte de l'option sera juste le nom de la catégorie
+            // MODIFIÉ : On met juste le texte, les icônes seront gérées à côté du select
             option.textContent = category.name;
-            // Les flags sont stockés dans les dataset de l'option
             option.dataset.isFundManaged = category.is_fund_managed;
             option.dataset.isBudgeted = category.is_budgeted;
             option.dataset.isGoalLinked = category.is_goal_linked;
@@ -81,9 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
             childrenOfParent.forEach(subcategory => {
                 const option = document.createElement('option');
                 option.value = subcategory.id;
-                // Le texte de l'option sera juste le nom de la catégorie
+                // MODIFIÉ : On met juste le texte
                 option.textContent = subcategory.name;
-                // Les flags sont stockés dans les dataset de l'option
                 option.dataset.isFundManaged = subcategory.is_fund_managed;
                 option.dataset.isBudgeted = subcategory.is_budgeted;
                 option.dataset.isGoalLinked = subcategory.is_goal_linked;
@@ -101,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 subcategorySelectElement.value = initialSubcategoryId;
             }
         }
-        // Mettre à jour l'icône affichée à côté du champ select
+        // Met à jour l'icône affichée à côté du champ select
         updateCategoryIconDisplay(subcategorySelectElement);
     }
 
@@ -223,6 +211,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
+    if (!categorySelect.value) { // If no main category is initially selected, hide subcategory dropdown
+        subcategoryContainer.style.display = 'none';
+    }
+
+
     loadCommonDescriptions();
 
     // --- Logique pour la suggestion de catégorisation (Fuzzy Matching) ---
@@ -247,12 +240,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.category_id) {
                         // Mettre à jour la catégorie principale
                         categorySelect.value = data.category_id;
-                        
+
                         // Charger les sous-catégories si une sous-catégorie est suggérée
                         if (data.subcategory_id) {
-                            // Stocker la sous-catégorie suggérée pour qu'elle soit sélectionnée après le chargement
                             // Pass initial subcategory value directly to populateSubcategories
-                            populateSubcategories(data.category_id, subcategorySelect, data.subcategory_id); 
+                            populateSubcategories(data.category_id, subcategorySelect, data.subcategory_id);
                         } else {
                             // Si seule une catégorie principale est suggérée, s'assurer que la sous-catégorie est vide/cachée
                             subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
@@ -305,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
     transactionCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             if (!this.checked) {
-                selectAllCheckbox.checked = false; 
+                selectAllCheckbox.checked = false;
             }
             updateDeleteButtonVisibility();
         });
@@ -313,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Gérer le bouton "Supprimer la sélection"
     deleteSelectedBtn.addEventListener('click', function(e) {
-        e.preventDefault(); 
+        e.preventDefault();
         const selectedIds = Array.from(transactionCheckboxes)
                             .filter(cb => cb.checked)
                             .map(cb => cb.value);
@@ -348,13 +340,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedIds.forEach(id => {
                         const input = document.createElement('input');
                         input.type = 'hidden';
-                        input.name = 'transaction_ids'; 
+                        input.name = 'transaction_ids';
                         input.value = id;
                         tempForm.appendChild(input);
                     });
 
                     document.body.appendChild(tempForm);
-                    tempForm.submit(); 
+                    tempForm.submit();
                 }
             }
         );

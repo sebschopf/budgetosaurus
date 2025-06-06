@@ -1,39 +1,29 @@
-{# webapp/templates/webapp/import_categories.html #}
-{% extends 'webapp/base.html' %}
+    {# webapp/templates/webapp/import_categories.html #}
+    {% extends 'webapp/base.html' %}
 
-{% block title %}Importer Catégories{% endblock %}
+    {% block title %}Importer Catégories{% endblock %}
 
-{% block extra_head %}
-    {# Styles spécifiques à cette page si nécessaire. Les styles génériques sont dans base.html #}
-    <style>
-        /* Styles spécifiques pour le conteneur du formulaire d'importation de catégories */
-        .container { max-width: 600px; } /* Ajuste la largeur du conteneur pour cette page */
-        /* Style du titre */
-        h2 { text-align: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-bottom: 20px; }
-        /* Styles pour les groupes de champs de formulaire (déjà dans base.html, mais peut être surchargé si besoin) */
-        /* Styles pour le champ de téléchargement de fichier (déjà dans base.html) */
-        /* Style pour le texte d'aide (déjà dans base.html) */
-        /* Style du lien de retour (déjà dans base.html) */
-    </style>
-{% endblock %}
+    {% block extra_head %}
+    {% endblock %}
 
-{% block content %}
-    <h2 class="text-center">Importer des Catégories</h2>
+    {% block content %}
+        {# h2 est stylé par h2 dans pages/_import_forms.css #}
+        <h2 class="text-center">Importer des Catégories</h2>
 
-    {# Les messages Django sont maintenant inclus via base.html #}
+        <form method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            {# .form-field-group est stylé dans components/_forms.css #}
+            <div class="form-field-group">
+                <label for="{{ form.csv_file.id_for_label }}">{{ form.csv_file.label }}</label>
+                {{ form.csv_file }}
+                {% if form.csv_file.errors %}<p class="text-red-500 text-xs mt-1">{{ form.csv_file.errors }}</p>{% endif %}
+                {% if form.csv_file.help_text %}<p class="helptext">{{ form.csv_file.help_text }}</p>{% endif %}
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300">
+                Importer
+            </button>
+        </form>
 
-    <form method="post" enctype="multipart/form-data" class="space-y-4">
-        {% csrf_token %}
-        <div class="form-field-group">
-            <label for="{{ form.csv_file.id_for_label }}">{{ form.csv_file.label }}</label>
-            {{ form.csv_file }}
-            {% if form.csv_file.errors %}<p class="text-red-500 text-xs mt-1">{{ form.csv_file.errors }}</p>{% endif %}
-            {% if form.csv_file.help_text %}<p class="helptext">{{ form.csv_file.help_text }}</p>{% endif %}
-        </div>
-        <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300">
-            Importer
-        </button>
-    </form>
-
-    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-{% endblock %}
+        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    {% endblock %}
+    
