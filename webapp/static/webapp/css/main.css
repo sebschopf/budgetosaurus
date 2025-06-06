@@ -1,0 +1,33 @@
+    /* webapp/static/webapp/css/main.css */
+
+    /* Import des couches de base de Tailwind CSS */
+
+    @tailwind base; 
+    @tailwind components; 
+    @tailwind utilities;
+
+    /* Import des styles modulaires */
+    @import url('base/_base.css'); /* Styles de base du site */
+
+    /* Composants réutilisables */
+    @import url('components/_forms.css'); /* Styles des formulaires */
+    @import url('components/_buttons.css'); /* Styles des boutons */
+    @import url('components/_category_icons.css'); /* Styles des badges de catégories */
+    @import url('components/_toast.css'); /* Styles des notifications toast */
+    @import url('components/_cards.css'); /* Styles des cartes */
+    @import url('components/_form_sections.css'); /* Styles des sections de formulaire */
+
+
+    /* Styles spécifiques aux pages (à créer ou compléter, ils sont importés ici) */
+    @import url('pages/_all_transactions_summary.css');
+    @import url('pages/_split_transaction.css');
+    @import url('pages/_allocate_income.css');
+    @import url('pages/_debit_funds.css');
+    @import url('pages/_budget_overview.css');
+    @import url('pages/_category_transactions_summary.css');
+    @import url('pages/_glossary.css');
+    @import url('pages/_import_forms.css');
+    @import url('pages/_recap_overview.css');
+    @import url('pages/_review_transactions.css');
+    @import url('pages/_dashboard.css');
+    
