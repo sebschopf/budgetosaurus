@@ -1,7 +1,10 @@
 {# webapp/templates/webapp/split_transaction_includes/split_form_content.html #}
+{% load webapp_filters %} {# Charge les filtres de template personnalisés #}
+
 {# Ce fichier contient le contenu principal du formulaire de division de transaction #}
 
-<form method="post" id="splitTransactionForm">
+{# MODIFIÉ: S'assurer que la méthode est POST et que l'action pointe vers la bonne URL #}
+<form method="post" id="splitTransactionForm" action="{% url 'process_split_transaction' %}">
     {% csrf_token %}
     <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
 
@@ -16,6 +19,11 @@
     </div>
 
     <div id="split-lines-container">
+        {% comment %} 
+        Les lignes de division seront générées par le JS ou pré-remplies par Django.
+        Nous conservons la boucle ici si Django repopule des erreurs, mais la logique JS
+        gérera la création initiale d'une ligne et l'ajout de la seconde.
+        {% endcomment %}
         {% for form in formset %}
             <div class="split-line {% if form.errors %}has-error{% endif %}" id="form-{{ forloop.counter0 }}">
                 {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
@@ -53,10 +61,14 @@
         {% endfor %}
     </div>
 
-    <button type="button" id="add-split-line-btn" class="add-split-btn">Ajouter une ligne de division</button>
+    {# Le bouton "Ajouter une ligne" sera masqué/géré par JS pour la logique d'ajout automatique #}
+    <button type="button" id="add-split-line-btn" class="add-split-btn hidden">Ajouter une ligne de division</button>
 
     <div id="split-summary-box" class="split-summary">
-        Montant restant à diviser: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
+        Montant restant à diviser: <span id="remaining-amount"></span> {{ original_transaction.account.currency }}
+        <p class="text-sm text-gray-600 mt-2" id="split-guidance">
+            Saisissez le montant de la première division. Une nouvelle ligne sera ajoutée automatiquement avec le solde.
+        </p>
     </div>
 
     <button type="submit" class="main-submit-btn">Diviser la Transaction</button>

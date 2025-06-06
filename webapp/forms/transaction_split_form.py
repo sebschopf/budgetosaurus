@@ -52,26 +52,31 @@ class SplitTransactionLineForm(forms.Form):
         et que la sous-catégorie, si présente, appartient bien à la catégorie principale.
         """
         cleaned_data = super().clean()
+        
         main_category = cleaned_data.get('main_category')
         subcategory = cleaned_data.get('subcategory')
 
-        if not main_category:
-            raise forms.ValidationError("Veuillez sélectionner une catégorie principale.")
+        # Initialiser final_category à None pour s'assurer que la clé existe toujours
+        final_category_object = None 
 
-        final_category = None
-
-        if subcategory:
-            # Si une sous-catégorie est sélectionnée, s'assurer qu'elle a un parent
-            # et que ce parent correspond à la main_category sélectionnée.
-            if subcategory.parent != main_category:
-                self.add_error('subcategory', "Cette sous-catégorie n'appartient pas à la catégorie principale sélectionnée.")
-            # La catégorie finale pour la transaction sera la sous-catégorie
-            final_category = subcategory
+        if main_category: # Traiter la logique seulement si une catégorie principale est sélectionnée
+            if subcategory:
+                # Si une sous-catégorie est sélectionnée, s'assurer qu'elle appartient à la catégorie principale
+                if subcategory.parent != main_category:
+                    self.add_error('subcategory', "Cette sous-catégorie n'appartient pas à la catégorie principale sélectionnée.")
+                final_category_object = subcategory
+            else:
+                # Si seule la catégorie principale est sélectionnée, c'est elle la catégorie finale.
+                final_category_object = main_category
         else:
-            # Si seule la catégorie principale est sélectionnée, c'est elle la catégorie finale.
-            final_category = main_category
+            # Si aucune catégorie principale n'est sélectionnée (malgré required=True sur le champ ModelChoiceField),
+            # nous ajoutons explicitement une erreur pour garantir la validation.
+            # Le message par défaut "This field is required" devrait déjà apparaître, mais ceci renforce.
+            if not self.errors.get('main_category'): # Évite de dupliquer les messages d'erreur
+                self.add_error('main_category', "Veuillez sélectionner une catégorie principale.")
             
-        cleaned_data['final_category'] = final_category # Ajouter la catégorie finale aux données nettoyées
+        # Assurez-vous que 'final_category' est toujours ajouté à cleaned_data, même si final_category_object est None
+        cleaned_data['final_category'] = final_category_object 
         
         return cleaned_data
 
@@ -79,4 +84,3 @@ class SplitTransactionLineForm(forms.Form):
 # extra=1 signifie qu'une ligne vide sera affichée par défaut en plus des données initiales.
 # can_delete=True ajoute une case à cocher 'delete' pour supprimer des lignes.
 SplitTransactionFormset = formset_factory(SplitTransactionLineForm, extra=1, can_delete=True)
-
