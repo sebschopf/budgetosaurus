@@ -12,4 +12,3 @@ class WebappConfig(AppConfig):
         C'est l'endroit idéal pour importer les signaux afin qu'ils soient enregistrés.
         """
         import webapp.signals # Importez vos signaux ici pour qu'ils soient connectés
-
