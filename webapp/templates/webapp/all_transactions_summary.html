@@ -4,143 +4,8 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_head %}
-    <style>
-        /* Styles spécifiques pour cette page */
-        .transactions-table-container {
-            overflow-x: auto; /* Permet le défilement horizontal sur petits écrans */
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            padding: 20px;
-            
-            /* NOUVEAU: Hauteur maximale et défilement vertical */
-            max-height: 70vh; /* Ajustez cette valeur si nécessaire (ex: 60vh, 80vh) */
-            overflow-y: auto; /* Active le défilement vertical si le contenu dépasse */
-        }
-        .transactions-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9em;
-            text-align: left;
-        }
-        .transactions-table th,
-        .transactions-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
-            vertical-align: top; /* Alignement en haut pour les descriptions */
-        }
-        .transactions-table th {
-            background-color: #f5f5f5;
-            font-weight: 600;
-            color: #555;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            position: sticky; /* NOUVEAU: Fixe l'en-tête du tableau lors du défilement */
-            top: 0;
-            z-index: 1; /* S'assure qu'il reste au-dessus du contenu défilant */
-        }
-        .transactions-table tbody tr:hover {
-            background-color: #fcfcfc;
-        }
-        .transactions-table td {
-            color: #333;
-        }
-        .amount.income {
-            color: #27ae60; /* Vert pour positif */
-            font-weight: bold;
-        }
-        .amount.expense {
-            color: #e74c3c; /* Rouge pour négatif */
-            font-weight: bold;
-        }
-        .allocated-status {
-            font-weight: bold;
-            text-align: center;
-        }
-        .allocated-true {
-            color: #28a745; /* Vert pour ventilé */
-        }
-        .allocated-false {
-            color: #999; /* Gris pour non ventilé */
-        }
-        .no-transactions-message {
-            text-align: center;
-            padding: 30px;
-            color: #777;
-            font-size: 1.1em;
-        }
-        .section-header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 10px;
-        }
-        .section-header h1 {
-            font-size: 2.2em;
-            font-weight: bold;
-            color: #34495e;
-            margin-bottom: 5px;
-        }
-
-        /* Styles pour les boutons d'action (Diviser, Ventiler, Débiter) */
-        .action-button {
-            background-color: #60a5fa; /* blue-400 */
-            color: white;
-            padding: 6px 12px;
-            border-radius: 5px;
-            font-size: 0.8em;
-            cursor: pointer;
-            text-decoration: none; /* Pour les liens */
-            display: inline-block;
-            transition: background-color 0.2s ease;
-            border: none;
-            margin-right: 5px; /* Espace entre les boutons */
-            white-space: nowrap; /* Empêche le texte de se casser */
-        }
-        .action-button:hover {
-            background-color: #3b82f6; /* blue-500 */
-        }
-        .action-button.allocate-btn {
-            background-color: #28a745; /* Vert pour allouer/ventiler */
-        }
-        .action-button.allocate-btn:hover {
-            background-color: #218838;
-        }
-        .action-button.debit-btn {
-            background-color: #e74c3c; /* Rouge pour débiter */
-        }
-        .action-button.debit-btn:hover {
-            background-color: #c0392b;
-        }
-        /* Style pour le conteneur des boutons d'action */
-        .action-buttons-cell {
-            display: flex;
-            flex-direction: column; /* NOUVEAU: Les boutons s'empilent verticalement */
-            gap: 5px; /* Espacement entre les boutons */
-            justify-content: flex-start; /* Aligner les boutons à gauche */
-            align-items: flex-start; /* Aligner les éléments au début de la ligne */
-        }
-
-        /* NOUVEAU: Styles pour la description tronquée */
-        .truncated-description {
-            white-space: nowrap; /* Empêche le texte de passer à la ligne */
-            overflow: hidden;    /* Cache ce qui dépasse */
-            text-overflow: ellipsis; /* Affiche "..." si le texte est tronqué */
-            max-width: 200px; /* Largeur maximale avant troncation, ajustez si nécessaire */
-            display: block; /* S'assure que le span prend sa propre ligne pour overflow */
-        }
-
-        .truncated-description:hover {
-            white-space: normal; /* Affiche tout le texte au survol */
-            overflow: visible;   /* Rend le contenu visible */
-            text-overflow: clip; /* Retire les points de suspension */
-            position: relative; /* Permet le z-index */
-            z-index: 10; /* Assure que le texte survolé est au-dessus */
-            background-color: #fff; /* Fond blanc pour la lisibilité */
-            padding: 2px 0; /* Petit padding pour éviter que le texte ne colle les bords */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Ombre pour mettre en évidence */
-        }
-    </style>
+{% load static %}
+<link rel="stylesheet" href="{% static 'webapp/css/all_transactions_summary_page.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -151,34 +16,39 @@
 
     {% if transactions %}
         <div class="transactions-table-container">
-            <table class="transactions-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Montant</th>
-                        <th>Catégorie</th>
-                        <th>Compte</th>
-                        <th>Type</th>
-                        <th>Ventilé</th>
-                        <th>Actions</th> {# Nouvelle colonne pour les actions #}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for transaction in transactions %}
-                        <tr>
-                            <td>{{ transaction.date|date:"d M Y" }}</td>
-                            <td><span class="truncated-description" title="{{ transaction.description }}">{{ transaction.description }}</span></td>
-                            <td class="amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">
-                                {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
-                            </td>
-                            <td>{{ transaction.category_name }}</td>
-                            <td>{{ transaction.account_name }}</td>
-                            <td>{{ transaction.get_transaction_type_display }}</td> {# Utilise get_transaction_type_display pour l'affichage #}
-                            <td class="allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
-                                {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
-                            </td>
-                            <td class="action-buttons-cell">
+            <div class="transactions-grid">
+                {# En-tête de la grille #}
+                <div class="grid-header">
+                    <div class="grid-cell">Date</div> 
+                    <div class="grid-cell">Description</div> 
+                    <div class="grid-cell">Montant</div> 
+                    <div class="grid-cell">Catégorie</div> 
+                    <div class="grid-cell">Compte</div> 
+                    <div class="grid-cell">Type</div> 
+                    <div class="grid-cell">Ventilé</div> 
+                    <div class="grid-cell">Actions</div> 
+                </div>
+
+                {# Lignes de données de la grille #}
+                {% for transaction in transactions %}
+                    <div class="grid-row">
+                        <div class="grid-cell">{{ transaction.date|date:"d M Y" }}</div>
+                        <div class="grid-cell">
+                            <span class="truncated-description-wrapper" title="{{ transaction.description }}">
+                                <span class="truncated-description-content">{{ transaction.description }}</span>
+                            </span>
+                        </div>
+                        <div class="grid-cell amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">
+                            {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
+                        </div>
+                        <div class="grid-cell">{{ transaction.category_name }}</div>
+                        <div class="grid-cell">{{ transaction.account_name }}</div>
+                        <div class="grid-cell">{{ transaction.get_transaction_type_display }}</div>
+                        <div class="grid-cell allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
+                            {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
+                        </div>
+                        <div class="grid-cell">
+                            <div class="action-buttons-wrapper">
                                 {# Bouton "Ventiler" pour les revenus des comptes communs (s'il n'est pas déjà alloué) #}
                                 {% if transaction.transaction_type == 'IN' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
                                     <a href="{% url 'allocate_income_view' transaction_id=transaction.id %}" class="action-button allocate-btn">
@@ -201,11 +71,11 @@
                                     Diviser
                                 </a>
                                 {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     {% else %}
         <p class="no-transactions-message">Aucune transaction trouvée.</p>
