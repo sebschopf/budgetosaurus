@@ -101,7 +101,7 @@
         .date-quick-buttons button:hover {
             background-color: #3b82f6; /* blue-500 */
         }
-        /* NOUVEAU: Styles pour les pictogrammes / badges de catégorie, réutilisés ici */
+        /* DÉBUT DES STYLES POUR LES PICTOGRAMMES / BADGES DE CATÉGORIE */
         .category-info-icon {
             font-size: 0.8em;
             margin-left: 5px;
@@ -119,17 +119,10 @@
         .category-info-icon.budgeted {
             background-color: #007bff; /* Bleu pour les budgets */
         }
-        .category-info-icon.goal-linked { /* NOUVEAU: Style pour les objectifs */
+        .category-info-icon.goal-linked { /* Style pour les objectifs */
             background-color: #ffc107; /* Jaune/Orange pour les objectifs */
         }
-        /* MODIFIÉ: Retiré .no-special car nous ne voulons plus de badge par défaut */
-        /* .category-info-icon.no-special {
-            background-color: #6c757d; 
-        } */
-        /* Masquer initialement les icônes dans les options du select (géré par JS) */
-        .form-field-group select option .category-info-icon {
-            display: none;
-        }
+        /* FIN DES STYLES POUR LES PICTOGRAMMES / BADGES DE CATÉGORIE */
     </style>
     {% block extra_head %}{% endblock %}
 </head>
@@ -137,7 +130,8 @@
     {# Inclure la barre de navigation #}
     {% include 'webapp/includes/navbar.html' %}
 
-    <div class="container mx-auto max-w-4xl my-5 p-6 bg-white rounded-lg shadow-md flex-grow">
+    {# MODIFIÉ: Agrandir la largeur maximale du conteneur pour donner plus de place au tableau #}
+    <div class="container mx-auto max-w-6xl my-5 p-6 bg-white rounded-lg shadow-md flex-grow">
         {# NOUVEAU : Passe les messages Django au JavaScript pour l'affichage des toasts #}
         {% if messages %}
         <script id="django-messages" type="application/json">
