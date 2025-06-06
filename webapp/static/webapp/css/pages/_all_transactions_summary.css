@@ -1,0 +1,112 @@
+/* webapp/static/webapp/css/pages/_all_transactions_summary.css */
+
+.section-header {
+    @apply text-center mb-8;
+}
+
+.section-header h1 {
+    @apply text-3xl font-bold text-gray-800 mb-2;
+}
+
+.section-header p {
+    @apply text-lg text-gray-700;
+}
+
+.transactions-table-container {
+    @apply bg-white rounded-lg shadow-md p-5 overflow-y-auto relative;
+    max-height: 70vh; /* Hauteur maximale pour le défilement vertical */
+}
+
+.transactions-grid {
+    /* Utiliser la grille CSS pour la mise en page de la table */
+    display: grid;
+    /* Définir les colonnes avec des tailles relatives ou des minmax pour la flexibilité */
+    grid-template-columns: 8% 28% 12% 15% 10% 7% 7% 13%; /* Ajustez ces pourcentages au besoin */
+    @apply text-sm text-left;
+    font-size: 0.9em; /* Si vous voulez une taille fixe au-delà de text-sm */
+}
+
+.grid-header {
+    /* Pour que les éléments de l'en-tête soient directement dans la grille parente */
+    display: contents;
+    @apply font-semibold text-gray-600 uppercase text-xs;
+    background-color: #f5f5f5; /* Couleur de fond de l'en-tête */
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.grid-header .grid-cell {
+    @apply px-4 py-3 text-center border-b border-gray-200 flex items-center justify-center;
+}
+
+/* Alignements spécifiques pour les cellules d'en-tête (surchargent le centrage général si besoin) */
+.grid-header .grid-cell:nth-child(2) { @apply justify-start; } /* Description */
+.grid-header .grid-cell:nth-child(3) { @apply justify-end; } /* Montant */
+.grid-header .grid-cell:nth-child(4) { @apply justify-start; } /* Catégorie */
+.grid-header .grid-cell:nth-child(5) { @apply justify-start; } /* Compte */
+.grid-header .grid-cell:nth-child(6) { @apply justify-start; } /* Type */
+
+.grid-row {
+    display: contents; /* Permet aux enfants d'être directement dans la grille parente */
+}
+
+.grid-row:hover .grid-cell {
+    @apply bg-gray-50; /* Effet de survol sur toute la ligne */
+}
+
+.grid-cell {
+    @apply px-4 py-3 text-gray-800 border-b border-gray-200 flex items-start; /* flex items-start pour aligner en haut */
+}
+
+/* Alignements spécifiques pour les cellules de données */
+.grid-row .grid-cell:nth-child(1) { @apply justify-start; } /* Date */
+.grid-row .grid-cell:nth-child(2) { @apply justify-start; } /* Description */
+.grid-row .grid-cell:nth-child(3) { @apply justify-end; } /* Montant */
+.grid-row .grid-cell:nth-child(4) { @apply justify-start; } /* Catégorie */
+.grid-row .grid-cell:nth-child(5) { @apply justify-start; } /* Compte */
+.grid-row .grid-cell:nth-child(6) { @apply justify-start; } /* Type */
+.grid-row .grid-cell:nth-child(7) { @apply justify-center; } /* Ventilé */
+.grid-row .grid-cell:nth-child(8) { @apply justify-center; } /* Actions */
+
+
+/* Styles spécifiques pour les montants (déjà définis dans _base.css via @apply, mais s'assurer qu'ils sont utilisés) */
+/* .amount.income { @apply text-green-600; } */
+/* .amount.expense { @apply text-red-600; } */
+
+.allocated-status {
+    @apply font-bold text-center;
+}
+.allocated-true {
+    @apply text-green-600;
+}
+.allocated-false {
+    @apply text-gray-500;
+}
+
+/* Conteneur des boutons d'action */
+.action-buttons-wrapper {
+    @apply flex flex-col gap-2 w-full items-center justify-start;
+}
+
+/* Styles pour la description tronquée */
+.truncated-description-wrapper {
+    @apply relative w-full whitespace-nowrap overflow-hidden text-ellipsis block;
+}
+
+.truncated-description-wrapper:hover .truncated-description-content {
+    @apply whitespace-normal overflow-visible text-clip absolute bg-white p-2 shadow-lg z-10 min-w-[150px] transform -translate-x-1/2 left-1/2 bottom-full pb-3;
+}
+
+/* Ajustements pour les petits écrans (responsive) */
+@media (max-width: 767px) {
+    .transactions-grid {
+        grid-template-columns: 10% 25% 15% 15% 10% 8% 8% 9%; /* Ajustez ces pourcentages au besoin */
+    }
+    .grid-cell {
+        @apply px-2 py-2 text-xs;
+    }
+    .action-button {
+        @apply px-1 py-0.5 text-[0.6rem];
+    }
+}

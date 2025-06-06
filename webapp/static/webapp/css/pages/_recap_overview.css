@@ -1,0 +1,32 @@
+    /* webapp/static/webapp/css/pages/_recap_overview.css */
+
+    /* Ce fichier contient les styles spécifiques à la page de récapitulatif des aperçus. */
+
+    /* Grille pour organiser les cartes d'aperçu */
+    .recap-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Grille adaptative */
+        gap: 25px; /* Espacement entre les cartes */
+        margin-top: 30px; /* Marge supérieure */
+    }
+    /* Les styles .recap-card (ainsi que ses h2 et p) sont définis dans components/_cards.css */
+    /* Styles spécifiques pour le lien à l'intérieur d'une carte de récapitulatif */
+    .recap-card a {
+        display: inline-block; /* Pour appliquer padding/margin */
+        background-color: #4f46e5; /* Couleur de fond (indigo) */
+        color: white; /* Texte blanc */
+        padding: 12px 25px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background-color 0.2s ease, transform 0.2s ease; /* Transitions douces */
+    }
+    .recap-card a:hover {
+        background-color: #4338ca; /* Couleur plus foncée au survol */
+        transform: scale(1.05); /* Léger agrandissement au survol */
+    }
+
+    /* Les styles .section-header et ses titres (h1, p) sont définis dans base/_base.css */
+    /* Le style .back-link est défini dans components/_buttons.css */
+    
+    

@@ -1,0 +1,11 @@
+/* webapp/static/webapp/css/components/_form_sections.css */
+
+.form-section {
+    /* Appliquer des styles de fond, de bordure, d'ombre, de padding et de marge */
+    @apply bg-white p-6 rounded-lg shadow-md my-6;
+}
+
+.form-section h2 {
+    /* Style pour les titres de section de formulaire */
+    @apply text-2xl font-semibold text-gray-700 mb-6 border-b pb-3 border-gray-200 text-center;
+}

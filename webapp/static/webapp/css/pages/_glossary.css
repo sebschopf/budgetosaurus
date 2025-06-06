@@ -1,0 +1,53 @@
+    /* webapp/static/webapp/css/pages/_glossary.css */
+
+    /* Ce fichier contient les styles spécifiques à la page du glossaire. */
+
+    /* Style d'un élément individuel du glossaire */
+    .glossary-item {
+        background-color: #fcfcfc; /* Fond blanc très clair */
+        border-left: 6px solid #4f46e5; /* Bordure gauche colorée (indigo) */
+        padding: 25px; /* Remplissage intérieur généreux */
+        margin-bottom: 30px; /* Marge inférieure */
+        border-radius: 12px; /* Coins arrondis */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08); /* Ombre douce */
+        transition: transform 0.2s ease-in-out; /* Transition pour l'effet de survol */
+    }
+    /* Effet de survol pour les éléments du glossaire */
+    .glossary-item:hover {
+        transform: translateY(-3px); /* Légère élévation au survol */
+    }
+    /* Titres (h2) à l'intérieur des éléments du glossaire */
+    .glossary-item h2 {
+        color: #1a202c; /* Couleur de texte très foncée */
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 1.8em;
+        font-weight: 700; /* Très gras */
+        border-bottom: none; /* S'assure qu'il n'y a pas de bordure héritée */
+        padding-bottom: 0;
+    }
+    /* Paragraphes à l'intérieur des éléments du glossaire */
+    .glossary-item p {
+        line-height: 1.8; /* Hauteur de ligne aérée */
+        color: #4a5568; /* Couleur de texte gris moyen */
+        margin-bottom: 15px;
+        font-size: 1.05em;
+    }
+    /* Pas de marge inférieure pour le dernier paragraphe */
+    .glossary-item p:last-child {
+        margin-bottom: 0;
+    }
+    /* Texte en gras à l'intérieur des éléments du glossaire */
+    .glossary-item strong {
+        color: #2d3748; /* Couleur de texte foncée */
+    }
+    /* Style pour les analogies (éléments <em>) */
+    .glossary-item em {
+        display: block; /* Sépare l'analogie sur une nouvelle ligne */
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px dashed #cbd5e0; /* Bordure supérieure en pointillés */
+        font-style: normal; /* Retire l'italique par défaut de <em> */
+        color: #5a67d8; /* Couleur distinctive pour l'analogie */
+        font-weight: 500;
+    }

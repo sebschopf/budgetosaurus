@@ -1,0 +1,46 @@
+/* webapp/static/webapp/css/components/_cards.css */
+
+.card {
+    /* Utilisation de @apply pour définir l'apparence de base d'une carte */
+    @apply bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out;
+    border: 1px solid #e0e0e0; /* Bordure légère */
+}
+
+.card h3 {
+    /* Style pour les titres à l'intérieur des cartes */
+    @apply text-xl font-semibold text-gray-700 mb-2;
+    border-bottom: none; /* Assurez-vous qu'il n'y a pas de bordure héritée */
+    padding-bottom: 0;
+}
+
+.card p {
+    /* Style pour les paragraphes à l'intérieur des cartes */
+    @apply text-gray-600 leading-normal;
+    margin-bottom: 0; /* Supprimer les marges par défaut si le dernier élément */
+}
+
+/* Styles spécifiques pour les paragraphes de solde dans les cartes */
+.card p.balance {
+    @apply text-2xl font-bold mt-2; /* Montant plus grand et gras */
+}
+
+/* Effets de survol (optionnel, mais ajoute une touche d'interactivité) */
+.card:hover {
+    @apply transform scale-100 shadow-lg; /* Légère augmentation de taille et ombre plus prononcée */
+}
+
+/* Styles pour les cartes de fonds dans l'aperçu du budget */
+.fund-card {
+    /* Vous pouvez ajouter des styles spécifiques pour les cartes de fonds ici si elles diffèrent */
+    @apply border-l-4; /* Exemple: une bordure latérale pour les différencier */
+}
+
+.fund-card .text-green-500 {
+    @apply border-green-500;
+}
+.fund-card .text-yellow-500 {
+    @apply border-yellow-500;
+}
+.fund-card .text-red-500 {
+    @apply border-red-500;
+}

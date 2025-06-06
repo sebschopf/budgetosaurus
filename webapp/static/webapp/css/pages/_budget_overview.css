@@ -1,0 +1,22 @@
+    /* webapp/static/webapp/css/pages/_budget_overview.css */
+
+    /* Ce fichier contient les styles spécifiques à la page d'aperçu du budget qui ne sont pas généralisés ailleurs. */
+
+    /* La classe .container est définie dans base/_base.css */
+    /* Surcharge si nécessaire pour cette page (par exemple, augmenter la largeur maximale) */
+    .container {
+        max-width: 1000px; /* Augmenter légèrement la largeur du conteneur pour cette page */
+        padding: 30px; /* Plus de padding pour aérer */
+    }
+    
+    /* Les styles pour les icônes de statut des fonds (text-green-500, etc.) sont des classes Tailwind et sont appliquées directement dans le HTML */
+
+    /* Styles pour la mise en page en grille des cartes dans cette page */
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Crée une grille adaptative avec des colonnes d'au moins 280px */
+        gap: 25px; /* Espacement plus grand entre les éléments de la grille */
+        margin-bottom: 40px; /* Marge inférieure */
+    }
+
+    

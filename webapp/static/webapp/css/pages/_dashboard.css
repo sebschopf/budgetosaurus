@@ -1,0 +1,17 @@
+    /* webapp/static/webapp/css/pages/_dashboard.css */
+
+    /* Ce fichier contient les styles spécifiques au tableau de bord. */
+
+    /* Grille pour les cartes de solde des comptes */
+    .balance-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Grille adaptative avec min 200px */
+        gap: 20px; /* Espacement entre les cartes */
+        margin-bottom: 30px; /* Marge inférieure */
+    }
+    /* Les styles .card, .card h3, .card p, .positive, .negative, .neutral sont définis dans components/_cards.css et base/_base.css */
+    /* Les styles de tableau (.transaction-amount.income/expense, .no-transactions) sont définis dans base/_base.css */
+    /* La section de formulaire (.form-section h2) est définie dans components/_form_sections.css */
+    /* Les styles des boutons de date rapide et de suppression par lot sont définis dans components/_buttons.css */
+    /* Les styles des pictogrammes de catégorie sont définis dans components/_category_icons.css */
+    

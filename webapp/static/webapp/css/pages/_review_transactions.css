@@ -1,0 +1,27 @@
+/* webapp/static/webapp/css/pages/_review_transactions.css */
+
+/* Les styles pour les tables sont maintenant largement gérés par les classes Tailwind dans le HTML. */
+/* Si des ajustements spécifiques sont encore nécessaires, utilisez @apply ici. */
+
+/* Exemple si vous voulez donner un style spécifique aux boutons d'action au-delà de .action-button */
+.action-buttons button {
+    /* @apply text-base; */
+    /* min-width: 80px; */ /* Gardez si nécessaire pour une taille minimale absolue */
+}
+
+/* Style de la modale (qui n'est pas gérée par Tailwind par défaut) */
+.modal {
+    @apply fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4;
+}
+
+.modal-content {
+    @apply bg-white rounded-lg shadow-xl p-6 relative max-w-lg w-full;
+}
+
+.modal-content h2 {
+    @apply text-2xl font-bold text-gray-800 mb-4 text-center;
+}
+
+.modal .close-button {
+    @apply absolute top-3 right-3 text-gray-500 text-3xl font-bold cursor-pointer hover:text-gray-800;
+}

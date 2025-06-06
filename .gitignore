@@ -149,6 +149,7 @@ data/
 logs/
 media/
 staticfiles/
+node_modules/
 
 # Local development
 local_settings.py

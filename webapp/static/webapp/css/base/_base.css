@@ -1,0 +1,81 @@
+/* webapp/static/webapp/css/base/_base.css */
+
+/* Styles généraux pour le corps et la typographie */
+body {
+    /* Utilisation des classes Tailwind via @apply pour la famille de polices et la couleur du texte */
+    @apply font-sans text-gray-800 bg-gray-100;
+}
+
+h1, h2, h3 {
+    /* Styles pour les titres, utilisant @apply pour aligner avec Tailwind */
+    @apply text-gray-800 font-bold mb-4;
+    text-align: center; /* Conserver le centrage si c'est un design global */
+}
+
+h1 { @apply text-3xl; }
+h2 { @apply text-2xl; }
+h3 { @apply text-xl; }
+
+p {
+    /* Styles pour les paragraphes */
+    @apply text-gray-700 leading-relaxed;
+}
+
+a {
+    /* Styles pour les liens */
+    @apply text-blue-600 hover:underline transition-colors duration-200;
+}
+
+/* Styles pour les montants (positifs/négatifs) */
+.amount {
+    /* Appliquer les classes Tailwind pour la taille de police et la graisse */
+    @apply font-bold;
+}
+
+.amount.positive, .income {
+    /* Utiliser @apply pour les couleurs positives (vert) */
+    @apply text-green-600; /* Utilisez une teinte qui vous convient, ex: 500, 600, 700 */
+}
+
+.amount.negative, .expense {
+    /* Utiliser @apply pour les couleurs négatives (rouge) */
+    @apply text-red-600; /* Utilisez une teinte qui vous convient */
+}
+
+/* Container principal du site - Définition de ses styles avec @apply */
+.container {
+    @apply max-w-7xl mx-auto my-5 p-6 bg-white rounded-lg shadow-md flex-grow;
+    min-height: calc(100vh - 100px); /* Ajustez selon la hauteur de votre navbar/footer */
+    display: flex; /* Pour que le contenu à l'intérieur s'étire */
+    flex-direction: column;
+}
+
+/* Lien de retour */
+.back-link {
+    @apply block text-center mt-8 text-blue-600 hover:underline transition duration-200;
+}
+
+/* Messages Django (flash messages) */
+.messages {
+    @apply list-none p-0 my-4;
+}
+
+.messages li {
+    @apply p-3 mb-2 rounded-md font-semibold;
+}
+
+.messages li.success {
+    @apply bg-green-100 border border-green-400 text-green-700;
+}
+
+.messages li.error {
+    @apply bg-red-100 border border-red-400 text-red-700;
+}
+
+.messages li.info {
+    @apply bg-blue-100 border border-blue-400 text-blue-700;
+}
+
+.messages li.warning {
+    @apply bg-yellow-100 border border-yellow-400 text-yellow-700;
+}

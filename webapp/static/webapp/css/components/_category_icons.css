@@ -1,0 +1,22 @@
+/* webapp/static/webapp/css/components/_category_icons.css */
+
+.category-info-icon {
+    /* Styles de base pour toutes les icônes de catégorie */
+    @apply text-xs font-bold px-2 py-1 rounded-md text-white inline-block ml-2 align-middle;
+    line-height: 1; /* Assure un bon alignement vertical */
+}
+
+.category-info-icon.fund-managed {
+    /* Vert pour les fonds gérés */
+    @apply bg-green-500;
+}
+
+.category-info-icon.budgeted {
+    /* Bleu pour les catégories budgétisées */
+    @apply bg-blue-500;
+}
+
+.category-info-icon.goal-linked {
+    /* Orange/Jaune pour les objectifs d'épargne */
+    @apply bg-yellow-500;
+}
