@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
     /**
      * La fonction pour remplir les catégories principales dans le sélecteur.
      * @param {HTMLElement} selectElement The <select> élément pour les catégories principales.
-     * @param {Array} categoriesData Données des catégories principales à afficher.
+     * @param {Array} categoriesData Les données des catégories.
      * @param {string|number|null} initialValue Valeur initiale à pré-sélectionner, si disponible.
      */
     function populateMainCategories(selectElement, categoriesData, initialValue = null) {
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selectedOption && selectedOption.value) {
             const isFundManaged = selectedOption.dataset.isFundManaged === 'true';
             const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
-            const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true'; // RÉCUPÉRÉ: Info is_goal_linked
+            const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true'; 
             
             const parentNode = selectElement.parentNode;
 
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isBudgeted) {
                 parentNode.insertBefore(createCategoryBadge('Budget', 'budgeted'), selectElement.nextSibling);
             }
-            if (isGoalLinked) { // Badge pour objectif
+            if (isGoalLinked) { 
                 parentNode.insertBefore(createCategoryBadge('Objectif', 'goal-linked'), selectElement.nextSibling);
             }
             // Si aucune des conditions n'est vraie, aucun badge n'est ajouté.
@@ -162,8 +162,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         div.innerHTML = `
             <input type="hidden" name="${formPrefix}-${newFormIndex}-id" id="id_${formPrefix}-${newFormIndex}-id">
-            <input type="text" name="${formPrefix}-${newFormIndex}-description" id="id_${formPrefix}-${newFormIndex}-description" placeholder="Description" required>
-            <input type="number" name="${formPrefix}-${newFormIndex}-amount" id="id_${formPrefix}-${newFormIndex}-amount" step="0.01" placeholder="Montant" required>
+            <input type="text" name="${formPrefix}-${newFormIndex}-description" id="id_${formPrefix}-${newFormIndex}-description" placeholder="Description" required class="p-2 border rounded-md w-full">
+            <input type="number" name="${formPrefix}-${newFormIndex}-amount" id="id_${formPrefix}-${newFormIndex}-amount" step="0.01" placeholder="Montant" required class="p-2 border rounded-md w-full">
             <div>
                 <select name="${formPrefix}-${newFormIndex}-main_category" id="id_${formPrefix}-${newFormIndex}-main_category" class="p-2 border rounded-md w-full split-category-main" required>
                     <option value="">Sélectionner Catégorie Principale</option>
@@ -358,6 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (isLastLineFilled && !nextLineIsActive) {
                 const newSplitLine = createSplitLine({
+                    description: originalDescription, // Pré-remplir la description avec l'originale
                     amount: currentRemaining.toFixed(2) 
                 });
                 if (newSplitLine) { 
@@ -366,7 +367,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (isLastLineFilled && nextLineIsActive) {
                 // Si la dernière ligne est remplie, il reste du montant, et la ligne suivante existe et est active,
                 // alors on met à jour le montant de cette ligne suivante avec le restant.
-                nextLineElement.querySelector('input[name$="-amount"]').value = currentRemaining.toFixed(2);
+                const nextLineAmountInput = nextLineElement.querySelector('input[name$="-amount"]');
+                if (nextLineAmountInput) {
+                    nextLineAmountInput.value = currentRemaining.toFixed(2);
+                }
             }
         }
     }

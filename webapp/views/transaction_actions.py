@@ -4,8 +4,9 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 import json
+from datetime import date # Importez date
 
-from webapp.models import Transaction, Category # Importez les modèles nécessaires
+from webapp.models import Transaction, Category, Budget, SavingGoal # Importez Budget et SavingGoal
 from webapp.forms import TransactionForm # Importez le formulaire
 from webapp.services import TransactionService # Importez le service
 
@@ -44,18 +45,48 @@ def get_transaction_form_for_edit(request, transaction_id):
     all_categories_data = []
     all_subcategories_data = []
 
+    current_year = date.today().year
+    current_month = date.today().month
+    # IDs des catégories budgétées pour le mois et l'année en cours
+    budgeted_category_ids_for_current_period = set(
+        Budget.objects.filter(
+            period_type='M', 
+            start_date__year=current_year,
+            start_date__month=current_month
+        ).values_list('category__id', flat=True)
+    )
+
+    # NOUVEAU: Préparez un ensemble des IDs de catégories liées à des objectifs d'épargne
+    goal_linked_category_ids = set(
+        SavingGoal.objects.filter(
+            status='OU' # Seulement les objectifs ouverts/actifs
+        ).values_list('category__id', flat=True)
+    )
+
     for cat in Category.objects.filter(parent__isnull=True).order_by('name'):
+        is_budgeted_for_display = cat.is_budgeted 
+        is_fund_managed_for_display = cat.is_fund_managed
+        is_goal_linked_for_display = cat.id in goal_linked_category_ids
+
         all_categories_data.append({
             'id': cat.id,
             'name': cat.name,
-            'is_fund_managed': cat.is_fund_managed
+            'is_fund_managed': is_fund_managed_for_display,
+            'is_budgeted': is_budgeted_for_display,
+            'is_goal_linked': is_goal_linked_for_display
         })
         for child_cat in cat.children.all().order_by('name'):
+            child_is_budgeted_for_display = child_cat.is_budgeted
+            child_is_fund_managed_for_display = child_cat.is_fund_managed
+            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids
+
             all_subcategories_data.append({
                 'id': child_cat.id,
                 'name': child_cat.name,
                 'parent': cat.id,
-                'is_fund_managed': child_cat.is_fund_managed
+                'is_fund_managed': child_is_fund_managed_for_display,
+                'is_budgeted': child_is_budgeted_for_display,
+                'is_goal_linked': child_is_goal_linked_for_display
             })
 
     context = {
@@ -77,4 +108,3 @@ def suggest_transaction_categorization(request):
     transaction_service = TransactionService()
     suggestion = transaction_service.suggest_categorization(description)
     return JsonResponse(suggestion)
-

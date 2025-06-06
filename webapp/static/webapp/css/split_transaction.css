@@ -154,3 +154,29 @@
 .has-error input, .has-error select {
     border-color: #e74c3c !important;
 }
+
+/* Les styles suivants sont déjà dans base.html et appliqués globalement.
+   Ils sont dupliqués ici juste pour la référence
+/* .category-info-icon {
+    font-size: 0.8em;
+    margin-left: 5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: white;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+}
+.category-info-icon.fund-managed {
+    background-color: #28a745;
+}
+.category-info-icon.budgeted {
+    background-color: #007bff;
+}
+.category-info-icon.goal-linked {
+    background-color: #ffc107;
+}
+.split-line select option .category-info-icon {
+    display: none;
+} */

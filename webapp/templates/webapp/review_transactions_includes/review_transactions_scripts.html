@@ -10,25 +10,53 @@
 
         // Récupérer les données de catégorie et sous-catégorie du DOM pour la modale
         // Ces scripts sont inclus dans review_transactions.html qui n'a pas les json_script tags.
-        // Les données doivent être passées via get_transaction_form_for_edit view.
+        // Les données sont passées via la vue get_transaction_form_for_edit.
         let allCategories = [];
         let allSubcategories = [];
 
         /**
          * Ajoute un pictogramme/badge à côté d'un nom de catégorie.
+         * NOTE IMPORTANTE: Le HTML à l'intérieur des balises <option> est souvent ignoré ou mal rendu par les navigateurs.
+         * Cette fonction est conservée pour la clarté du code et pour les "data-" attributs, mais l'affichage réel des badges
+         * à côté du champ sélectionné est géré par `updateCategoryIconDisplay` en dehors de l'élément <select>.
          * @param {string} categoryName Le nom de la catégorie.
          * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
-         * @returns {string} Le HTML du nom de catégorie avec le pictogramme.
+         * @param {boolean} isBudgeted Indique si la catégorie est associée à un budget.
+         * @param {boolean} isGoalLinked Indique si la catégorie est liée à un objectif d'épargne.
+         * @returns {string} Le HTML du nom de catégorie avec le pictogramme. (Visuellement, seul le nom sera affiché dans le dropdown)
          */
-        function formatCategoryNameWithIcon(categoryName, isFundManaged) {
-            let iconClass = 'no-special'; // Default
-            let iconText = 'Autre'; // Default text for no special management
+        function formatCategoryNameWithIcon(categoryName, isFundManaged, isBudgeted, isGoalLinked) {
+            // Les navigateurs ne rendent pas correctement le HTML à l'intérieur des <option>.
+            // Nous allons juste retourner le nom de la catégorie.
+            // Les informations `isFundManaged`, `isBudgeted`, `isGoalLinked` seront stockées dans les `dataset` de l'option
+            // et utilisées par `updateCategoryIconDisplay` pour afficher les badges *à côté* du select.
+            return categoryName;
+        }
 
-            if (isFundManaged) {
-                iconClass = 'fund-managed';
-                iconText = 'Fonds';
+        /**
+         * Peuple le dropdown des catégories principales avec les icônes.
+         * @param {HTMLElement} selectElement L'élément <select> à peupler.
+         * @param {Array} categoriesData Les données des catégories.
+         * @param {string|number|null} initialValue La valeur initiale à sélectionner.
+         */
+        function populateMainCategories(selectElement, categoriesData, initialValue = null) {
+            selectElement.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
+            categoriesData.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                // Le texte de l'option sera juste le nom de la catégorie
+                option.textContent = category.name;
+                // Les flags sont stockés dans les dataset de l'option
+                option.dataset.isFundManaged = category.is_fund_managed;
+                option.dataset.isBudgeted = category.is_budgeted;
+                option.dataset.isGoalLinked = category.is_goal_linked;
+                selectElement.appendChild(option);
+            });
+            if (initialValue) {
+                selectElement.value = initialValue;
             }
-            return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
+            // Déclencher le changement pour mettre à jour les sous-catégories et l'affichage initial de l'icône
+            selectElement.dispatchEvent(new Event('change'));
         }
 
         /**
@@ -48,8 +76,12 @@
                     childrenOfParent.forEach(subcategory => {
                         const option = document.createElement('option');
                         option.value = subcategory.id;
-                        option.innerHTML = formatCategoryNameWithIcon(subcategory.name, subcategory.is_fund_managed);
+                        // Le texte de l'option sera juste le nom de la sous-catégorie
+                        option.textContent = subcategory.name;
+                        // Les flags sont stockés dans les dataset de l'option
                         option.dataset.isFundManaged = subcategory.is_fund_managed;
+                        option.dataset.isBudgeted = subcategory.is_budgeted;
+                        option.dataset.isGoalLinked = subcategory.is_goal_linked;
                         subcategorySelectElement.appendChild(option);
                     });
                     if (subcategoryContainer) subcategoryContainer.style.display = 'block';
@@ -63,35 +95,54 @@
                         subcategorySelectElement.value = initialSubcategoryId;
                     }
                 }
-                updateCategoryIconDisplay(subcategorySelectElement); // Update icon for subcategory
+                updateCategoryIconDisplay(subcategorySelectElement); // Mettre à jour l'icône pour la sous-catégorie
             } else {
                 if (subcategoryContainer) subcategoryContainer.style.display = 'none';
-                updateCategoryIconDisplay(subcategorySelectElement); // Clear icon if subcategory is hidden
+                updateCategoryIconDisplay(subcategorySelectElement); // Effacer l'icône si la sous-catégorie est masquée
             }
         }
 
         /**
-         * Affiche l'icône de la catégorie sélectionnée à côté de l'élément select.
+         * Ajoute ou met à jour les icônes d'information de la catégorie à côté de l'élément select.
+         * Permet d'afficher plusieurs badges (Fonds, Budget, Objectif).
          * @param {HTMLElement} selectElement L'élément <select> de la catégorie.
          */
         function updateCategoryIconDisplay(selectElement) {
-            let currentIcon = selectElement.nextElementSibling;
-            if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
-                currentIcon.remove();
+            // Supprimer tous les badges existants associés à ce select
+            let currentNextSibling = selectElement.nextElementSibling;
+            while (currentNextSibling && currentNextSibling.classList.contains('category-info-icon')) {
+                const temp = currentNextSibling.nextElementSibling;
+                currentNextSibling.remove();
+                currentNextSibling = temp;
             }
 
             const selectedOption = selectElement.options[selectElement.selectedIndex];
-            if (selectedOption && selectedOption.value) { // Only add if an actual category is selected
-                const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' is a string from dataset
+            if (selectedOption && selectedOption.value) { // N'ajouter que si une catégorie réelle est sélectionnée
+                const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' est une chaîne de caractères du dataset
+                const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
+                const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true';
                 
-                const iconSpan = document.createElement('span');
-                iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Format only the icon part
-                iconSpan.classList.add('category-info-icon'); // Ensure basic class
-                iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
-                iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // Text for the badge
+                const parentNode = selectElement.parentNode;
 
-                // Insert the icon right after the select element
-                selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
+                // Ajouter les badges pertinents
+                if (isFundManaged) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('category-info-icon', 'fund-managed');
+                    badge.textContent = 'Fonds';
+                    parentNode.insertBefore(badge, selectElement.nextSibling);
+                }
+                if (isBudgeted) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('category-info-icon', 'budgeted');
+                    badge.textContent = 'Budget';
+                    parentNode.insertBefore(badge, selectElement.nextSibling);
+                }
+                if (isGoalLinked) {
+                    const badge = document.createElement('span');
+                    badge.classList.add('category-info-icon', 'goal-linked');
+                    badge.textContent = 'Objectif';
+                    parentNode.insertBefore(badge, selectElement.nextSibling);
+                }
             }
         }
 
@@ -133,41 +184,29 @@
                         const modalDescriptionInput = modalFormFieldsContainer.querySelector('#id_description'); 
 
                         if (modalCategorySelect && modalSubcategorySelect) {
-                            // Populate main categories with icons
-                            // Re-populate and select the initial value in modalCategorySelect
-                            modalCategorySelect.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
-                            allCategories.forEach(category => {
-                                const option = document.createElement('option');
-                                option.value = category.id;
-                                option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
-                                option.dataset.isFundManaged = category.is_fund_managed;
-                                modalCategorySelect.appendChild(option);
-                            });
-                            // Select the initial value from the loaded form if it exists
-                            const initialModalCategoryValue = modalFormFieldsContainer.querySelector('#id_category').value;
-                            if (initialModalCategoryValue) {
-                                modalCategorySelect.value = initialModalCategoryValue;
-                            }
+                            // Peupler les catégories principales avec les icônes et sélectionner la valeur initiale
+                            const initialModalCategoryValue = modalCategorySelect.value;
+                            populateMainCategories(modalCategorySelect, allCategories, initialModalCategoryValue);
 
 
-                            const initialModalSubcategoryId = modalFormFieldsContainer.querySelector('#id_subcategory').value; 
+                            const initialModalSubcategoryId = modalSubcategorySelect.value; 
                             if (modalCategorySelect.value) {
                                 loadSubcategories(modalCategorySelect.value, modalSubcategorySelect, initialModalSubcategoryId);
                             } else {
                                 modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
                                 const subcategoryContainer = modalSubcategorySelect.closest('.form-field-group');
                                 if (subcategoryContainer) subcategoryContainer.style.display = 'none';
-                                updateCategoryIconDisplay(modalSubcategorySelect); // Clear icon if subcategory is hidden
+                                updateCategoryIconDisplay(modalSubcategorySelect); // Effacer l'icône si la sous-catégorie est masquée
                             }
 
                             modalCategorySelect.addEventListener('change', function() {
                                 loadSubcategories(this.value, modalSubcategorySelect);
-                                updateCategoryIconDisplay(this); // Update icon for main category
+                                updateCategoryIconDisplay(this); // Mettre à jour l'icône pour la catégorie principale
                             });
                             modalSubcategorySelect.addEventListener('change', function() {
-                                updateCategoryIconDisplay(this); // Update icon for subcategory
+                                updateCategoryIconDisplay(this); // Mettre à jour l'icône pour la sous-catégorie
                             });
-                            updateCategoryIconDisplay(modalCategorySelect); // Initial display for main category
+                            updateCategoryIconDisplay(modalCategorySelect); // Affichage initial pour la catégorie principale
                         }
 
                         // --- Logique de suggestion pour la modale d'édition ---
@@ -201,10 +240,10 @@
                                                     modalSubcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
                                                     const subcategoryContainer = modalSubcategorySelect.closest('.form-field-group');
                                                     if (subcategoryContainer) subcategoryContainer.style.display = 'none';
-                                                    updateCategoryIconDisplay(modalSubcategorySelect); // Clear icon if subcategory is hidden
+                                                    updateCategoryIconDisplay(modalSubcategorySelect); // Effacer l'icône si la sous-catégorie est masquée
                                                 }
 
-                                                // Update icon for main category after setting its value
+                                                // Mettre à jour l'icône pour la catégorie principale après avoir défini sa valeur
                                                 updateCategoryIconDisplay(modalCategorySelect);
 
                                                 // Mettre à jour les tags de la modale
@@ -284,18 +323,10 @@
                     const modalCategorySelect = modalFormFieldsContainer.querySelector('#id_category');
                     const modalSubcategorySelect = modalFormFieldsContainer.querySelector('#id_subcategory');
                     
-                    // Re-populate main categories with icons and select the value that was submitted
+                    // Re-peupler les catégories principales avec les icônes et sélectionner la valeur soumise
                     if (modalCategorySelect) {
-                        const currentSelectedCategory = modalCategorySelect.value; // Value already set by Django
-                        modalCategorySelect.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
-                        allCategories.forEach(category => {
-                            const option = document.createElement('option');
-                            option.value = category.id;
-                            option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
-                            option.dataset.isFundManaged = category.is_fund_managed;
-                            modalCategorySelect.appendChild(option);
-                        });
-                        modalCategorySelect.value = currentSelectedCategory; // Re-select
+                        const currentSelectedCategory = modalCategorySelect.value; // La valeur est déjà définie par Django
+                        populateMainCategories(modalCategorySelect, allCategories, currentSelectedCategory); // Utiliser populateMainCategories
 
                         const initialModalSubcategoryId = modalSubcategorySelect ? modalSubcategorySelect.value : null;
                         if (modalCategorySelect.value) {
@@ -318,7 +349,7 @@
                                 updateCategoryIconDisplay(this);
                             });
                         }
-                        updateCategoryIconDisplay(modalCategorySelect); // Initial display for main category
+                        updateCategoryIconDisplay(modalCategorySelect); // Affichage initial pour la catégorie principale
                     }
                 }
             })
@@ -337,6 +368,7 @@
             button.addEventListener('click', function() {
                 const transactionId = this.dataset.transactionId;
                 
+                // Utilisez votre fonction de modale de confirmation personnalisée
                 showConfirmationModal(
                     "Confirmer la suppression",
                     "Êtes-vous sûr de vouloir supprimer cette transaction ?",

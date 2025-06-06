@@ -5,8 +5,9 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from django.db.models import F
 import json
+from datetime import date # Importez date
 
-from webapp.models import Category, Transaction, Account # Importez les modèles nécessaires
+from webapp.models import Category, Transaction, Account, Budget, SavingGoal # Importez Budget et SavingGoal
 from webapp.forms import TransactionForm # Importez le formulaire
 from webapp.services import TransactionService # Importez le service
 
@@ -26,18 +27,50 @@ def dashboard_view(request):
     all_categories_data = []
     all_subcategories_data = []
 
-    for cat in Category.objects.filter(parent__isnull=True).order_by('name'):
+    # Filtrer uniquement les catégories parentes (sans parent)
+    categories = Category.objects.filter(parent__isnull=True).order_by('name')
+    
+    current_year = date.today().year
+    current_month = date.today().month
+    budgeted_category_ids_for_current_period = set(
+        Budget.objects.filter(
+            period_type='M', 
+            start_date__year=current_year,
+            start_date__month=current_month
+        ).values_list('category__id', flat=True)
+    )
+
+    # NOUVEAU: Préparez un ensemble des IDs de catégories liées à des objectifs d'épargne
+    goal_linked_category_ids = set(
+        SavingGoal.objects.filter(
+            status='OU' 
+        ).values_list('category__id', flat=True)
+    )
+
+    for cat in categories:
+        is_budgeted_for_display = cat.is_budgeted 
+        is_fund_managed_for_display = cat.is_fund_managed 
+        is_goal_linked_for_display = cat.id in goal_linked_category_ids 
+
         all_categories_data.append({
             'id': cat.id,
             'name': cat.name,
-            'is_fund_managed': cat.is_fund_managed
+            'is_fund_managed': is_fund_managed_for_display, 
+            'is_budgeted': is_budgeted_for_display, 
+            'is_goal_linked': is_goal_linked_for_display 
         })
         for child_cat in cat.children.all().order_by('name'):
+            child_is_budgeted_for_display = child_cat.is_budgeted 
+            child_is_fund_managed_for_display = child_cat.is_fund_managed 
+            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids 
+
             all_subcategories_data.append({
                 'id': child_cat.id,
                 'name': child_cat.name,
                 'parent': cat.id,
-                'is_fund_managed': child_cat.is_fund_managed
+                'is_fund_managed': child_is_fund_managed_for_display, 
+                'is_budgeted': child_is_budgeted_for_display, 
+                'is_goal_linked': child_is_goal_linked_for_display 
             })
     
     all_categories_data_json = json.dumps(all_categories_data)
@@ -90,18 +123,46 @@ def add_transaction_submit(request):
     all_categories_data = []
     all_subcategories_data = []
 
+    # Ajout des flags pour le re-rendu du formulaire avec erreurs
+    current_year = date.today().year
+    current_month = date.today().month
+    budgeted_category_ids_for_current_period = set(
+        Budget.objects.filter(
+            period_type='M', 
+            start_date__year=current_year,
+            start_date__month=current_month
+        ).values_list('category__id', flat=True)
+    )
+    goal_linked_category_ids = set(
+        SavingGoal.objects.filter(
+            status='OU' 
+        ).values_list('category__id', flat=True)
+    )
+
     for cat in Category.objects.filter(parent__isnull=True).order_by('name'):
+        is_budgeted_for_display = cat.is_budgeted 
+        is_fund_managed_for_display = cat.is_fund_managed 
+        is_goal_linked_for_display = cat.id in goal_linked_category_ids 
+
         all_categories_data.append({
             'id': cat.id,
             'name': cat.name,
-            'is_fund_managed': cat.is_fund_managed
+            'is_fund_managed': is_fund_managed_for_display,
+            'is_budgeted': is_budgeted_for_display,
+            'is_goal_linked': is_goal_linked_for_display
         })
         for child_cat in cat.children.all().order_by('name'):
+            child_is_budgeted_for_display = child_cat.is_budgeted 
+            child_is_fund_managed_for_display = child_cat.is_fund_managed 
+            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids 
+
             all_subcategories_data.append({
                 'id': child_cat.id,
                 'name': child_cat.name,
                 'parent': cat.id,
-                'is_fund_managed': child_cat.is_fund_managed
+                'is_fund_managed': child_is_fund_managed_for_display,
+                'is_budgeted': child_is_budgeted_for_display,
+                'is_goal_linked': child_is_goal_linked_for_display
             })
     
     context = {
@@ -119,7 +180,7 @@ def add_transaction_submit(request):
 def load_subcategories(request):
     """
     Vue AJAX pour charger les sous-catégories en fonction d'une catégorie parente sélectionnée,
-    incluant le statut is_fund_managed.
+    incluant le statut is_fund_managed, is_budgeted et is_goal_linked.
     """
     parent_id = request.GET.get('parent_category_id')
     subcategories = []
@@ -127,11 +188,28 @@ def load_subcategories(request):
         try:
             parent_category = Category.objects.get(pk=parent_id)
             children = parent_category.children.all().order_by('name')
+            
+            # Ajoutez les imports nécessaires pour Budget et SavingGoal (si non déjà importés globalement dans la vue)
+            from webapp.models import Budget, SavingGoal
+            from datetime import date
+
+            current_year = date.today().year
+            current_month = date.today().month
+            goal_linked_category_ids = set(
+                SavingGoal.objects.filter(status='OU').values_list('category__id', flat=True)
+            )
+
             for child in children:
+                is_budgeted_for_display = child.is_budgeted
+                is_fund_managed_for_display = child.is_fund_managed
+                is_goal_linked_for_display = child.id in goal_linked_category_ids
+
                 subcategories.append({
                     'id': child.id, 
                     'name': child.name, 
-                    'is_fund_managed': child.is_fund_managed
+                    'is_fund_managed': is_fund_managed_for_display,
+                    'is_budgeted': is_budgeted_for_display,
+                    'is_goal_linked': is_goal_linked_for_display
                 })
         except Category.DoesNotExist:
             pass
@@ -158,4 +236,3 @@ def get_common_descriptions(request):
     ).distinct()[:10]
 
     return JsonResponse(list(common_descriptions), safe=False)
-

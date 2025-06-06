@@ -28,19 +28,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /**
      * Ajoute une icône/badge à côté d'un nom de catégorie.
+     * NOTE IMPORTANTE: Le HTML à l'intérieur des balises <option> est souvent ignoré ou mal rendu par les navigateurs.
+     * Cette fonction est conservée pour la clarté du code et pour les "data-" attributs, mais l'affichage réel des badges
+     * à côté du champ sélectionné est géré par `updateCategoryIconDisplay` en dehors de l'élément <select>.
      * @param {string} categoryName Le nom de la catégorie.
      * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
-     * @returns {string} Le HTML du nom de catégorie avec l'icône.
+     * @param {boolean} isBudgeted Indique si la catégorie est associée à un budget.
+     * @param {boolean} isGoalLinked Indique si la catégorie est liée à un objectif d'épargne.
+     * @returns {string} Le HTML du nom de catégorie avec l'icône. (Visuellement, seul le nom sera affiché dans le dropdown)
      */
-    function formatCategoryNameWithIcon(categoryName, isFundManaged) {
-        let iconClass = 'no-special'; // Par défaut
-        let iconText = 'Autre'; // Texte par défaut pour la gestion non spéciale
-
-        if (isFundManaged) {
-            iconClass = 'fund-managed';
-            iconText = 'Fonds';
-        } 
-        return `${categoryName} <span class="category-info-icon ${iconClass}">${iconText}</span>`;
+    function formatCategoryNameWithIcon(categoryName, isFundManaged, isBudgeted, isGoalLinked) {
+        // Les navigateurs ne rendent pas correctement le HTML à l'intérieur des <option>.
+        // Nous allons juste retourner le nom de la catégorie.
+        // Les informations `isFundManaged`, `isBudgeted`, `isGoalLinked` seront stockées dans les `dataset` de l'option
+        // et utilisées par `updateCategoryIconDisplay` pour afficher les badges *à côté* du select.
+        return categoryName;
     }
 
     /**
@@ -54,8 +56,13 @@ document.addEventListener('DOMContentLoaded', function() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
-            option.innerHTML = formatCategoryNameWithIcon(category.name, category.is_fund_managed);
+            // Le texte de l'option sera juste le nom de la catégorie
+            option.textContent = category.name;
+            // Les flags sont stockés dans les dataset de l'option
             option.dataset.isFundManaged = category.is_fund_managed; // Stocker pour une utilisation ultérieure
+            // Assurez-vous que ces propriétés sont disponibles dans `fundManagedCategoriesData` si vous voulez les utiliser
+            option.dataset.isBudgeted = category.is_budgeted || false; 
+            option.dataset.isGoalLinked = category.is_goal_linked || false; 
             selectElement.appendChild(option);
         });
         if (initialValue) {
@@ -71,22 +78,39 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function updateCategoryIconDisplay(selectElement) {
         let currentIcon = selectElement.nextElementSibling;
-        if (currentIcon && currentIcon.classList.contains('category-info-icon')) {
-            currentIcon.remove();
+        while (currentNextSibling && currentNextSibling.classList.contains('category-info-icon')) {
+            const temp = currentNextSibling.nextElementSibling;
+            currentNextSibling.remove();
+            currentNextSibling = temp;
         }
 
         const selectedOption = selectElement.options[selectElement.selectedIndex];
         if (selectedOption && selectedOption.value) { // N'ajouter que si une catégorie réelle est sélectionnée
             const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' est une chaîne de caractères du dataset
+            const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
+            const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true';
             
-            const iconSpan = document.createElement('span');
-            iconSpan.innerHTML = formatCategoryNameWithIcon('', isFundManaged); // Formater uniquement la partie icône
-            iconSpan.classList.add('category-info-icon'); // S'assurer de la classe de base
-            iconSpan.classList.add(isFundManaged ? 'fund-managed' : 'no-special');
-            iconSpan.textContent = isFundManaged ? 'Fonds' : 'Autre'; // Texte pour le badge
+            const parentNode = selectElement.parentNode;
 
-            // Insérer l'icône juste après l'élément select
-            selectElement.parentNode.insertBefore(iconSpan, selectElement.nextSibling);
+            // Ajouter les badges pertinents
+            if (isFundManaged) {
+                const badge = document.createElement('span');
+                badge.classList.add('category-info-icon', 'fund-managed');
+                badge.textContent = 'Fonds';
+                parentNode.insertBefore(badge, selectElement.nextSibling);
+            }
+            if (isBudgeted) {
+                const badge = document.createElement('span');
+                badge.classList.add('category-info-icon', 'budgeted');
+                badge.textContent = 'Budget';
+                parentNode.insertBefore(badge, selectElement.nextSibling);
+            }
+            if (isGoalLinked) {
+                const badge = document.createElement('span');
+                badge.classList.add('category-info-icon', 'goal-linked');
+                badge.textContent = 'Objectif';
+                parentNode.insertBefore(badge, selectElement.nextSibling);
+            }
         }
     }
 
@@ -105,12 +129,12 @@ document.addEventListener('DOMContentLoaded', function() {
         div.innerHTML = `
             <input type="hidden" name="${formPrefix}-${newFormIndex}-id" id="id_${formPrefix}-${newFormIndex}-id">
             <div>
-                <select name="${formPrefix}-${newFormIndex}-category" id="id_${formPrefix}-${newFormIndex}-category" required>
+                <select name="${formPrefix}-${newFormIndex}-category" id="id_${formPrefix}-${newFormIndex}-category" required class="p-2 border rounded-md w-full split-category-main">
                     <option value="">Sélectionner le Fonds (Catégorie)</option>
                 </select>
             </div>
-            <input type="number" name="${formPrefix}-${newFormIndex}-amount" id="id_${formPrefix}-${newFormIndex}-amount" step="0.01" placeholder="Montant à débiter" required>
-            <input type="text" name="${formPrefix}-${newFormIndex}-notes" id="id_${formPrefix}-${newFormIndex}-notes" placeholder="Notes (optionnel)">
+            <input type="number" name="${formPrefix}-${newFormIndex}-amount" id="id_${formPrefix}-${newFormIndex}-amount" step="0.01" placeholder="Montant à débiter" required class="p-2 border rounded-md w-full">
+            <input type="text" name="${formPrefix}-${newFormIndex}-notes" id="id_${formPrefix}-${newFormIndex}-notes" placeholder="Notes (optionnel)" class="p-2 border rounded-md w-full">
             <div class="flex items-center justify-center">
                 <input type="checkbox" name="${formPrefix}-${newFormIndex}-DELETE" id="id_${formPrefix}-${newFormIndex}-DELETE" class="hidden-delete-checkbox">
                 <label for="id_${formPrefix}-${newFormIndex}-DELETE" class="sr-only">Supprimer</label>
@@ -161,11 +185,14 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {HTMLElement} debitLineElement L'élément DOM de la ligne de débit.
      */
     function initializeDebitCategoryDropdowns(debitLineElement) {
-        const prefix = debitLineElement.querySelector('input[name$="-amount"]').name.split('-')[0];
-        const categorySelect = debitLineElement.querySelector(`select[name="${prefix}-category"]`);
+        const categorySelect = debitLineElement.querySelector('select[name$="-category"]');
         
         const initialCategoryValue = categorySelect.value; // Obtenir la valeur initiale du formulaire Django
         populateCategoryDropdown(categorySelect, fundManagedCategories, initialCategoryValue);
+        // Assurer que les flags s'affichent au chargement si une catégorie est déjà sélectionnée
+        if (categorySelect.value) {
+            updateCategoryIconDisplay(categorySelect);
+        }
     }
 
 
@@ -225,7 +252,12 @@ document.addEventListener('DOMContentLoaded', function() {
             let currentRemaining = parseFloat(remainingAmountSpan.textContent);
             if (currentRemaining < -0.01) { // Vérifier si le débit dépasse le montant de la transaction originale
                 event.preventDefault(); 
-                alert("Attention : Le montant total débité dépasse le montant de la transaction originale. Veuillez ajuster avant de soumettre.");
+                // Utiliser votre fonction de toast pour les messages d'erreur
+                if (typeof showToast !== 'undefined') {
+                    showToast("Attention : Le montant total débité dépasse le montant de la transaction originale. Veuillez ajuster avant de soumettre.", 'error');
+                } else {
+                    alert("Attention : Le montant total débité dépasse le montant de la transaction originale. Veuillez ajuster avant de soumettre.");
+                }
                 return; 
             }
 
@@ -250,7 +282,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!allLinesValid) {
                 event.preventDefault(); 
-                alert("Veuillez remplir toutes les informations requises (Fonds/Enveloppe, Montant) pour chaque ligne de débit.");
+                // Utiliser votre fonction de toast pour les messages d'erreur
+                if (typeof showToast !== 'undefined') {
+                    showToast("Veuillez remplir toutes les informations requises (Fonds/Enveloppe, Montant) pour chaque ligne de débit.", 'error');
+                } else {
+                    alert("Veuillez remplir toutes les informations requises (Fonds/Enveloppe, Montant) pour chaque ligne de débit.");
+                }
             }
             // Le reste de la validation est géré côté serveur par le formset.
         });
