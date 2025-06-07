@@ -1,39 +1,6 @@
-/* webapp/static/webapp/css/base/_base.css */
 
-/* Styles de base pour l'ensemble du site, agissant comme des resets ou des définitions globales. */
+    /* Le reste du style (background, border-radius, shadow, margins) est géré par les classes Tailwind dans base.html */
 
-/* Le sélecteur 'body' est stylisé via les classes Tailwind directement dans base.html. */
-/* html {
-    font-family: 'Inter', sans-serif;
-    line-height: 1.6;
-    color: #333;
-} */
-
-/* Configuration de la largeur du conteneur principal */
-.container {
-    /* Assure que le conteneur s'étend pour remplir l'espace vertical disponible */
-    /* Calcul: 100vh (hauteur de la fenêtre) - hauteur de la navbar fixe (pt-16 = 64px) */
-    min-height: calc(100vh - 64px); /* Ajusté pour correspondre au pt-16 du body */
-    
-    /* Utilise flexbox pour que le contenu à l'intérieur puisse s'étirer verticalement */
-    display: flex; 
-    flex-direction: column;
-
-    /* Permet au conteneur de prendre toute la largeur disponible. */
-    /* La largeur maximale (max-w-X) et le centrage (mx-auto) sont gérés dans base.html */
-    width: 100%; 
-    
-    /* Ajoutons un padding horizontal par défaut ici pour une marge minimale sur les bords */
-    padding-left: 1rem; 
-    padding-right: 1rem;
-    box-sizing: border-box; /* Inclure padding dans la largeur */
-
-    /* Suppression des styles spécifiques car ces styles sont gérés directement dans base.html sur le div .container */
-    /* background-color: white; */
-    /* border-radius: 0.5rem; */
-    /* box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); */
-    /* flex-grow: 1; */
-}
 
 /* Styles pour les titres (h1, h2, etc.) */
 h1, h2, h3, h4, h5, h6 {

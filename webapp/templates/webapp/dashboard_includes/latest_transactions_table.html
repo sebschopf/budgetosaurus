@@ -1,36 +1,42 @@
 {# webapp/templates/webapp/dashboard_includes/latest_transactions_table.html #}
 <h2>Dernières Transactions</h2>
 {% if transactions %}
-    <div class="batch-actions">
-        <button id="delete-selected-btn" class="hidden">Supprimer la sélection</button>
-    </div>
-    <form id="transactions-form" method="post" action="{% url 'delete_selected_transactions' %}">
-        {% csrf_token %}
-        <table>
-            <thead>
-                <tr>
-                    <th><input type="checkbox" id="select-all-transactions"></th> {# Checkbox "Tout sélectionner" #}
-                    <th>Date</th>
-                    <th>Description</th>
-                    <th>Montant</th>
-                    <th>Catégorie</th>
-                    <th>Compte</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for transaction in transactions %}
+    <div class="overflow-x-auto bg-white rounded-lg shadow-md mb-8"> {# Conteneur pour le défilement et styles de base #}
+        <form id="transactions-form" method="post" action="{% url 'delete_selected_transactions' %}">
+            {% csrf_token %}
+            <div class="flex justify-end p-4"> {# Conteneur pour les actions par lot #}
+                <button type="button" id="delete-selected-btn" class="hidden action-button bg-red-600 hover:bg-red-700 text-white">Supprimer la sélection</button>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
                     <tr>
-                        <td><input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox"></td> {# Checkbox pour chaque transaction #}
-                        <td>{{ transaction.date|date:"d M Y" }}</td>
-                        <td>{{ transaction.description }}</td>
-                        <td class="transaction-amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">{{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}</td>
-                        <td>{{ transaction.category.name|default:'N/A' }}</td>
-                        <td>{{ transaction.account.name|default:'N/A' }}</td>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                            <input type="checkbox" id="select-all-transactions" class="form-checkbox h-4 w-4 text-blue-600 rounded">
+                        </th> {# Checkbox "Tout sélectionner" #}
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Description</th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Montant</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Catégorie</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Compte</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </form>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in transactions %}
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox form-checkbox h-4 w-4 text-blue-600 rounded">
+                            </td> {# Checkbox pour chaque transaction #}
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.date|date:"d M Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.description }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium transaction-amount {% if transaction.amount >= 0 %}income text-green-600{% else %}expense text-red-600{% endif %}">{{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.category.name|default:'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.account.name|default:'N/A' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
 {% else %}
-    <p class="no-transactions">Aucune transaction trouvée. Ajoutez-en une pour commencer !</p>
+    <p class="no-transactions text-center text-gray-600 my-10">Aucune transaction trouvée. Ajoutez-en une pour commencer !</p>
 {% endif %}

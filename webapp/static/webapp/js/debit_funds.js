@@ -27,22 +27,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // const maxNumFormsInput = document.querySelector('#id_form-MAX_NUM_FORMS'); // Pas strictement nécessaire pour les fonctionnalités côté client
 
     /**
-     * Ajoute une icône/badge à côté d'un nom de catégorie.
-     * NOTE IMPORTANTE: Le HTML à l'intérieur des balises <option> est souvent ignoré ou mal rendu par les navigateurs.
-     * Cette fonction est conservée pour la clarté du code et pour les "data-" attributs, mais l'affichage réel des badges
-     * à côté du champ sélectionné est géré par `updateCategoryIconDisplay` en dehors de l'élément <select>.
-     * @param {string} categoryName Le nom de la catégorie.
-     * @param {boolean} isFundManaged Indique si la catégorie gère un fonds.
-     * @param {boolean} isBudgeted Indique si la catégorie est associée à un budget.
-     * @param {boolean} isGoalLinked Indique si la catégorie est liée à un objectif d'épargne.
-     * @returns {string} Le HTML du nom de catégorie avec l'icône. (Visuellement, seul le nom sera affiché dans le dropdown)
+     * Crée un élément span pour un badge de catégorie.
+     * @param {string} text Le texte du badge (ex: "Fonds", "Budget", "Objectif").
+     * @param {string} className La classe CSS pour la couleur (ex: "fund-managed", "budgeted", "goal-linked").
+     * @returns {HTMLElement} L'élément span du badge.
      */
-    function formatCategoryNameWithIcon(categoryName, isFundManaged, isBudgeted, isGoalLinked) {
-        // Les navigateurs ne rendent pas correctement le HTML à l'intérieur des <option>.
-        // Nous allons juste retourner le nom de la catégorie.
-        // Les informations `isFundManaged`, `isBudgeted`, `isGoalLinked` seront stockées dans les `dataset` de l'option
-        // et utilisées par `updateCategoryIconDisplay` pour afficher les badges *à côté* du select.
-        return categoryName;
+    function createCategoryBadge(text, className) {
+        const span = document.createElement('span');
+        span.classList.add('category-info-icon', className);
+        span.textContent = text;
+        return span;
     }
 
     /**
@@ -59,8 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Le texte de l'option sera juste le nom de la catégorie
             option.textContent = category.name;
             // Les flags sont stockés dans les dataset de l'option
-            option.dataset.isFundManaged = category.is_fund_managed; // Stocker pour une utilisation ultérieure
-            // Assurez-vous que ces propriétés sont disponibles dans `fundManagedCategoriesData` si vous voulez les utiliser
+            option.dataset.isFundManaged = category.is_fund_managed; 
             option.dataset.isBudgeted = category.is_budgeted || false; 
             option.dataset.isGoalLinked = category.is_goal_linked || false; 
             selectElement.appendChild(option);
@@ -73,11 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Affiche l'icône de la catégorie sélectionnée à côté de l'élément select.
+     * Ajoute ou met à jour les icônes d'information de la catégorie à côté de l'élément select.
+     * Permet d'afficher plusieurs badges (Fonds, Budget, Objectif).
      * @param {HTMLElement} selectElement L'élément <select> de la catégorie.
      */
     function updateCategoryIconDisplay(selectElement) {
-        let currentIcon = selectElement.nextElementSibling;
+        // Supprimer tous les badges existants associés à ce select
+        let currentNextSibling = selectElement.nextElementSibling;
         while (currentNextSibling && currentNextSibling.classList.contains('category-info-icon')) {
             const temp = currentNextSibling.nextElementSibling;
             currentNextSibling.remove();
@@ -94,22 +89,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Ajouter les badges pertinents
             if (isFundManaged) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'fund-managed');
-                badge.textContent = 'Fonds';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Fonds', 'fund-managed'), selectElement.nextSibling);
             }
             if (isBudgeted) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'budgeted');
-                badge.textContent = 'Budget';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Budget', 'budgeted'), selectElement.nextSibling);
             }
             if (isGoalLinked) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'goal-linked');
-                badge.textContent = 'Objectif';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Objectif', 'goal-linked'), selectElement.nextSibling);
             }
         }
     }

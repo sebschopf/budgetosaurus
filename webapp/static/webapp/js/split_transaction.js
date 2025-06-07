@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
-            option.textContent = category.name; 
+            option.textContent = category.name; // Texte de l'option sans HTML
             option.dataset.isFundManaged = category.is_fund_managed;
             option.dataset.isBudgeted = category.is_budgeted; 
             option.dataset.isGoalLinked = category.is_goal_linked; // NOUVEAU: info is_goal_linked
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
             childrenOfParent.forEach(subcategory => {
                 const option = document.createElement('option');
                 option.value = subcategory.id;
-                option.textContent = subcategory.name; 
+                option.textContent = subcategory.name; // Texte de l'option sans HTML
                 option.dataset.isFundManaged = subcategory.is_fund_managed;
                 option.dataset.isBudgeted = subcategory.is_budgeted; 
                 option.dataset.isGoalLinked = subcategory.is_goal_linked; // NOUVEAU: info is_goal_linked
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const selectedOption = selectElement.options[selectElement.selectedIndex];
         if (selectedOption && selectedOption.value) {
-            const isFundManaged = selectedOption.dataset.isFundManaged === 'true';
+            const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; 
             const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
             const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true'; 
             
@@ -240,14 +240,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mainCategorySelect) {
             mainCategorySelect.addEventListener('change', function() {
                 populateSubcategories(this.value, subCategorySelect);
-                updateCategoryIconDisplay(this);
-                calculateRemainingAmount(); 
+                updateCategoryIconDisplay(this); // Update icon for main category
             });
         }
         if (subCategorySelect) {
             subCategorySelect.addEventListener('change', function() {
-                updateCategoryIconDisplay(this);
-                calculateRemainingAmount(); 
+                updateCategoryIconDisplay(this); // Update icon for subcategory
             });
         }
 
@@ -398,7 +396,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const isSubcategoryValid = (subcategorySelect && !subcategorySelect.classList.contains('subcategory-hidden')) ? subcategorySelect.value !== '' : true; 
     
                 if (!isDescriptionValid || !isAmountValid || !isMainCategorySelected || !isSubcategoryValid) {
-                    allLinesValid = false;
+                    allActiveLinesValid = false;
                     line.classList.add('has-error'); 
                 } else {
                     line.classList.remove('has-error'); 

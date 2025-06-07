@@ -24,12 +24,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const allCategories = JSON.parse(document.getElementById('allCategoriesData').textContent);
     const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData').textContent);
 
-    // Cette fonction sera supprimée :
-    /*
-    function formatCategoryNameWithIcon(categoryName, isFundManaged) {
-        // ... (code de la fonction qui sera supprimée) ...
+    /**
+     * Crée un élément span pour un badge de catégorie.
+     * @param {string} text Le texte du badge (ex: "Fonds", "Budget", "Objectif").
+     * @param {string} className La classe CSS pour la couleur (ex: "fund-managed", "budgeted", "goal-linked").
+     * @returns {HTMLElement} L'élément span du badge.
+     */
+    function createCategoryBadge(text, className) {
+        const span = document.createElement('span');
+        span.classList.add('category-info-icon', className);
+        span.textContent = text;
+        return span;
     }
-    */
 
     /**
      * Peuple le dropdown des catégories principales.
@@ -42,8 +48,7 @@ document.addEventListener('DOMContentLoaded', function() {
         categoriesData.forEach(category => {
             const option = document.createElement('option');
             option.value = category.id;
-            // MODIFIÉ : On met juste le texte, les icônes seront gérées à côté du select
-            option.textContent = category.name;
+            option.textContent = category.name; // Texte de l'option sans HTML
             option.dataset.isFundManaged = category.is_fund_managed;
             option.dataset.isBudgeted = category.is_budgeted;
             option.dataset.isGoalLinked = category.is_goal_linked;
@@ -70,12 +75,11 @@ document.addEventListener('DOMContentLoaded', function() {
             childrenOfParent.forEach(subcategory => {
                 const option = document.createElement('option');
                 option.value = subcategory.id;
-                // MODIFIÉ : On met juste le texte
-                option.textContent = subcategory.name;
+                option.textContent = subcategory.name; // Texte de l'option sans HTML
                 option.dataset.isFundManaged = subcategory.is_fund_managed;
                 option.dataset.isBudgeted = subcategory.is_budgeted;
                 option.dataset.isGoalLinked = subcategory.is_goal_linked;
-                selectElement.appendChild(option);
+                subcategorySelectElement.appendChild(option);
             });
             subcategoryContainer.style.display = 'block'; // Afficher le champ
         } else {
@@ -117,22 +121,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Ajouter les badges pertinents
             if (isFundManaged) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'fund-managed');
-                badge.textContent = 'Fonds';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Fonds', 'fund-managed'), selectElement.nextSibling);
             }
             if (isBudgeted) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'budgeted');
-                badge.textContent = 'Budget';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Budget', 'budgeted'), selectElement.nextSibling);
             }
             if (isGoalLinked) {
-                const badge = document.createElement('span');
-                badge.classList.add('category-info-icon', 'goal-linked');
-                badge.textContent = 'Objectif';
-                parentNode.insertBefore(badge, selectElement.nextSibling);
+                parentNode.insertBefore(createCategoryBadge('Objectif', 'goal-linked'), selectElement.nextSibling);
             }
         }
     }

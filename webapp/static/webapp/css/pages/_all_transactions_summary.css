@@ -13,42 +13,53 @@
 }
 
 .transactions-table-container {
-    @apply bg-white rounded-lg shadow-md p-5 overflow-y-auto relative;
-    max-height: 70vh; /* Hauteur maximale pour le défilement vertical */
+    @apply bg-white rounded-lg shadow-md p-5 overflow-hidden relative; /* overflow-hidden au lieu de overflow-y-auto ici */
+    max-height: 70vh; /* Hauteur maximale pour le défilement vertical, si nécessaire */
 }
 
-.transactions-grid {
-    /* Utiliser la grille CSS pour la mise en page de la table */
+/* La grille principale est maintenant définie sur les éléments header et body */
+.transactions-grid-header,
+.transactions-grid-body {
     display: grid;
-    /* Définir les colonnes avec des tailles relatives ou des minmax pour la flexibilité */
-    grid-template-columns: 8% 28% 12% 15% 10% 7% 7% 13%; /* Ajustez ces pourcentages au besoin */
+    /* Ajustez ces pourcentages au besoin pour la largeur des colonnes */
+    grid-template-columns: 8% 28% 12% 15% 10% 7% 7% 13%; 
     @apply text-sm text-left;
-    font-size: 0.9em; /* Si vous voulez une taille fixe au-delà de text-sm */
+    font-size: 0.9em;
 }
 
-.grid-header {
-    /* Pour que les éléments de l'en-tête soient directement dans la grille parente */
-    display: contents;
-    @apply font-semibold text-gray-600 uppercase text-xs;
-    background-color: #f5f5f5; /* Couleur de fond de l'en-tête */
-    position: sticky;
-    top: 0;
-    z-index: 1;
+.transactions-grid-header {
+    @apply font-semibold text-gray-600 uppercase text-xs sticky top-0 bg-gray-100 z-10; /* Sticky header avec fond gris clair */
+    border-bottom: 1px solid #e5e7eb; /* Bordure sous l'en-tête */
 }
 
-.grid-header .grid-cell {
-    @apply px-4 py-3 text-center border-b border-gray-200 flex items-center justify-center;
+.grid-cell-header {
+    @apply px-4 py-3 flex items-center justify-center;
 }
 
 /* Alignements spécifiques pour les cellules d'en-tête (surchargent le centrage général si besoin) */
-.grid-header .grid-cell:nth-child(2) { @apply justify-start; } /* Description */
-.grid-header .grid-cell:nth-child(3) { @apply justify-end; } /* Montant */
-.grid-header .grid-cell:nth-child(4) { @apply justify-start; } /* Catégorie */
-.grid-header .grid-cell:nth-child(5) { @apply justify-start; } /* Compte */
-.grid-header .grid-cell:nth-child(6) { @apply justify-start; } /* Type */
+.transactions-grid-header .grid-cell-header:nth-child(1), /* Date */
+.transactions-grid-header .grid-cell-header:nth-child(2), /* Description */
+.transactions-grid-header .grid-cell-header:nth-child(4), /* Catégorie */
+.transactions-grid-header .grid-cell-header:nth-child(5), /* Compte */
+.transactions-grid-header .grid-cell-header:nth-child(6)  /* Type */ { 
+    @apply justify-start; 
+}
+.transactions-grid-header .grid-cell-header:nth-child(3) { /* Montant */
+    @apply justify-end; 
+}
+.transactions-grid-header .grid-cell-header:nth-child(7), /* Ventilé */
+.transactions-grid-header .grid-cell-header:nth-child(8)  /* Actions */ { 
+    @apply justify-center; 
+}
+
+
+.transactions-grid-body {
+    @apply divide-y divide-gray-200 overflow-y-auto; /* Permet le défilement du corps seul */
+    max-height: calc(70vh - 50px); /* Ajuste la hauteur max pour le scroll, en soustrayant la hauteur approximative de l'en-tête */
+}
 
 .grid-row {
-    display: contents; /* Permet aux enfants d'être directement dans la grille parente */
+    display: contents; /* Les enfants sont directement dans la grille parente */
 }
 
 .grid-row:hover .grid-cell {
@@ -56,23 +67,32 @@
 }
 
 .grid-cell {
-    @apply px-4 py-3 text-gray-800 border-b border-gray-200 flex items-start; /* flex items-start pour aligner en haut */
+    @apply px-4 py-3 text-gray-800 border-b border-gray-200 flex items-center; /* flex items-center pour aligner au centre verticalement */
 }
 
 /* Alignements spécifiques pour les cellules de données */
-.grid-row .grid-cell:nth-child(1) { @apply justify-start; } /* Date */
-.grid-row .grid-cell:nth-child(2) { @apply justify-start; } /* Description */
-.grid-row .grid-cell:nth-child(3) { @apply justify-end; } /* Montant */
-.grid-row .grid-cell:nth-child(4) { @apply justify-start; } /* Catégorie */
-.grid-row .grid-cell:nth-child(5) { @apply justify-start; } /* Compte */
-.grid-row .grid-cell:nth-child(6) { @apply justify-start; } /* Type */
-.grid-row .grid-cell:nth-child(7) { @apply justify-center; } /* Ventilé */
-.grid-row .grid-cell:nth-child(8) { @apply justify-center; } /* Actions */
+.grid-row .grid-cell:nth-child(1), /* Date */
+.grid-row .grid-cell:nth-child(2), /* Description */
+.grid-row .grid-cell:nth-child(4), /* Catégorie */
+.grid-row .grid-cell:nth-child(5), /* Compte */
+.grid-row .grid-cell:nth-child(6)  /* Type */ { 
+    @apply justify-start; 
+}
+.grid-row .grid-cell:nth-child(3) { /* Montant */
+    @apply justify-end font-semibold; /* Montant en gras */
+}
+.grid-row .grid-cell:nth-child(7), /* Ventilé */
+.grid-row .grid-cell:nth-child(8)  /* Actions */ { 
+    @apply justify-center; 
+}
 
-
-/* Styles spécifiques pour les montants (déjà définis dans _base.css via @apply, mais s'assurer qu'ils sont utilisés) */
-/* .amount.income { @apply text-green-600; } */
-/* .amount.expense { @apply text-red-600; } */
+/* Styles spécifiques pour les montants */
+.amount.income { 
+    @apply text-green-600; 
+}
+.amount.expense { 
+    @apply text-red-600; 
+}
 
 .allocated-status {
     @apply font-bold text-center;
@@ -86,7 +106,7 @@
 
 /* Conteneur des boutons d'action */
 .action-buttons-wrapper {
-    @apply flex flex-col gap-2 w-full items-center justify-start;
+    @apply flex flex-col sm:flex-row gap-1 w-full items-center justify-center; /* Responsive: colonne sur mobile, rangée sur sm+ */
 }
 
 /* Styles pour la description tronquée */
@@ -95,18 +115,23 @@
 }
 
 .truncated-description-wrapper:hover .truncated-description-content {
-    @apply whitespace-normal overflow-visible text-clip absolute bg-white p-2 shadow-lg z-10 min-w-[150px] transform -translate-x-1/2 left-1/2 bottom-full pb-3;
+    @apply whitespace-normal overflow-visible text-clip absolute bg-white p-2 shadow-lg z-10 min-w-[150px] transform -translate-x-1/2 left-1/2 bottom-full pb-3 border border-gray-200 rounded-md;
 }
 
 /* Ajustements pour les petits écrans (responsive) */
 @media (max-width: 767px) {
-    .transactions-grid {
-        grid-template-columns: 10% 25% 15% 15% 10% 8% 8% 9%; /* Ajustez ces pourcentages au besoin */
+    .transactions-grid-header,
+    .transactions-grid-body {
+        grid-template-columns: repeat(2, 1fr); /* 2 colonnes par défaut sur mobile, pour une meilleure lisibilité */
     }
-    .grid-cell {
+    .grid-cell-header, .grid-cell {
         @apply px-2 py-2 text-xs;
     }
     .action-button {
         @apply px-1 py-0.5 text-[0.6rem];
     }
+    /* Masquer certaines colonnes sur les très petits écrans pour éviter l'encombrement */
+    /* Ces sélecteurs devront être plus complexes si vous utilisez display: contents,
+       mais avec la nouvelle structure, on peut cibler des cellules spécifiques si besoin */
+    /* Example: .grid-cell:nth-child(4), .grid-cell-header:nth-child(4) { display: none; } */
 }
