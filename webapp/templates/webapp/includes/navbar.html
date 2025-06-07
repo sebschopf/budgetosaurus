@@ -1,15 +1,14 @@
 {# webapp/templates/webapp/includes/navbar.html #}
-<nav class="bg-indigo-700 p-4 shadow-md">
-    <div class="container mx-auto flex justify-between items-center">
-        <a href="{% url 'dashboard_view' %}" class="text-white text-2xl font-bold">Budgetosaurus</a>
-        <div class="space-x-4">
-            <a href="{% url 'dashboard_view' %}" class="text-white hover:text-indigo-200 transition duration-200">Tableau de Bord</a>
-            <a href="{% url 'import_transactions_view' %}" class="text-white hover:text-indigo-200 transition duration-200">Importer Transactions</a>
-            <a href="{% url 'review_transactions_view' %}" class="text-white hover:text-indigo-200 transition duration-200">Transactions à Revoir</a>
-            <a href="{% url 'budget_overview' %}" class="text-white hover:text-indigo-200 transition duration-200">Aperçu Budgets & Fonds</a>
-            <a href="{% url 'recap_overview_view' %}" class="text-white hover:text-indigo-200 transition duration-200">Récapitulatifs</a> {# NOUVEAU LIEN VERS LA PAGE DE RÉCAPITULATIFS #}
-            <a href="{% url 'glossary_view' %}" class="text-white hover:text-indigo-200 transition duration-200">Glossaire</a>
-            <a href="/admin/" class="text-white hover:text-indigo-200 transition duration-200">Admin Django</a>
+<nav class="bg-indigo-700 p-4 shadow-lg w-full z-10 top-0">
+        <a href="{% url 'dashboard_view' %}" class="text-white text-3xl font-bold mb-2 md:mb-0">Budgetosaurus</a>
+        <div class="flex flex-wrap justify-center md:justify-end space-x-4">
+            <a href="{% url 'dashboard_view' %}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Tableau de Bord</a>
+            <a href="{% url 'import_transactions_view' %}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Importer Transactions</a>
+            <a href="{% url 'review_transactions_view' %}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Transactions à Revoir</a>
+            <a href="{% url 'budget_overview' %}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Aperçu Budgets & Fonds</a>
+            <a href="{% url 'recap_overview_view'}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Récapitulatifs</a>
+            <a href="{% url 'glossary_view' %}" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Glossaire</a>
+            <a href="/admin/" class="text-white hover:text-indigo-200 transition duration-200 px-3 py-1 rounded-md">Admin Django</a>
         </div>
-    </div>
 </nav>
+

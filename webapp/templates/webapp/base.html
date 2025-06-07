@@ -1,45 +1,40 @@
-    {# webapp/templates/webapp/base.html #}
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{% block title %}Mon Budget Personnel{% endblock %} - Budgetosaurus</title>
-        <!-- Tailwind CSS CDN pour un style moderne et réactif -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <!-- Google Fonts: Inter pour une typographie moderne -->
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        {# Lien vers le fichier CSS principal centralisé #}
-        {% load static %}
-        <link rel="stylesheet" href="{% static 'webapp/css/main.css' %}">
-        {% block extra_head %}{% endblock %}
-    </head>
-    <body>
-        {# Inclure la barre de navigation #}
-        {% include 'webapp/includes/navbar.html' %}
+{# webapp/templates/webapp/base.html #}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Mon Budget Personnel{% endblock %} - Budgetosaurus</title>
+    <!-- Google Fonts: Inter pour une typographie moderne -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {# Lien vers le fichier CSS principal centralisé (qui importe tailwind_output.css) #}
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'webapp/css/main.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 font-inter antialiased pt-16"> {# Ajout de pt-16 ici pour compenser la navbar fixe #}
+    {# Inclure la barre de navigation #}
+    {% include 'webapp/includes/navbar.html' %}
 
-        {# Utilisation de la classe 'container' définie dans _base.css. #}
-        {# Les classes Tailwind 'my-5 p-6 bg-white rounded-lg shadow-md flex-grow' sont maintenant gérées par la classe '.container' dans _base.css. #}
-        <div class="container">
-            {# Passe les messages Django au JavaScript pour l'affichage des toasts #}
-            {% if messages %}
-            <script id="django-messages" type="application/json">
-                [
-                    {% for message in messages %}
-                    {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
-                    {% endfor %}
-                ]
-            </script>
-            {% endif %}
+    <div class="container mx-auto p-4 sm:p-6 bg-white rounded-lg shadow-md flex-grow"> {# Suppression de my-5 #}
+        {# Passe les messages Django au JavaScript pour l'affichage des toasts #}
+        {% if messages %}
+        <script id="django-messages" type="application/json">
+            [
+                {% for message in messages %}
+                {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
+                {% endfor %}
+            ]
+        </script>
+        {% endif %}
 
-            {% block content %}
-                {# Le contenu spécifique de chaque page ira ici #}
-            {% endblock %}
-        </div>
+        {% block content %}
+            {# Le contenu spécifique de chaque page ira ici #}
+        {% endblock %}
+    </div>
 
-        {# Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
-        <script src="{% static 'webapp/js/toast.js' %}"></script>
-        {% block extra_js %}{% endblock %}
-    </body>
-    </html>
-    
+    {# Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
+    <script src="{% static 'webapp/js/toast.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
