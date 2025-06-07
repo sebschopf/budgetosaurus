@@ -1,22 +1,71 @@
-    /* webapp/static/webapp/css/pages/_budget_overview.css */
+/* webapp/static/webapp/css/pages/_budget_overview.css */
 
-    /* Ce fichier contient les styles spécifiques à la page d'aperçu du budget qui ne sont pas généralisés ailleurs. */
+/* Ce fichier contient les styles spécifiques à la page d'aperçu du budget qui ne sont pas généralisés ailleurs. */
 
-    /* La classe .container est définie dans base/_base.css */
-    /* Surcharge si nécessaire pour cette page (par exemple, augmenter la largeur maximale) */
-    .container {
-        max-width: 1000px; /* Augmenter légèrement la largeur du conteneur pour cette page */
-        padding: 30px; /* Plus de padding pour aérer */
-    }
-    
-    /* Les styles pour les icônes de statut des fonds (text-green-500, etc.) sont des classes Tailwind et sont appliquées directement dans le HTML */
+/* La classe .container est définie dans base/_base.css */
+/* Surcharge si nécessaire pour cette page (par exemple, augmenter la largeur maximale) */
+.container {
+    max-width: 1000px; /* Augmenter légèrement la largeur du conteneur pour cette page */
+}
+/* Styles pour la mise en page en grille des cartes dans cette page */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Crée une grille adaptative avec des colonnes d'au moins 280px */
+}
 
-    /* Styles pour la mise en page en grille des cartes dans cette page */
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Crée une grille adaptative avec des colonnes d'au moins 280px */
-        gap: 25px; /* Espacement plus grand entre les éléments de la grille */
-        margin-bottom: 40px; /* Marge inférieure */
-    }
+/* Styles pour la carte du résumé du mois (monthly_summary.html) */
+.summary-card {
+    @apply bg-white rounded-lg shadow-md p-6 text-center mb-6;
+    border: 1px solid #e0e0e0;
+    max-width: 380px; /* Un peu plus large que les cartes de fond pour l'équilibre */
+    margin: 0 auto; /* Centrer la carte */
+}
 
-    
+.summary-card h3 {
+    @apply text-xl font-semibold text-gray-700 mb-4;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.summary-card p {
+    @apply text-lg text-gray-600 mb-2;
+}
+
+.summary-card p span {
+    @apply font-bold;
+}
+
+/* Styles pour les budgets mensuels (budgets_planning_display.html) */
+.budget-card {
+    @apply bg-white rounded-lg shadow-md p-5 mb-5;
+    border: 1px solid #e0e0e0;
+}
+
+.budget-card h3 {
+    @apply text-lg font-semibold text-gray-700 mb-3;
+}
+
+.budget-card p {
+    @apply text-sm text-gray-600 mb-1;
+}
+
+.progress-bar-container {
+    @apply w-full bg-gray-200 rounded-full h-3 mt-3 overflow-hidden;
+}
+
+.progress-bar {
+    @apply h-full text-center text-xs text-white flex items-center justify-center rounded-full;
+    transition: width 0.5s ease-in-out;
+}
+
+.progress-bar.green {
+    @apply bg-green-500;
+}
+
+.progress-bar.orange {
+    @apply bg-orange-400; /* Utilisez une couleur orange de Tailwind */
+}
+
+.progress-bar.red {
+    @apply bg-red-500;
+}

@@ -1,14 +1,9 @@
 /* webapp/static/webapp/css/components/_cards.css */
 
-.card {
-    /* Utilisation de @apply pour définir l'apparence de base d'une carte */
-    @apply bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out;
-    border: 1px solid #e0e0e0; /* Bordure légère */
-    /* Assurez-vous que les cartes occupent la bonne largeur */
-    width: 100%; /* Par défaut, les cartes prennent toute la largeur disponible */
-    max-width: 320px; /* Limite la largeur maximale pour ne pas être trop larges sur les grands écrans */
-    margin: 0 auto; /* Centre les cartes si elles sont plus petites que leur conteneur */
-}
+/*
+   La classe .card est maintenant plus légère car la plupart des styles utilitaires
+   de Tailwind sont appliqués directement dans le HTML pour une meilleure visibilité.
+*/
 
 .card h3 {
     /* Style pour les titres à l'intérieur des cartes */
@@ -18,13 +13,13 @@
 }
 
 .card p {
-    /* Style pour les paragraphes à l'intérieur des cartes */
+    /* Similaire à h3. */
     @apply text-gray-600 leading-normal;
     margin-bottom: 0; /* Supprimer les marges par défaut si le dernier élément */
 }
 
 /* Styles spécifiques pour les paragraphes de solde dans les cartes */
-.card p.balance {
+.card p.balance { */
     @apply text-2xl font-bold mt-2; /* Montant plus grand et gras */
     color: #4CAF50; /* Couleur par défaut pour les soldes positifs, ajustez si nécessaire */
 }
@@ -36,31 +31,5 @@
 
 /* Styles pour les cartes de fonds dans l'aperçu du budget */
 .fund-card {
-    /* Vous pouvez ajouter des styles spécifiques pour les cartes de fonds ici si elles diffèrent */
-    @apply border-l-4; /* Exemple: une bordure latérale pour les différencier */
-}
-
-.fund-card .text-green-500 {
-    @apply border-green-500;
-}
-.fund-card .text-yellow-500 {
-    @apply border-yellow-500;
-}
-.fund-card .text-red-500 {
-    @apply border-red-500;
-}
-
-/* Ajoutez un style pour les messages de toast si ce n'est pas déjà fait dans _toast.css */
-/* Exemple de base, assurez-vous que cela correspond à votre toast.js */
-.toast-message {
-    @apply fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-xl z-50;
-}
-.toast-message.success {
-    @apply bg-green-500;
-}
-.toast-message.error {
-    @apply bg-red-500;
-}
-.toast-message.info {
-    @apply bg-blue-500;
+    @apply border-l-4;
 }

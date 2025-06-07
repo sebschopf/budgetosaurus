@@ -1,23 +1,4 @@
-
-    /* Le reste du style (background, border-radius, shadow, margins) est géré par les classes Tailwind dans base.html */
-
-
-/* Styles pour les titres (h1, h2, etc.) */
-h1, h2, h3, h4, h5, h6 {
-    @apply text-gray-800 font-semibold mb-4; /* Styles de base pour tous les titres */
-}
-
-h1 {
-    @apply text-3xl; /* Grandes tailles pour les titres principaux */
-}
-
-h2 {
-    @apply text-2xl;
-}
-
-h3 {
-    @apply text-xl;
-}
+/* webapp/static/webapp/css/base/_base.css */
 
 /* Styles pour les paragraphes */
 p {
@@ -86,9 +67,20 @@ input[type="checkbox"] {
     @apply bg-white p-6 rounded-lg shadow-md mb-6;
 }
 
-.form-section h2 {
-    @apply text-2xl font-bold mb-4;
+/* Styles pour les montants positifs et négatifs */
+.amount.positive, .positive {
+    @apply text-green-600;
 }
+
+.amount.negative, .negative {
+    @apply text-red-600;
+}
+
+/* Styles pour le bouton "Retour au Tableau de Bord" */
+.back-link {
+    @apply block mt-8 mb-4 text-center text-blue-600 hover:underline;
+}
+
 
 /* Ajoutez des styles pour les footers si nécessaire */
 /* Par exemple:
