@@ -13,21 +13,24 @@
         {# h2 stylé par h2 dans _base.css #}
         <h2 class="text-2xl font-semibold text-gray-700 mb-4">Soldes par Compte</h2>
         {# .balance-cards-grid est stylé dans pages/_dashboard.css #}
-        <div class="balance-cards-grid">
+        <div class="balance-cards-grid gap-5 mb-8"> 
             {% for name, data in account_balances.items %}
                 {# .card est stylé dans components/_cards.css. Ses h3 et p aussi. #}
-                <div class="card">
-                    <h3>{{ name }}</h3>
+                <div class="card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">
+                        {{ name }}
+                    </h3>
                     {# .positive et .negative sont stylés dans _base.css #}
-                    <p class="{% if data.balance >= 0 %}positive{% else %}negative{% endif %}">{{ data.balance|floatformat:2 }} {{ data.currency }}</p>
+                    <p class="text-2xl font-bold mt-2 {% if data.balance >= 0 %}positive{% else %}negative{% endif %}">
+                        {{ data.balance|floatformat:2 }} {{ data.currency }}
+                    </p>
                 </div>
             {% endfor %}
         </div>
 
         {% include 'webapp/dashboard_includes/transaction_form.html' %}
 
-        {# h2 stylé par h2 dans _base.css #}
-        <h2>Dernières Transactions</h2>
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Dernières Transactions</h2>
         {% include 'webapp/dashboard_includes/latest_transactions_table.html' %}
     {% endblock %}
 

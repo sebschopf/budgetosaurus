@@ -20,6 +20,7 @@
     {% include 'webapp/includes/navbar.html' %}
 
     {# Conteneur principal de tout le contenu de la page, centré #}
+    {# Ajout des classes Tailwind pour le padding du container #}
     <div class="bg-white rounded-lg shadow-md my-5 w-full flex-grow px-4 py-8 sm:px-6 md:px-8 lg:px-20 xl:px-24"> 
         {# Passe les messages Django au JavaScript pour l'affichage des toasts #}
         {% if messages %}
@@ -39,6 +40,63 @@
 
     {# Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
     <script src="{% static 'webapp/js/toast.js' %}"></script>
+    {# Script pour la modale de confirmation (pour les suppressions par lot, etc.) #}
+    <script>
+        function showConfirmationModal(title, message, callback) {
+            // Créer les éléments de la modale si n'existent pas
+            let modal = document.getElementById('globalConfirmationModal');
+            let modalContent = document.getElementById('globalConfirmationModalContent');
+            let confirmBtn = document.getElementById('globalConfirmBtn');
+            let cancelBtn = document.getElementById('globalCancelBtn');
+            let modalTitle = document.getElementById('globalConfirmationModalTitle');
+            let modalMessage = document.getElementById('globalConfirmationModalMessage');
+
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'globalConfirmationModal';
+                modal.classList.add('fixed', 'inset-0', 'bg-gray-900', 'bg-opacity-50', 'flex', 'items-center', 'justify-center', 'z-50', 'p-4', 'hidden'); // 'hidden' initial
+                modal.innerHTML = `
+                    <div id="globalConfirmationModalContent" class="bg-white rounded-lg shadow-xl p-6 relative max-w-sm w-full text-center">
+                        <h2 id="globalConfirmationModalTitle" class="text-2xl font-bold text-gray-800 mb-4"></h2>
+                        <p id="globalConfirmationModalMessage" class="text-gray-700 mb-6"></p>
+                        <div class="flex justify-center space-x-4">
+                            <button id="globalConfirmBtn" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-md font-semibold transition duration-200">Confirmer</button>
+                            <button id="globalCancelBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-5 py-2 rounded-md font-semibold transition duration-200">Annuler</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+
+                modalContent = document.getElementById('globalConfirmationModalContent');
+                confirmBtn = document.getElementById('globalConfirmBtn');
+                cancelBtn = document.getElementById('globalCancelModalBtn') || document.getElementById('globalCancelBtn'); // Assurez-vous que l'ID est correct
+                modalTitle = document.getElementById('globalConfirmationModalTitle');
+                modalMessage = document.getElementById('globalConfirmationModalMessage');
+
+                // Écouteurs d'événements pour les boutons
+                confirmBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    callback(true);
+                };
+                cancelBtn.onclick = () => {
+                    modal.classList.add('hidden');
+                    callback(false);
+                };
+                // Fermer la modale si on clique en dehors
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.classList.add('hidden');
+                        callback(false);
+                    }
+                });
+            }
+
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden'); // Afficher la modale
+        }
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

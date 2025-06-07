@@ -1,37 +1,33 @@
 {# webapp/templates/webapp/budget_overview_includes/budgets_planning_display.html #}
-<h2>Budgets Mensuels (Planification)</h2>
+{# Le titre h2 a été déplacé dans le template parent #}
 {% if budget_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Ajout des classes de grille et espacement Tailwind #}
     {% for budget in budget_data %}
-        <div class="budget-card">
-            <h3>{{ budget.category_name }}</h3>
-            <p>Budgété : {{ budget.budgeted_amount|floatformat:2 }} CHF</p>
-            <p>Dépensé : {{ budget.spent_amount|floatformat:2 }} CHF</p>
-            <p>Restant : <span class="{% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
+        <div class="budget-card bg-white rounded-lg shadow-md p-5 mb-5 border border-gray-200"> {# Ajout des classes Tailwind #}
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">{{ budget.category_name }}</h3>
+            <p class="text-sm text-gray-600 mb-1">Budgété : <span class="font-bold">{{ budget.budgeted_amount|floatformat:2 }} CHF</span></p>
+            <p class="text-sm text-gray-600 mb-1">Dépensé : <span class="font-bold">{{ budget.spent_amount|floatformat:2 }} CHF</span></p>
+            <p class="text-sm text-gray-600 mb-1">Restant : <span class="font-bold {% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
 
-            <div class="progress-bar-container">
+            <div class="progress-bar-container w-full bg-gray-200 rounded-full h-3 mt-3 overflow-hidden">
                 {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
                 {% if budget.percentage_spent < 75 %}
-                    {% with color_class="green" %}
-                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                            {{ budget.percentage_spent|floatformat:0 }}%
-                        </div>
-                    {% endwith %}
+                    <div class="progress-bar green h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                        {{ budget.percentage_spent|floatformat:0 }}%
+                    </div>
                 {% elif budget.percentage_spent < 100 %}
-                    {% with color_class="orange" %}
-                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                            {{ budget.percentage_spent|floatformat:0 }}%
-                        </div>
-                    {% endwith %}
+                    <div class="progress-bar orange h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                        {{ budget.percentage_spent|floatformat:0 }}%
+                    </div>
                 {% else %}
-                    {% with color_class="red" %}
-                        <div class="progress-bar {{ color_class }}" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                            {{ budget.percentage_spent|floatformat:0 }}%
-                        </div>
-                    {% endwith %}
+                    <div class="progress-bar red h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                        {{ budget.percentage_spent|floatformat:0 }}%
+                    </div>
                 {% endif %}
             </div>
         </div>
     {% endfor %}
+    </div>
 {% else %}
-    <p class="text-center text-gray-600">Aucun budget de planification configuré pour ce mois. Ajoutez-en via l'administration Django !</p>
+    <p class="text-center text-gray-600 my-10">Aucun budget de planification configuré pour ce mois. Ajoutez-en via l'administration Django !</p>
 {% endif %}

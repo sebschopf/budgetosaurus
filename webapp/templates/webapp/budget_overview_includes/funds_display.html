@@ -2,10 +2,13 @@
 {# Le titre h2 a été déplacé dans le template parent pour une meilleure hiérarchie #}
 
 {% if fund_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté pour une meilleure aération #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté pour une meilleure aération et marge inférieure via Tailwind #}
         {% for fund in fund_data %}
-            <div class="fund-card card"> {# Réutilise la classe 'card' pour le style commun, ajoute 'fund-card' pour les spécificités #}
-                <h3>
+            {# Réutilise la classe 'card' pour le style commun, ajoute 'fund-card' pour les spécificités #}
+            {# Ajout des classes Tailwind directes pour la carte et la bordure colorée #}
+            <div class="fund-card card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto
+                        {% if fund.status == 'healthy' %}border-l-green-500{% elif fund.status == 'low' %}border-l-yellow-500{% elif fund.status == 'critical' %}border-l-red-500{% endif %}">
+                <h3 class="text-xl font-semibold text-gray-700 mb-2 flex items-center justify-center"> {# Ajout flex, items-center, justify-center pour aligner texte et icône #}
                     {{ fund.category_name }}
                     {# NOUVEAU : Ajoute une petite icône basée sur le statut du fonds #}
                     {% if fund.status == 'healthy' %}
@@ -16,12 +19,12 @@
                         <span title="Solde critique/négatif" class="text-red-500 ml-2 text-xl">&#10060;</span> {# Icône croix rouge #}
                     {% endif %}
                 </h3>
-                <p class="balance {% if fund.current_balance >= 0 %}positive{% else %}negative{% endif %}">
+                <p class="balance text-2xl font-bold mt-2 {% if fund.current_balance >= 0 %}positive{% else %}negative{% endif %}">
                     {{ fund.current_balance|floatformat:2 }} CHF
                 </p>
             </div>
         {% endfor %}
     </div>
 {% else %}
-    <p class="text-center text-gray-600">Aucun fonds budgétaire configuré. Ajoutez-en via l'administration Django !</p>
+    <p class="text-center text-gray-600 my-10">Aucun fonds budgétaire configuré. Ajoutez-en via l'administration Django !</p>
 {% endif %}

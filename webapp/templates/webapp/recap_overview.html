@@ -7,29 +7,29 @@
     {% endblock %}
 
     {% block content %}
-        <div class="section-header">
-            <h1>{{ page_title }}</h1>
-            <p>Explorez les différents récapitulatifs de vos transactions et accédez aux outils avancés.</p>
+        <div class="section-header text-center mb-8"> {# Ajout des classes Tailwind pour le header #}
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+            <p class="text-lg text-gray-700">Explorez les différents récapitulatifs de vos transactions et accédez aux outils avancés.</p>
         </div>
 
-        <div class="recap-grid">
-            <div class="recap-card">
-                <h2>Récapitulatif par Catégorie</h2>
-                <p>Visualisez vos transactions regroupées par catégories (celles qui gèrent un fonds) pour le mois ou l'année de votre choix.</p>
-                {# Le bouton a est maintenant stylé par .recap-card a dans pages/_recap_overview.css #}
-                <a href="{% url 'category_transactions_summary_view' %}" class="btn">Voir le récapitulatif</a>
+        <div class="recap-grid gap-6 mt-8"> {# Ajout des classes Tailwind pour gap et margin-top #}
+            <div class="recap-card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200"> {# Ajout des classes Tailwind directes pour la carte #}
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Récapitulatif par Catégorie</h2>
+                <p class="text-gray-600 leading-normal mb-6">Visualisez vos transactions regroupées par catégories (celles qui gèrent un fonds) pour le mois ou l'année de votre choix.</p>
+                {# Le bouton a est maintenant stylé par des classes Tailwind directes #}
+                <a href="{% url 'category_transactions_summary_view' %}" class="btn inline-block bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors duration-200 transform hover:scale-105">Voir le récapitulatif</a>
             </div>
 
-            <div class="recap-card">
-                <h2>Toutes les Transactions</h2>
-                <p>Consultez la liste complète de toutes vos transactions enregistrées, avec l'indication de leur statut de ventilation.</p>
-                <a href="{% url 'all_transactions_summary_view' %}" class="btn">Voir toutes les transactions</a>
+            <div class="recap-card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200"> {# Ajout des classes Tailwind directes pour la carte #}
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Toutes les Transactions</h2>
+                <p class="text-gray-600 leading-normal mb-6">Consultez la liste complète de toutes vos transactions enregistrées, avec l'indication de leur statut de ventilation.</p>
+                <a href="{% url 'all_transactions_summary_view' %}" class="btn inline-block bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors duration-200 transform hover:scale-105">Voir toutes les transactions</a>
             </div>
 
-            <div class="recap-card">
-                <h2>Diviser une Transaction</h2>
-                <p>Utilisez cet outil pour diviser une transaction unique (par exemple, un paiement groupé) en plusieurs transactions distinctes et catégorisées. (Fonctionnalité en développement)</p>
-                <a href="{% url 'split_transaction_view' %}" class="btn">Accéder à l'outil</a>
+            <div class="recap-card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200"> {# Ajout des classes Tailwind directes pour la carte #}
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Diviser une Transaction</h2>
+                <p class="text-gray-600 leading-normal mb-6">Utilisez cet outil pour diviser une transaction unique (par exemple, un paiement groupé) en plusieurs transactions distinctes et catégorisées. (Fonctionnalité en développement)</p>
+                <a href="{% url 'split_transaction_view' %}" class="btn inline-block bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition-colors duration-200 transform hover:scale-105">Accéder à l'outil</a>
             </div>
         </div>
 

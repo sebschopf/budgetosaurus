@@ -13,14 +13,14 @@
         <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
 
         {% if original_transaction %}
-            <div class="allocate-form-container">
-                <div class="original-transaction-info">
-                    <h2>Transaction à Allouer</h2>
-                    <p>Date: {{ original_transaction.date|date:"d M Y" }}</p>
-                    <p>Description: {{ original_transaction.description }}</p>
+            <div class="allocate-form-container bg-gray-50 rounded-lg shadow-md p-6 mb-8 border border-gray-200"> {# Ajout des classes Tailwind #}
+                <div class="original-transaction-info bg-blue-50 rounded-lg p-5 mb-6 text-center border border-blue-200"> {# Ajout des classes Tailwind #}
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-3">Transaction à Allouer</h2>
+                    <p class="text-base text-gray-700 mb-1">Date: {{ original_transaction.date|date:"d M Y" }}</p>
+                    <p class="text-base text-gray-700 mb-1">Description: {{ original_transaction.description }}</p>
                     {# .amount et .positive sont stylés dans pages/_allocate_income.css et _base.css #}
-                    <p>Montant: <span class="amount positive">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
-                    <p>Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
+                    <p class="text-2xl font-bold mt-2">Montant: <span class="amount positive">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
+                    <p class="text-base text-gray-700 mb-0">Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
                 </div>
 
                 {# Affichage des messages d'erreur Django (gérés par toast.js) #}
@@ -57,10 +57,10 @@
 
                     <div id="allocation-lines-container">
                         {% for line_form in formset %}
-                            <div class="allocation-line {% if line_form.errors %}has-error{% endif %}" id="form-{{ forloop.counter0 }}">
+                            <div class="allocation-line {% if line_form.errors %}has-error{% endif %} mb-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm" id="form-{{ forloop.counter0 }}"> {# Ajout des classes Tailwind #}
                                 {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
                                 {% if line_form.errors %}
-                                    <ul class="errorlist">
+                                    <ul class="errorlist col-span-full text-red-600 text-sm list-none p-0"> {# Ajout des classes Tailwind #}
                                         {% for field_name, errors in line_form.errors.items %}
                                             <li>{{ line_form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
                                         {% endfor %}
@@ -94,15 +94,15 @@
                     </div>
 
                     {# .add-line-btn est stylé dans components/_buttons.css #}
-                    <button type="button" id="add-allocation-line-btn" class="add-line-btn">Ajouter une ligne d'allocation</button>
+                    <button type="button" id="add-allocation-line-btn" class="add-line-btn bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-300 font-semibold mt-4 block mx-auto max-w-xs">Ajouter une ligne d'allocation</button> {# Ajout des classes Tailwind #}
 
                     {# .allocation-summary est stylé dans pages/_allocate_income.css #}
-                    <div id="allocation-summary-box" class="allocation-summary">
+                    <div id="allocation-summary-box" class="allocation-summary bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6 text-center font-semibold text-yellow-800"> {# Ajout des classes Tailwind #}
                         Montant restant à allouer: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
                     </div>
 
                     {# .main-submit-btn est stylé dans components/_buttons.css #}
-                    <button type="submit" class="main-submit-btn">Allouer le Revenu</button>
+                    <button type="submit" class="main-submit-btn w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 font-bold text-lg">Allouer le Revenu</button> {# Ajout des classes Tailwind #}
                 </form>
             </div>
         {% else %}

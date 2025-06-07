@@ -1,18 +1,18 @@
 {# webapp/templates/webapp/budget_overview_includes/monthly_category_summary_display.html #}
-<h2 class="text-2xl font-semibold text-gray-700 mb-4">Récapitulatif Mensuel par Catégorie</h2>
-<p class="text-gray-600 mb-6">Totaux des transactions pour {{ current_month_name }} {{ current_year }}.</p>
+{# Le titre h2 et le paragraphe d'introduction ont été déplacés dans le template parent #}
 
 {% if monthly_category_summary_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté et marge inférieure via Tailwind #}
         {% for item in monthly_category_summary_data %}
-            <div class="card"> {# Réutilise la classe 'card' pour un style cohérent #}
-                <h3>{{ item.category_name }}</h3>
-                <p class="balance {% if item.total_amount >= 0 %}positive{% else %}negative{% endif %}">
+            {# Réutilise la classe 'card' pour un style cohérent et ajoute les classes Tailwind #}
+            <div class="card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto">
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ item.category_name }}</h3>
+                <p class="balance text-2xl font-bold mt-2 {% if item.total_amount >= 0 %}positive{% else %}negative{% endif %}">
                     {{ item.total_amount|floatformat:2 }} CHF
                 </p>
             </div>
         {% endfor %}
     </div>
 {% else %}
-    <p class="text-center text-gray-600">Aucune transaction catégorisée ce mois-ci pour le récapitulatif.</p>
+    <p class="text-center text-gray-600 my-10">Aucune transaction catégorisée ce mois-ci pour le récapitulatif.</p>
 {% endif %}
