@@ -16,66 +16,64 @@
 
     {% if transactions %}
         <div class="transactions-table-container">
-            {# Utilise flexbox pour l'en-tête et le corps, pour un meilleur contrôle du scroll et sticky header #}
-            <div class="overflow-x-auto"> {# Permet le défilement horizontal sur petits écrans #}
-                <div class="transactions-grid-header"> {# En-tête de la grille #}
-                    <div class="grid-cell-header">Date</div> 
-                    <div class="grid-cell-header">Description</div> 
-                    <div class="grid-cell-header">Montant</div> 
-                    <div class="grid-cell-header">Catégorie</div> 
-                    <div class="grid-cell-header">Compte</div> 
-                    <div class="grid-cell-header">Type</div> 
-                    <div class="grid-cell-header">Ventilé</div> 
-                    <div class="grid-cell-header">Actions</div> 
-                </div>
+            <div class="transactions-grid-header"> {# En-tête de la grille #}
+                <div class="grid-cell-header">Date</div> 
+                <div class="grid-cell-header">Description</div> 
+                <div class="grid-cell-header text-right">Montant</div> {# Alignement à droite pour le montant #}
+                <div class="grid-cell-header">Catégorie</div> 
+                <div class="grid-cell-header">Compte</div> 
+                <div class="grid-cell-header">Type</div> 
+                <div class="grid-cell-header">Ventilé</div> 
+                <div class="grid-cell-header">Actions</div> 
+            </div>
 
-                <div class="transactions-grid-body"> {# Corps de la grille avec les données #}
-                    {% for transaction in transactions %}
-                        <div class="grid-row">
-                            <div class="grid-cell">{{ transaction.date|date:"d M Y" }}</div>
-                            <div class="grid-cell">
-                                <span class="truncated-description-wrapper" title="{{ transaction.description }}">
-                                    <span class="truncated-description-content">{{ transaction.description }}</span>
-                                </span>
-                            </div>
-                            <div class="grid-cell amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %}">
-                                {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
-                            </div>
-                            <div class="grid-cell">{{ transaction.category_name }}</div>
-                            <div class="grid-cell">{{ transaction.account_name }}</div>
-                            <div class="grid-cell">{{ transaction.get_transaction_type_display }}</div>
-                            <div class="grid-cell allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
-                                {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
-                            </div>
-                            <div class="grid-cell">
-                                <div class="action-buttons-wrapper">
-                                    {# Bouton "Ventiler" pour les revenus des comptes communs (s'il n'est pas déjà alloué) #}
-                                    {% if transaction.transaction_type == 'IN' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
-                                        <a href="{% url 'allocate_income_view' transaction_id=transaction.id %}" class="action-button allocate-btn">
-                                            Ventiler
+            <div class="transactions-grid-body"> {# Corps de la grille avec les données #}
+                {% for transaction in transactions %}
+                    <div class="grid-row">
+                        <div class="grid-cell">{{ transaction.date|date:"d M Y" }}</div>
+                        <div class="grid-cell">
+                            {# Utilisation de la classe de troncature pour les descriptions longues #}
+                            <span class="truncated-description-wrapper" title="{{ transaction.description }}">
+                                <span class="truncated-description-content">{{ transaction.description }}</span>
+                            </span>
+                        </div>
+                        <div class="grid-cell amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %} text-right"> {# Alignement à droite pour le montant #}
+                            {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
+                        </div>
+                        <div class="grid-cell">{{ transaction.category_name }}</div>
+                        <div class="grid-cell">{{ transaction.account_name }}</div>
+                        <div class="grid-cell">{{ transaction.get_transaction_type_display }}</div>
+                        <div class="grid-cell allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
+                            {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
+                        </div>
+                        <div class="grid-cell">
+                            <div class="action-buttons-wrapper">
+                                {# Bouton "Ventiler" pour les revenus des comptes communs (s'il n'est pas déjà alloué) #}
+                                {% if transaction.transaction_type == 'IN' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
+                                    <a href="{% url 'allocate_income_view' transaction_id=transaction.id %}" class="btn btn-action-small btn-allocate">
+                                        Ventiler
+                                    </a>
+                                {% endif %}
+
+                                {# Bouton "Débiter des fonds" pour les dépenses #}
+                                {% if transaction.transaction_type == 'OUT' %}
+                                    {% if transaction.account_type == 'COMMON' or transaction.account_type == 'INDIVIDUAL' %}
+                                        <a href="{% url 'debit_funds_view' transaction_id=transaction.id %}" class="btn btn-action-small btn-debit">
+                                            Débiter Fonds
                                         </a>
                                     {% endif %}
+                                {% endif %}
 
-                                    {# Bouton "Débiter des fonds" pour les dépenses #}
-                                    {% if transaction.transaction_type == 'OUT' %}
-                                        {% if transaction.account_type == 'COMMON' or transaction.account_type == 'INDIVIDUAL' %}
-                                            <a href="{% url 'debit_funds_view' transaction_id=transaction.id %}" class="action-button debit-btn">
-                                                Débiter Fonds
-                                            </a>
-                                        {% endif %}
-                                    {% endif %}
-
-                                    {# Bouton "Diviser" pour les dépenses (qui ne sont pas des transferts) #}
-                                    {% if transaction.transaction_type == 'OUT' %}
-                                    <a href="{% url 'split_transaction_view_with_id' transaction_id=transaction.id %}" class="action-button">
-                                        Diviser
-                                    </a>
-                                    {% endif %}
-                                </div>
+                                {# Bouton "Diviser" pour les dépenses (qui ne sont pas des transferts) #}
+                                {% if transaction.transaction_type == 'OUT' %}
+                                <a href="{% url 'split_transaction_view_with_id' transaction_id=transaction.id %}" class="btn btn-action-small btn-split">
+                                    Diviser
+                                </a>
+                                {% endif %}
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
+                    </div>
+                {% endfor %}
             </div>
         </div>
     {% else %}

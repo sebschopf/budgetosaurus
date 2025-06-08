@@ -9,21 +9,21 @@
             <p class="text-sm text-gray-600 mb-1">Dépensé : <span class="font-bold">{{ budget.spent_amount|floatformat:2 }} CHF</span></p>
             <p class="text-sm text-gray-600 mb-1">Restant : <span class="font-bold {% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
 
-            <div class="progress-bar-container w-full bg-gray-200 rounded-full h-3 mt-3 overflow-hidden">
-                {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
-                {% if budget.percentage_spent < 75 %}
-                    <div class="progress-bar green h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                        {{ budget.percentage_spent|floatformat:0 }}%
-                    </div>
+            <div class="progress-bar-container">
+            {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
+            {% if budget.percentage_spent < 75 %}
+                <div class="progress-bar green" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                {{ budget.percentage_spent|floatformat:0 }}%
+                </div>
                 {% elif budget.percentage_spent < 100 %}
-                    <div class="progress-bar orange h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                        {{ budget.percentage_spent|floatformat:0 }}%
-                    </div>
+                <div class="progress-bar orange" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                {{ budget.percentage_spent|floatformat:0 }}%
+                </div>
                 {% else %}
-                    <div class="progress-bar red h-full text-center text-xs text-white flex items-center justify-center rounded-full" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                        {{ budget.percentage_spent|floatformat:0 }}%
-                    </div>
-                {% endif %}
+                <div class="progress-bar red" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
+                {{ budget.percentage_spent|floatformat:0 }}%
+                </div>
+            {% endif %}
             </div>
         </div>
     {% endfor %}

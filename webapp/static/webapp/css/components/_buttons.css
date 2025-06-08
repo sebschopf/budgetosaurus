@@ -1,47 +1,70 @@
 /* webapp/static/webapp/css/components/_buttons.css */
 
+/* Style pour un bouton générique de base */
+.btn {
+    @apply inline-block text-white py-2 px-4 rounded-md font-semibold transition-colors duration-200;
+    /* Styles communs à tous les boutons qui utilisent .btn */
+    cursor: pointer;
+    text-decoration: none; /* Assurez-vous que les liens ne sont pas soulignés */
+    white-space: nowrap; /* Empêche le texte de passer à la ligne */
+    text-align: center;
+}
+
+/* Variante principale des boutons (pour les CTA principaux) */
+.btn-primary {
+    @apply bg-indigo-600 hover:bg-indigo-700 transform hover:scale-105;
+    /* Ajoutez d'autres styles spécifiques à la version principale si nécessaire */
+}
+
 /* Style pour le bouton principal de soumission (grand bouton en bas de formulaire) */
 .main-submit-btn {
-    /* Utilisation de @apply pour combiner les classes Tailwind */
     @apply w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 font-bold text-lg;
-    /* Ajoutez d'autres styles spécifiques si nécessaire */
 }
 
 /* Styles pour les petits boutons d'ajout/suppression dans les formsets (split, allocation, debit) */
 .add-line-btn {
-    /* Bouton d'ajout de ligne (vert) */
     @apply bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-300 font-semibold mt-4 block mx-auto;
-    max-width: 250px; /* Limiter la largeur si nécessaire */
+    max-width: 250px;
 }
 
 .delete-line-btn, .delete-split-btn {
-    /* Bouton de suppression de ligne (rouge, généralement un 'X') */
     @apply bg-red-500 text-white font-bold w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-600 transition duration-200 text-lg;
-    box-shadow: none; /* S'assurer qu'il n'y a pas d'ombre par défaut si elle n'est pas désirée */
+    box-shadow: none;
 }
 
 /* Styles pour les boutons d'action des tables (Éditer, Supprimer, Ventiler, Débiter, Diviser) */
-/* Créons une classe générique pour les boutons d'action dans les tables */
-.action-button {
-    @apply bg-blue-500 text-white px-3 py-1 rounded-md text-xs font-semibold hover:bg-blue-600 transition duration-200 text-center;
-    /* Assurez une taille minimale pour la lisibilité sur les petits écrans */
-    min-width: 60px;
-    white-space: nowrap; /* Empêcher le texte de passer à la ligne */
+/* C'est la nouvelle classe générique pour les boutons dans les tables */
+.btn-action-small {
+    @apply text-white px-2 py-1 rounded-md text-xs font-semibold;
+    /* Styles de base pour tous les petits boutons d'action dans les tableaux */
+    min-width: 60px; /* Assure une taille minimale */
+    display: inline-flex; /* Pour centrer le texte et l'icône si on en ajoute */
+    align-items: center;
+    justify-content: center;
+    gap: 4px; /* Petit espace entre le texte et l'icône si on en ajoute */
 }
 
 /* Surcharge des couleurs pour les boutons d'action spécifiques */
-.action-button.allocate-btn {
-    @apply bg-green-500 hover:bg-green-600;
+/* Remplace les anciennes .action-button par .btn-action-small */
+.edit-btn { /* Bouton Éditer (bleu) */
+    @apply bg-blue-600 hover:bg-blue-700;
 }
-.action-button.debit-btn {
-    @apply bg-red-500 hover:bg-red-600;
+.delete-btn { /* Bouton Supprimer (rouge) */
+    @apply bg-red-600 hover:bg-red-700;
 }
-.action-button.split-btn { /* Si vous décidez d'utiliser une classe spécifique pour "Diviser" */
+.btn-allocate { /* Bouton Ventiler (vert) */
+    @apply bg-green-600 hover:bg-green-700;
+}
+.btn-debit { /* Bouton Débiter Fonds (orange) */
+    @apply bg-orange-500 hover:bg-orange-600; /* Nouvelle couleur pour distinguer */
+}
+.btn-split { /* Bouton Diviser (indigo) */
     @apply bg-indigo-500 hover:bg-indigo-600;
 }
 
+
 /* Styles pour le bouton "Retour au Tableau de Bord" */
 .back-link {
-    /* Déjà défini dans _base.css, si c'est suffisant, on ne le redéfinit pas ici */
-    /* Sinon, on pourrait utiliser @apply ici si des styles spécifiques aux boutons sont nécessaires */
+    @apply block text-center mt-8 text-blue-600 hover:underline text-lg font-medium;
 }
+
