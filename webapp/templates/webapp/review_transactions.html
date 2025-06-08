@@ -6,6 +6,7 @@
     {% block extra_head %}
     {% load static %}
     <link rel="stylesheet" href="{% static 'webapp/css/pages/_review_transactions.css' %}">
+    {# Assurez-vous que tailwind_output.css est bien compilé et chargé via main.css #}
     {% endblock %}
 
     {% block content %}
@@ -60,8 +61,25 @@
             <p class="no-transactions text-center text-gray-600 my-10">Aucune transaction à revoir pour le moment. Tout est catégorisé !</p>
         {% endif %}
 
-        {# Inclure la modale d'édition de transaction #}
-        {% include 'webapp/review_transactions_includes/edit_transaction_modal.html' %}
+        {# Panneau latéral d'édition de transaction - Styles Tailwind appliqués directement #}
+        <div id="editTransactionSidePanel" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-out flex flex-col pt-16 border-l border-gray-200">
+            <div class="side-panel-header flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 sticky top-16 z-10">
+                <h2 class="text-xl font-semibold text-gray-800 m-0 p-0 border-none">Éditer la Transaction</h2>
+                <button type="button" class="close-side-panel-button text-gray-500 text-3xl font-bold cursor-pointer hover:text-gray-800 bg-transparent border-none p-0 leading-none">&times;</button>
+            </div>
+            <div class="side-panel-content p-8 flex-grow overflow-y-auto">
+                <form id="editTransactionForm" method="post">
+                    {% csrf_token %}
+                    <div id="side-panel-form-fields">
+                        {# Les champs du formulaire TransactionForm seront insérés ici par JS #}
+                        <p class="text-center text-gray-500">Chargement du formulaire...</p>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 mt-4 font-semibold">
+                        Sauvegarder
+                    </button>
+                </form>
+            </div>
+        </div>
 
         <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
     {% endblock %}

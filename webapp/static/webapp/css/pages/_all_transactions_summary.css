@@ -21,9 +21,12 @@
 .transactions-grid-header,
 .transactions-grid-body {
     display: grid;
-    /* Ajustez ces pourcentages au besoin pour la largeur des colonnes */
-    /* Nouvelle répartition : Date, Description (flexible), Montant, Catégorie (flexible), Compte, Type, Ventilé, Actions */
-    grid-template-columns: 80px minmax(150px, 2fr) 90px minmax(100px, 1.5fr) 100px 70px 70px 140px; 
+    /* Augmente le gap entre les colonnes pour plus d'aération */
+    gap: 1rem; /* Environ 16px d'espacement entre les colonnes */
+    
+    /* Nouvelle répartition des colonnes : */
+    /* Date (80px) | Description (flexible, min 150px) | Montant (100px) | Catégorie (flexible, min 100px) | Compte (100px) | Type (70px) | Ventilé (70px) | Actions (flexible, min 160px) */
+    grid-template-columns: 80px minmax(150px, 2fr) 100px minmax(100px, 1.5fr) 100px 70px 70px minmax(160px, 1.2fr); 
     @apply text-sm text-left;
     font-size: 0.9em;
 }
@@ -60,6 +63,10 @@
 
 .grid-cell {
     @apply px-4 py-3 text-gray-800 border-b border-gray-200 flex items-center; /* flex items-center pour aligner au centre verticalement */
+    /* Empêcher le texte de déborder des cellules par défaut */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* Alignements spécifiques pour les cellules de données */
@@ -100,27 +107,31 @@
 .action-buttons-wrapper {
     @apply flex flex-col sm:flex-row gap-1 w-full items-center justify-center; /* Responsive: colonne sur mobile, rangée sur sm+ */
 }
-/* Espacement pour les boutons d'action, et assurer qu'ils prennent l'espace */
-.action-buttons-wrapper .btn-action-small {
-    @apply flex-grow; /* Permet aux boutons de remplir l'espace disponible */
+/* Assurez-vous que les boutons prennent l'espace nécessaire dans la colonne d'actions */
+.action-buttons-wrapper > * { /* Cible tous les enfants directs (les boutons) */
+    flex-shrink: 0; /* Empêche les boutons de rétrécir si le contenu est trop grand */
 }
 
 
-/* Styles pour la description tronquée */
+/* Styles pour la description tronquée (pour l'affichage complet au survol) */
 .truncated-description-wrapper {
     @apply relative w-full whitespace-nowrap overflow-hidden text-ellipsis block;
 }
 
 .truncated-description-wrapper:hover .truncated-description-content {
     @apply whitespace-normal overflow-visible text-clip absolute bg-white p-2 shadow-lg z-10 min-w-[150px] transform -translate-x-1/2 left-1/2 bottom-full pb-3 border border-gray-200 rounded-md;
+    /* Assurez que le texte complet est lisible au survol */
+    max-width: 300px; /* Limite la largeur de la bulle d'info */
 }
 
 /* Ajustements pour les petits écrans (responsive) */
 @media (max-width: 767px) {
     .transactions-grid-header,
     .transactions-grid-body {
-        /* Sur mobile, on simplifie encore la grille pour ne montrer que l'essentiel */
-        grid-template-columns: auto minmax(100px, 1fr) 90px 100px; /* Date, Description, Montant, Actions */
+        /* Sur mobile, on simplifie la grille pour ne montrer que l'essentiel */
+        /* Date, Description, Montant, Actions */
+        grid-template-columns: 70px minmax(100px, 2fr) 80px minmax(100px, 1fr); 
+        gap: 0.5rem; /* Réduit le gap sur mobile */
     }
     .grid-cell-header, .grid-cell {
         @apply px-2 py-2 text-xs;
@@ -138,9 +149,10 @@
     }
     /* Ajustement des boutons d'action sur mobile */
     .action-buttons-wrapper {
-        @apply flex-col gap-1; /* Toujours en colonne sur mobile */
+        @apply flex-col gap-1; /* Toujours en colonne sur mobile pour éviter le débordement */
     }
     .action-buttons-wrapper .btn-action-small {
         @apply text-[0.6rem] px-1 py-0.5;
+        min-width: unset; /* Enlève la largeur minimale fixe sur mobile pour plus de flexibilité */
     }
 }

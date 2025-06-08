@@ -1,70 +1,117 @@
 /* webapp/static/webapp/css/components/_buttons.css */
 
-/* Style pour un bouton générique de base */
+/* Style pour un bouton générique de base (utilisé par exemple dans recap_overview.html) */
 .btn {
+    /* Ces styles devraient être clairs */
     @apply inline-block text-white py-2 px-4 rounded-md font-semibold transition-colors duration-200;
-    /* Styles communs à tous les boutons qui utilisent .btn */
     cursor: pointer;
-    text-decoration: none; /* Assurez-vous que les liens ne sont pas soulignés */
-    white-space: nowrap; /* Empêche le texte de passer à la ligne */
+    text-decoration: none;
+    white-space: nowrap;
     text-align: center;
 }
 
 /* Variante principale des boutons (pour les CTA principaux) */
 .btn-primary {
+    /* Ces styles devraient être clairs */
     @apply bg-indigo-600 hover:bg-indigo-700 transform hover:scale-105;
-    /* Ajoutez d'autres styles spécifiques à la version principale si nécessaire */
 }
 
 /* Style pour le bouton principal de soumission (grand bouton en bas de formulaire) */
 .main-submit-btn {
+    /* Ces styles devraient être clairs */
     @apply w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 font-bold text-lg;
 }
 
 /* Styles pour les petits boutons d'ajout/suppression dans les formsets (split, allocation, debit) */
 .add-line-btn {
+    /* Ces styles devraient être clairs */
     @apply bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-300 font-semibold mt-4 block mx-auto;
     max-width: 250px;
 }
 
 .delete-line-btn, .delete-split-btn {
+    /* Ces styles devraient être clairs */
     @apply bg-red-500 text-white font-bold w-10 h-10 flex items-center justify-center rounded-full hover:bg-red-600 transition duration-200 text-lg;
     box-shadow: none;
 }
 
-/* Styles pour les boutons d'action des tables (Éditer, Supprimer, Ventiler, Débiter, Diviser) */
-/* C'est la nouvelle classe générique pour les boutons dans les tables */
+/* Styles pour les boutons d'action dans les tableaux (nouvelle classe générique) */
+/* C'est la classe clé à inspecter pour la page "Toutes les Transactions" */
 .btn-action-small {
-    @apply text-white px-2 py-1 rounded-md text-xs font-semibold;
+    /* Appliquer les styles de base via @apply pour la taille, la graisse, le padding */
+    @apply text-white px-2 py-1 text-xs font-semibold; /* Suppression de rounded-md ici */
+
     /* Styles de base pour tous les petits boutons d'action dans les tableaux */
-    min-width: 60px; /* Assure une taille minimale */
+    min-width: 60px; /* Assure une taille minimale sur desktop */
     display: inline-flex; /* Pour centrer le texte et l'icône si on en ajoute */
     align-items: center;
     justify-content: center;
     gap: 4px; /* Petit espace entre le texte et l'icône si on en ajoute */
+    transition: background-color 0.2s ease, transform 0.2s ease;
+
+    /* APPLICATION EXPLICITE DES ARRONDS */
+    /* La classe `rounded-md` de Tailwind correspond à `border-radius: 0.375rem;` */
+    border-radius: 0.375rem; /* Assure les arrondis cohérents */
 }
 
 /* Surcharge des couleurs pour les boutons d'action spécifiques */
-/* Remplace les anciennes .action-button par .btn-action-small */
-.edit-btn { /* Bouton Éditer (bleu) */
-    @apply bg-blue-600 hover:bg-blue-700;
+/* Utilisation des couleurs définies par Tailwind en valeurs hexadécimales,
+   et non les classes @apply, pour garantir que la couleur est appliquée.
+   Ceci peut être nécessaire si la configuration PostCSS/Tailwind ne compile pas
+   correctement les classes `bg-color` lorsqu'elles sont utilisées avec `@apply`
+   dans des sélecteurs plus complexes comme `.btn-action-small.btn-allocate`. */
+.btn-action-small.btn-allocate { /* Bouton Ventiler (vert) */
+    background-color: #16a34a; /* green-600 */
+    color: white; /* Assure la couleur du texte */
 }
-.delete-btn { /* Bouton Supprimer (rouge) */
-    @apply bg-red-600 hover:bg-red-700;
-}
-.btn-allocate { /* Bouton Ventiler (vert) */
-    @apply bg-green-600 hover:bg-green-700;
-}
-.btn-debit { /* Bouton Débiter Fonds (orange) */
-    @apply bg-orange-500 hover:bg-orange-600; /* Nouvelle couleur pour distinguer */
-}
-.btn-split { /* Bouton Diviser (indigo) */
-    @apply bg-indigo-500 hover:bg-indigo-600;
+.btn-action-small.btn-allocate:hover {
+    background-color: #15803d; /* green-700 */
 }
 
+.btn-action-small.btn-debit { /* Bouton Débiter Fonds (orange) */
+    background-color: #f97316; /* orange-500 */
+    color: white; /* Assure la couleur du texte */
+}
+.btn-action-small.btn-debit:hover {
+    background-color: #ea580c; /* orange-600 */
+}
 
-/* Styles pour le bouton "Retour au Tableau de Bord" */
+.btn-action-small.btn-split { /* Bouton Diviser (indigo) */
+    background-color: #6366f1; /* indigo-500 */
+    color: white; /* Assure la couleur du texte */
+}
+.btn-action-small.btn-split:hover {
+    background-color: #4f46e5; /* indigo-600 */
+}
+
 .back-link {
-    @apply block text-center mt-8 text-blue-600 hover:underline text-lg font-medium;
+    /* Styles pour le faire ressembler à un bouton secondaire en utilisant AU MAXIMUM des classes Tailwind */
+    @apply block text-center mt-8 px-6 py-2 rounded-md font-medium
+           bg-gray-100 text-gray-700 border border-gray-300
+           hover:bg-gray-200 hover:border-gray-400 hover:text-gray-900
+           transition-colors duration-200 transform hover:-translate-y-0.5 hover:shadow-md;
+    text-decoration: none; /* Toujours s'assurer que le soulignement par défaut est enlevé */
+}
+
+/* Les classes .edit-btn et .delete-btn dans review_transactions.html étaient spécifiques.
+   Elles sont surchargée ici pour assurer qu'elles ont les bons styles. */
+.action-button.edit-btn { /* Bouton Éditer (bleu) */
+    background-color: #2563eb; /* blue-600 */
+    color: white;
+    @apply px-3 py-1 text-xs font-semibold; /* Garde les styles originaux de base */
+    border-radius: 0.375rem; /* Assure les arrondis cohérents */
+}
+.action-button.edit-btn:hover {
+    background-color: #1d4ed8; /* blue-700 */
+}
+
+.action-button.delete-btn { /* Bouton Supprimer (rouge) */
+    background-color: #dc2626; /* red-600 */
+    color: white;
+    @apply px-3 py-1 text-xs font-semibold; /* Garde les styles originaux de base */
+    border-radius: 0.375rem; /* Assure les arrondis cohérents */
+}
+.action-button.delete-btn:hover {
+    background-color: #b91c1c; /* red-700 */
 }
 
