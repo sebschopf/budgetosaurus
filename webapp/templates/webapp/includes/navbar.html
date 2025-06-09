@@ -2,24 +2,40 @@
 <nav class="bg-indigo-700 p-2 shadow-lg w-full fixed top-0 left-0 z-50"> {# Navbar fixe en haut #}
     {# Le conteneur centralisé qui contient le titre et le menu de navigation #}
     <div class="container flex items-center justify-between max-w-screen-xl px-8">
- {# Centrage et largeur max pour le contenu de la navbar #}
         {# Titre de l'application - reste à gauche, ne se réduit pas #}
         <div class="flex items-center flex-shrink-0">
-            <a href="{% url 'dashboard_view' %}" class="text-white text-3xl font-bold flex-shrink-0 pr-8">Budgetosaurus</a> 
-        
+            <a href="{% url 'dashboard_view' %}" class="text-white text-3xl font-bold flex-shrink-0 pr-8">Budgetosaurus</a>
+
             {# Conteneur des liens de navigation - prend l'espace restant, aligné à droite, pas de retour à la ligne #}
-         {# space-x-8 pour l'espacement entre les liens, overflow-x-auto pour le scroll sur petits écrans #}
-            <div class="flex flex-grow justify-end flex-nowrap space-x-8 overflow-x-auto"> 
-                {# Liens de navigation - style bouton plat, padding, effet hover, et texte sur une seule ligne #}
+            {# MODIFIÉ : espacement réduit de 'space-x-8' à 'space-x-4' #}
+            <div class="flex flex-grow justify-end flex-nowrap space-x-4 overflow-x-auto">
+                {# Liens de navigation principaux #}
                 <a href="{% url 'dashboard_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Tableau de Bord</a>
                 <a href="{% url 'import_transactions_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Importer Transactions</a>
+                <a href="{% url 'import_categories' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Importer Catégories</a>
                 <a href="{% url 'review_transactions_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Transactions à Revoir</a>
                 <a href="{% url 'budget_overview' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Aperçu Budgets & Fonds</a>
-                <a href="{% url 'recap_overview_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Récapitulatifs</a>
+                {# CONSOLIDÉ : La page 'Récapitulatifs & Outils' est le point d'entrée pour tous les récapitulatifs et outils #}
+                <a href="{% url 'recap_overview_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Récapitulatifs & Outils</a>
                 <a href="{% url 'glossary_view' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Glossaire</a>
+                {# Le lien Admin Django est conservé ici #}
                 <a href="/admin/" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Admin Django</a>
             </div>
         </div>
-        {# Bouton de déconnexion - aligné à droite, pas de retour à la ligne #}
+
+        {# NOUVEAU : Section d'authentification avec FORMULAIRE DE DÉCONNEXION POST #}
+        <div class="flex items-center flex-shrink-0 ml-4">
+            {% if user.is_authenticated %}
+                {# C'est CE FORMULAIRE qui assure la déconnexion en POST #}
+                <form action="{% url 'logout' %}" method="post" class="inline-block m-0 p-0">
+                    {% csrf_token %}
+                    <button type="submit" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap bg-transparent border-none cursor-pointer">
+                        Déconnexion ({{ user.username }})
+                    </button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}" class="text-white text-lg font-medium px-4 py-2 rounded-lg hover:bg-indigo-600 transition-colors duration-200 whitespace-nowrap">Se connecter</a>
+            {% endif %}
+        </div>
     </div>
 </nav>
