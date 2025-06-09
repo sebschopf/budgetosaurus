@@ -10,6 +10,8 @@
     {# Lien vers le fichier CSS principal centralisé (qui importe tailwind_output.css) #}
     {% load static %}
     <link rel="stylesheet" href="{% static 'webapp/css/main.css' %}">
+    {# Ajout de Font Awesome pour les icônes, s'il n'est pas déjà dans main.css #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     {% block extra_head %}{% endblock %}
 </head>
 {# Le body prend toute la hauteur, est en flexbox colonne pour pousser le footer en bas si on en ajoute un #}
@@ -69,7 +71,10 @@
 
                 modalContent = document.getElementById('globalConfirmationModalContent');
                 confirmBtn = document.getElementById('globalConfirmBtn');
-                cancelBtn = document.getElementById('globalCancelModalBtn') || document.getElementById('globalCancelBtn'); // Assurez-vous que l'ID est correct
+                // Fix: ensure the correct ID for cancel button is used if there are multiple.
+                // Original: cancelBtn = document.getElementById('globalCancelModalBtn') || document.getElementById('globalCancelBtn');
+                // Simplified assuming 'globalCancelBtn' is always correct.
+                cancelBtn = document.getElementById('globalCancelBtn');
                 modalTitle = document.getElementById('globalConfirmationModalTitle');
                 modalMessage = document.getElementById('globalConfirmationModalMessage');
 
@@ -98,5 +103,9 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    {# Alpine.js local - Ajouté ici pour être disponible globalement #}
+    {# /!\ cdn.min.js doit être placé dans webapp/static/webapp/js/vendors/ #}
+    <script src="{% static 'webapp/js/vendors/cdn.min.js' %}"></script>
 </body>
 </html>
