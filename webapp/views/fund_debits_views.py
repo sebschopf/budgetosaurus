@@ -4,17 +4,21 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 import json
 from decimal import Decimal
+from django.contrib.auth.decorators import login_required
 
 from webapp.models import Category, Transaction, Fund, FundDebitRecord, FundDebitLine
 from webapp.forms import FundDebitRecordForm, FundDebitLineFormset
 
+@login_required
 @require_GET
 def debit_funds_view(request, transaction_id):
     """
     Vue pour débiter des fonds pour une transaction de dépense (type OUT).
     Cette vue affichera un formulaire pour définir les lignes de débit.
+    Accessible uniquement aux utilisateurs connectés.
     """
-    original_transaction = get_object_or_404(Transaction, pk=transaction_id)
+    # S'assurer que la transaction appartient à l'utilisateur connecté
+    original_transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
 
     # Vérifier que la transaction est bien une dépense et n'a pas déjà d'enregistrement de débit de fonds
     if original_transaction.transaction_type != 'OUT':
@@ -23,15 +27,17 @@ def debit_funds_view(request, transaction_id):
     if hasattr(original_transaction, 'fund_debit_record'):
         messages.warning(request, f"La transaction '{original_transaction.description}' a déjà un débit de fonds associé.")
         return redirect('all_transactions_summary_view')
-    
+
     # Créer une instance vide du formulaire principal de FundDebitRecord
+    # Passer l'utilisateur au formulaire pour filtrer les choix si nécessaire (bien que FundDebitRecordForm n'ait pas de ModelChoiceField)
     form = FundDebitRecordForm(initial={'notes': f"Débit de fonds pour: {original_transaction.description}"})
     # Créer un formset pour les lignes de débit de fonds
-    formset = FundDebitLineFormset()
+    # Passer l'utilisateur au formset pour filtrer les choix de catégorie
+    formset = FundDebitLineFormset(user=request.user)
 
-    # Récupérer toutes les catégories qui gèrent un fonds pour le JS
+    # Récupérer toutes les catégories qui gèrent un fonds POUR L'UTILISATEUR CONNECTÉ
     fund_managed_categories = []
-    for cat in Category.objects.filter(is_fund_managed=True).order_by('name'):
+    for cat in Category.objects.filter(user=request.user, is_fund_managed=True).order_by('name'):
         fund_managed_categories.append({
             'id': cat.id,
             'name': cat.name,
@@ -43,18 +49,20 @@ def debit_funds_view(request, transaction_id):
         'original_transaction': original_transaction,
         'form': form,
         'formset': formset,
-        'fund_managed_categories_json': json.dumps(fund_managed_categories), # Pour le JS de la page de débit
+        'fund_managed_categories_json': json.dumps(fund_managed_categories),
     }
     return render(request, 'webapp/debit_funds.html', context)
 
 
+@login_required
 @require_POST
 def process_fund_debit(request, transaction_id):
     """
     Gère la soumission du formulaire de débit de fonds.
-    Crée l'objet FundDebitRecord et ses lignes, puis met à jour les fonds.
+    Crée l'objet FundDebitRecord et ses lignes pour l'utilisateur connecté, puis met à jour les fonds.
     """
-    original_transaction = get_object_or_404(Transaction, pk=transaction_id)
+    # S'assurer que la transaction originale appartient à l'utilisateur connecté
+    original_transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
 
     if original_transaction.transaction_type != 'OUT':
         messages.error(request, "Opération invalide: Seules les transactions de type 'Dépense' peuvent débiter des fonds.")
@@ -63,8 +71,9 @@ def process_fund_debit(request, transaction_id):
         messages.error(request, f"Cette transaction a déjà un enregistrement de débit de fonds associé.")
         return redirect('all_transactions_summary_view')
 
-    form = FundDebitRecordForm(request.POST)
-    formset = FundDebitLineFormset(request.POST)
+    # Passer l'utilisateur aux formulaires pour filtrer les choix
+    form = FundDebitRecordForm(request.POST) # FundDebitRecordForm n'a pas de ModelChoiceField sur 'user'
+    formset = FundDebitLineFormset(request.POST, user=request.user) # Passer l'utilisateur au formset
 
     if form.is_valid() and formset.is_valid():
         total_debited_amount = Decimal('0.00')
@@ -76,12 +85,14 @@ def process_fund_debit(request, transaction_id):
                 category = line_form.cleaned_data['category']
                 notes = line_form.cleaned_data.get('notes', '')
 
-                # Vérifier que la catégorie gère bien un fonds
-                if not category.is_fund_managed:
-                    messages.error(request, f"La catégorie '{category.name}' ne gère pas de fonds et ne peut pas être débitée directement.")
+                # Vérifier que la catégorie gère bien un fonds POUR L'UTILISATEUR CONNECTÉ
+                # La catégorie doit aussi appartenir à l'utilisateur
+                if not category.is_fund_managed or category.user != request.user:
+                    messages.error(request, f"La catégorie '{category.name}' ne gère pas de fonds ou n'appartient pas à votre compte et ne peut pas être débitée directement.")
                     # Re-rendre la page avec les erreurs
                     fund_managed_categories = []
-                    for cat in Category.objects.filter(is_fund_managed=True).order_by('name'):
+                    # Filtrer les catégories par l'utilisateur pour le re-rendu
+                    for cat in Category.objects.filter(user=request.user, is_fund_managed=True).order_by('name'):
                         fund_managed_categories.append({
                             'id': cat.id,
                             'name': cat.name,
@@ -102,12 +113,12 @@ def process_fund_debit(request, transaction_id):
                     'amount': debited_amount,
                     'notes': notes,
                 })
-        
-        # Validation finale : la somme débitée ne doit pas dépasser le montant absolu de la transaction originale
+
         if total_debited_amount > abs(original_transaction.amount) + Decimal('0.01'):
             messages.error(request, f"Le montant total débité ({total_debited_amount:.2f} CHF) dépasse le montant de la transaction originale ({abs(original_transaction.amount):.2f} CHF).")
             fund_managed_categories = []
-            for cat in Category.objects.filter(is_fund_managed=True).order_by('name'):
+            # Filtrer les catégories par l'utilisateur pour le re-rendu
+            for cat in Category.objects.filter(user=request.user, is_fund_managed=True).order_by('name'):
                 fund_managed_categories.append({
                     'id': cat.id,
                     'name': cat.name,
@@ -121,11 +132,13 @@ def process_fund_debit(request, transaction_id):
                 'fund_managed_categories_json': json.dumps(fund_managed_categories),
             }
             return render(request, 'webapp/debit_funds.html', context)
-        
+
         try:
-            with Transaction.objects.atomic(): # Utiliser transaction.atomic() directement depuis le modèle
+            with Transaction.objects.atomic():
                 # Créer l'objet FundDebitRecord
+                # Assigner l'utilisateur au FundDebitRecord
                 fund_debit_record = FundDebitRecord.objects.create(
+                    user=request.user, # NOUVEAU
                     transaction=original_transaction,
                     total_debited_amount=total_debited_amount,
                     notes=form.cleaned_data.get('notes', '')
@@ -133,15 +146,18 @@ def process_fund_debit(request, transaction_id):
 
                 # Créer les lignes de débit et mettre à jour les fonds
                 for line_data in lines_to_create:
+                    # Assigner l'utilisateur au FundDebitLine
                     FundDebitLine.objects.create(
+                        user=request.user, # NOUVEAU
                         fund_debit_record=fund_debit_record,
                         category=line_data['category'],
                         amount=line_data['amount'],
                         notes=line_data['notes']
                     )
-                    # Mettre à jour le solde du fonds (soustraction)
-                    Fund.objects.subtract_funds_from_category(line_data['category'], line_data['amount'])
-            
+                    # Mettre à jour le solde du fonds
+                    # Passer l'utilisateur au FundManager
+                    Fund.objects.subtract_funds_from_category(line_data['category'], line_data['amount'], request.user)
+
             messages.success(request, f"Dépense de {abs(original_transaction.amount):.2f} CHF débitée avec succès des fonds.")
             return redirect('all_transactions_summary_view')
 
@@ -152,7 +168,8 @@ def process_fund_debit(request, transaction_id):
 
     # Si le formulaire n'est pas valide ou s'il y a une erreur, re-rendre la page de débit
     fund_managed_categories = []
-    for cat in Category.objects.filter(is_fund_managed=True).order_by('name'):
+    # Filtrer les catégories par l'utilisateur pour le re-rendu
+    for cat in Category.objects.filter(user=request.user, is_fund_managed=True).order_by('name'):
         fund_managed_categories.append({
             'id': cat.id,
             'name': cat.name,

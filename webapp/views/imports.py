@@ -9,9 +9,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from django.db import transaction as db_transaction
 from django.db.models import Sum, F
-
+from django.contrib.auth.decorators import login_required
 from ..models import Category, Budget, Transaction
-# Importe les importateurs depuis le nouveau paquet 'importers'
 from ..importers import (
     CsvTransactionImporter,
     RaiffeisenCsvTransactionImporter,
@@ -22,21 +21,22 @@ from ..forms import CategoryImportForm, TransactionImportForm
 from ..services import TransactionImportService
 
 
+@login_required
 def import_categories(request):
     """
-    Vue pour importer des catégories à partir d'un fichier CSV.
+    Vue pour importer des catégories à partir d'un fichier CSV pour l'utilisateur connecté.
     Le CSV doit avoir les colonnes 'name' et 'parent_name' (optionnel).
     """
     if request.method == 'POST':
+        # Passer l'utilisateur au formulaire pour filtrer les choix si nécessaire (pas de ModelChoiceField ici)
         form = CategoryImportForm(request.POST, request.FILES)
         if form.is_valid():
             csv_file = form.cleaned_data['csv_file']
-            # Essayer de décoder avec 'utf-8', puis 'latin-1' si 'utf-8' échoue
             try:
                 decoded_file = csv_file.read().decode('utf-8')
             except UnicodeDecodeError:
                 decoded_file = csv_file.read().decode('latin-1')
-            
+
             io_string = io.StringIO(decoded_file)
             reader = csv.DictReader(io_string)
 
@@ -54,14 +54,16 @@ def import_categories(request):
                             errors.append(f"Ligne ignorée (vide ou 'name' manquant) à la ligne {reader.line_num}.")
                             continue
 
-                        category, created = Category.objects.get_or_create(name=category_name)
+                        # Assigner la catégorie à l'utilisateur
+                        category, created = Category.objects.get_or_create(user=request.user, name=category_name)
                         if created:
                             imported_count += 1
                         else:
                             updated_count += 1
 
                         if parent_name:
-                            parent_category, parent_created = Category.objects.get_or_create(name=parent_name)
+                            # Assigner le parent à l'utilisateur
+                            parent_category, parent_created = Category.objects.get_or_create(user=request.user, name=parent_name)
                             if category.parent != parent_category:
                                 category.parent = parent_category
                                 category.save()
@@ -79,22 +81,28 @@ def import_categories(request):
     else:
         form = CategoryImportForm()
 
-    return render(request, 'webapp/import_categories.html', {'form': form})
+    context = {
+        'page_title': 'Importer des Catégories', 
+        'form': form,
+    }
+    return render(request, 'webapp/import_categories.html', context)
 
 
+@login_required 
 def import_transactions_view(request):
     """
-    Vue pour importer des transactions à partir d'un fichier.
+    Vue pour importer des transactions à partir d'un fichier pour l'utilisateur connecté.
     Permet à l'utilisateur de choisir le format du fichier et, si nécessaire, de mapper les colonnes.
     """
     if request.method == 'POST':
-        form = TransactionImportForm(request.POST, request.FILES)
+        # Passer l'utilisateur au formulaire pour filtrer les choix de compte
+        form = TransactionImportForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             file_to_import = form.cleaned_data['csv_file']
             account = form.cleaned_data['account']
             importer_type = form.cleaned_data['importer_type']
-            
-            importer = None
+
+            importer_instance = None # Renommé pour éviter le conflit avec la classe Importer
             column_mapping = None
 
             if importer_type == 'generic_csv':
@@ -103,37 +111,34 @@ def import_transactions_view(request):
                     'description': form.cleaned_data['description_column'],
                     'amount': form.cleaned_data['amount_column'],
                 }
-                importer = CsvTransactionImporter()
+                importer_instance = CsvTransactionImporter()
             elif importer_type == 'raiffeisen_csv':
-                importer = RaiffeisenCsvTransactionImporter()
+                importer_instance = RaiffeisenCsvTransactionImporter()
             elif importer_type == 'xml_iso':
-                importer = XmlIsoTransactionImporter()
+                importer_instance = XmlIsoTransactionImporter()
             elif importer_type == 'swift_mt940':
-                importer = SwiftMt940TransactionImporter()
+                importer_instance = SwiftMt940TransactionImporter()
             else:
                 messages.error(request, "Type d'importateur non valide.")
                 return redirect('import_transactions_view')
 
-            if importer is None:
+            if importer_instance is None:
                 messages.error(request, "Impossible de déterminer l'importateur pour le type de fichier sélectionné.")
                 return redirect('import_transactions_view')
 
-            # Lire le contenu du fichier
             try:
-                # La méthode .read() lit le fichier entier, .decode() le convertit en string
-                # Il est important de réinitialiser le curseur du fichier si vous lisez plusieurs fois
-                # ou si le fichier est déjà lu (ex: par form.cleaned_data)
-                # Pour les fichiers téléchargés, .read() est généralement suffisant une fois.
-                file_to_import.seek(0) # S'assurer que le curseur est au début du fichier
+                file_to_import.seek(0)
                 file_content = file_to_import.read().decode('utf-8')
             except UnicodeDecodeError:
-                file_to_import.seek(0) # Réinitialiser avant de réessayer
+                file_to_import.seek(0)
                 file_content = file_to_import.read().decode('latin-1')
-            
-            importer_service = TransactionImportService(importer)
-            
+
+            # Instancier le service d'importation sans l'importer, car il est passé à process_import
+            importer_service = TransactionImportService()
+
             try:
-                imported_count = importer_service.process_import(file_content, account, column_mapping)
+                # Passer l'utilisateur et l'instance de l'importer au service
+                imported_count = importer_service.process_import(file_content, account, request.user, importer_instance, column_mapping)
                 messages.success(request, f"{imported_count} transactions importées avec succès pour le compte '{account.name}'.")
                 return redirect('dashboard_view')
             except NotImplementedError as e:
@@ -145,7 +150,8 @@ def import_transactions_view(request):
         else:
             messages.error(request, "Veuillez corriger les erreurs dans le formulaire de téléchargement.")
     else:
-        form = TransactionImportForm()
+        # Passer l'utilisateur au formulaire pour filtrer les choix de compte
+        form = TransactionImportForm(user=request.user)
 
     context = {
         'page_title': 'Importer des Transactions',
@@ -154,14 +160,18 @@ def import_transactions_view(request):
     return render(request, 'webapp/import_transactions.html', context)
 
 
+@login_required 
 def budget_overview(request):
     """
-    Vue affichant un aperçu des budgets et un résumé des revenus/dépenses pour le mois en cours.
+    Vue affichant un aperçu des budgets et un résumé des revenus/dépenses pour le mois en cours
+    pour l'utilisateur connecté.
     """
     current_month = date.today().month
     current_year = date.today().year
 
+    # Filtrer les budgets par l'utilisateur
     budgets = Budget.objects.filter(
+        user=request.user, # NOUVEAU
         period_type='M',
         start_date__month=current_month,
         start_date__year=current_year
@@ -169,9 +179,12 @@ def budget_overview(request):
 
     budget_data = []
     for budget in budgets:
-        category_and_children_ids = [budget.category.id] + list(budget.category.children.values_list('id', flat=True))
-        
+        # Filtrer les catégories et leurs enfants par l'utilisateur
+        category_and_children_ids = [budget.category.id] + list(budget.category.children.filter(user=request.user).values_list('id', flat=True)) # NOUVEAU
+
+        # Filtrer les transactions par l'utilisateur
         spent_amount = Transaction.objects.filter(
+            user=request.user, # NOUVEAU
             category__id__in=category_and_children_ids,
             transaction_type='OUT',
             date__month=current_month,
@@ -191,14 +204,17 @@ def budget_overview(request):
             'percentage_spent': round(percentage_spent, 2),
             'status': 'ok' if remaining >= 0 else 'overbudget'
         })
-    
+
+    # Filtrer les revenus et dépenses par l'utilisateur
     total_income_month = Transaction.objects.filter(
+        user=request.user,
         transaction_type='IN',
         date__month=current_month,
         date__year=current_year
     ).aggregate(Sum('amount'))['amount__sum'] or 0
 
     total_expense_month = Transaction.objects.filter(
+        user=request.user,
         transaction_type='OUT',
         date__month=current_month,
         date__year=current_year
