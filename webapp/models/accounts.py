@@ -1,6 +1,7 @@
 # webapp/models/accounts.py
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.models import User
 
 class Account(models.Model):
     """
@@ -14,6 +15,7 @@ class Account(models.Model):
         ('OTHER', 'Autre'), # Pour les cas non couverts
     ]
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts', verbose_name="Utilisateur")   # Lien vers l'utilisateur propriétaire du compte
     name = models.CharField(max_length=100, unique=True, verbose_name="Nom du compte")
     currency = models.CharField(max_length=3, default='CHF', verbose_name="Devise")
     initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00, verbose_name="Solde initial")

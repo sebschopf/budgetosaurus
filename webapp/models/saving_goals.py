@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 # Importez les modèles depuis le même paquet 'models'
 from .categories import Category
+from django.contrib.auth.models import User
 
 class SavingGoal(models.Model):
     """
@@ -14,6 +15,7 @@ class SavingGoal(models.Model):
         ('AN', 'Annulé'),
     ]
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saving_goals', verbose_name="Utilisateur")
     name = models.CharField(max_length=100, verbose_name="Nom de l'objectif")
     category = models.ForeignKey(
         Category,
@@ -38,6 +40,7 @@ class SavingGoal(models.Model):
         verbose_name = "Objectif d'Épargne"
         verbose_name_plural = "Objectifs d'Épargne"
         ordering = ['target_date', 'status']
+        unique_together = ('user', 'name')  # Assure que le nom de l'objectif est unique par utilisateur
 
     def __str__(self):
         """Retourne une représentation en chaîne de caractères de l'objet."""

@@ -2,6 +2,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.models import User
 
 class Category(models.Model):
     """
@@ -9,7 +10,8 @@ class Category(models.Model):
     Ajout d'un champ 'is_fund_managed' pour indiquer si cette catégorie doit avoir un fonds dédié.
     Ajout d'un champ 'is_budgeted' pour indiquer si cette catégorie est associée à un budget.
     """
-    name = models.CharField(max_length=100, unique=True, verbose_name="Nom")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories', verbose_name="Utilisateur") # Lien vers l'utilisateur propriétaire de la catégorie
+    name = models.CharField(max_length=100, verbose_name="Nom")
     description = models.TextField(blank=True, verbose_name="Description")
     parent = models.ForeignKey(
         'self',
@@ -37,6 +39,7 @@ class Category(models.Model):
         verbose_name = "Catégorie"
         verbose_name_plural = "Catégories"
         ordering = ['name']
+        unique_together = [ 'user', 'name', 'parent']  # Assure que le nom de la catégorie est unique pour chaque utilisateur et parent
 
     def __str__(self):
         """Retourne une représentation en chaîne de caractères de l'objet."""

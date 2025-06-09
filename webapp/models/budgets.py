@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 # Importez les modèles depuis le même paquet 'models'
 from .categories import Category
+from django.contrib.auth.models import User
 
 class Budget(models.Model):
     """
@@ -14,7 +15,7 @@ class Budget(models.Model):
         ('M', 'Mensuel'),
         ('Y', 'Annuel'),
     ]
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='budgets', verbose_name="Utilisateur")
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -34,7 +35,7 @@ class Budget(models.Model):
     class Meta:
         verbose_name = "Budget"
         verbose_name_plural = "Budgets"
-        unique_together = ('category', 'period_type', 'start_date')
+        unique_together = ('user', 'category', 'period_type', 'start_date') # Rend la combinaison unique par utilisateur
         ordering = ['start_date', 'category__name']
 
     def __str__(self):

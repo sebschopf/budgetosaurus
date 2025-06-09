@@ -4,12 +4,19 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from .transactions import Transaction
 from .categories import Category
+from django.contrib.auth.models import User
 
 class FundDebitRecord(models.Model):
     """
     Modèle représentant une opération de débit d'une transaction de dépense
     vers plusieurs fonds budgétaires.
     """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='fund_debit_records',
+        verbose_name="Utilisateur",
+    )
     transaction = models.OneToOneField(
         Transaction,
         on_delete=models.CASCADE,
@@ -36,6 +43,7 @@ class FundDebitRecord(models.Model):
         verbose_name = "Débit de Fonds"
         verbose_name_plural = "Débits de Fonds"
         ordering = ['-created_at']
+        # une opération de débit est déjà unique par transaction via la relation OneToOneField
 
     def __str__(self):
         return f"Débit de fonds pour transaction {self.transaction.id} ({self.transaction.description}) - {self.total_debited_amount} CHF"
@@ -45,6 +53,12 @@ class FundDebitLine(models.Model):
     Modèle représentant une ligne individuelle au sein d'une opération de débit de fonds,
     spécifiant le montant débité d'une catégorie de fonds spécifique.
     """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='fund_debit_lines_by_user',
+        verbose_name="Utilisateur",
+    )
     fund_debit_record = models.ForeignKey(
         FundDebitRecord,
         on_delete=models.CASCADE,

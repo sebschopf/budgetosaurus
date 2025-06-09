@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 from .categories import Category
 from .accounts import Account
 from .tags import Tag
+from django.contrib.auth.models import User
 
 class Transaction(models.Model):
     """
@@ -17,7 +18,7 @@ class Transaction(models.Model):
         ('OUT', 'Dépense'),
         ('TRF', 'Transfert'), # Utile pour les mouvements entre comptes
     ]
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transactions', verbose_name="Utilisateur")
     date = models.DateField(default=timezone.now, verbose_name="Date")
     description = models.CharField(max_length=255, verbose_name="Description")
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Montant") # Positif pour revenu, négatif pour dépense

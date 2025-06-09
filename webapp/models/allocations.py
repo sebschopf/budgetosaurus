@@ -4,12 +4,19 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from .transactions import Transaction
 from .categories import Category
+from django.contrib.auth.models import User
 
 class Allocation(models.Model):
     """
     Modèle représentant une opération de ventilation d'une transaction de revenu
     (généralement un revenu sur un compte commun) vers plusieurs fonds budgétaires.
     """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='allocations',
+        verbose_name="Utilisateur",
+    )
     transaction = models.OneToOneField(
         Transaction,
         on_delete=models.CASCADE,
@@ -36,7 +43,7 @@ class Allocation(models.Model):
         verbose_name = "Allocation de Fonds"
         verbose_name_plural = "Allocations de Fonds"
         ordering = ['-created_at']
-
+        # une alloncation est déjà unique par transaction via la relation OneToOneField
     def __str__(self):
         return f"Allocation pour transaction {self.transaction.id} ({self.transaction.description}) - {self.total_allocated_amount} CHF"
 
@@ -45,6 +52,13 @@ class AllocationLine(models.Model):
     Modèle représentant une ligne individuelle au sein d'une opération d'allocation,
     spécifiant le montant alloué à une catégorie de fonds spécifique.
     """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='allocation_lines_by_user',
+        verbose_name="Utilisateur",
+    )
+
     allocation = models.ForeignKey(
         Allocation,
         on_delete=models.CASCADE,
