@@ -16,14 +16,15 @@
 
 
 /* Styles spécifiques aux pages (à créer ou compléter, ils sont importés ici) */
-@import url('pages/_all_transactions_summary.css');
-@import url('pages/_split_transaction.css');
-@import url('pages/_allocate_income.css');
-@import url('pages/_debit_funds.css');
-@import url('pages/_budget_overview.css');
-@import url('pages/_category_transactions_summary.css');
-@import url('pages/_glossary.css');
-@import url('pages/_import_forms.css');
-@import url('pages/_recap_overview.css');
-@import url('pages/_review_transactions.css');
-@import url('pages/_dashboard.css');
+@import url('pages/_all_transactions_summary.css'); /* Résumé de toutes les transactions */
+@import url('pages/_split_transaction.css'); /* Page de séparation de transaction */
+@import url('pages/_allocate_income.css'); /* Page d'allocation de revenus */
+@import url('pages/_debit_funds.css'); /* Page de débit de fonds */
+@import url('pages/_budget_overview.css'); /* Vue d'ensemble du budget */
+@import url('pages/_category_transactions_summary.css'); /* Résumé des transactions par catégorie */
+@import url('pages/_glossary.css'); /* Glossaire des termes */
+@import url('pages/_import_forms.css'); /* Formulaires d'importation */
+@import url('pages/_recap_overview.css'); /* Vue d'ensemble du récapitulatif */
+@import url('pages/_review_transactions.css'); /* Page de révision des transactions */
+@import url('pages/_dashboard.css'); /* Page de tableau de bord */
+@import url('pages/_login.css'); /*Page de connexion */

@@ -1,0 +1,55 @@
+{# webapp/templates/registration/login.html #}
+{% extends "webapp/base.html" %} {# Hérite de votre template de base #}
+
+{% load static %} {# Pour charger des fichiers statiques comme le CSS #}
+{% load custom_filters %} {# Charge les filtres personnalisés #}
+
+{% block title %}Connexion - Budgetosaurus{% endblock %}
+
+{% block extra_head %}
+    {# Les styles spécifiques à cette page ont été déplacés dans webapp/static/webapp/css/pages/_login.css #}
+    {# et sont importés via webapp/static/webapp/css/main.css. #}
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h1>Connexion</h1>
+
+    {# Affiche les erreurs du formulaire, s'il y en a #}
+    {% if form.errors %}
+        <ul class="errorlist">
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %} {# Jetons de sécurité CSRF #}
+        <div class="form-field-group">
+            <label for="{{ form.username.id_for_label }}">Nom d'utilisateur</label>
+            {# Ajouter les classes Tailwind pour forcer l'affichage #}
+            {{ form.username|add_css:"p-2 border rounded-md w-full" }}
+        </div>
+        <div class="form-field-group">
+            <label for="{{ form.password.id_for_label }}">Mot de passe</label>
+            {# Ajouter les classes Tailwind pour forcer l'affichage #}
+            {{ form.password|add_css:"p-2 border rounded-md w-full" }}
+        </div>
+        
+        {# Suppression du champ caché 'next' pour forcer la redirection via 'success_url' dans urls.py #}
+        {# En supprimant ce champ, LoginView se fiera uniquement à 'success_url' #}
+
+        <button type="submit" class="login-button">Se connecter</button>
+    </form>
+
+    <a href="{% url 'password_reset' %}" class="forgot-password">Mot de passe oublié ?</a>
+    {# Lien pour la création de compte. Décommenter si vous ajoutez une vue d'inscription. #}
+    {# <a href="{% url 'register' %}" class="register-link">Créer un compte</a> #}
+</div>
+{% endblock %}
