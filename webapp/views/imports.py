@@ -12,10 +12,10 @@ from django.db.models import Sum, F
 from django.contrib.auth.decorators import login_required
 from ..models import Category, Budget, Transaction
 from ..importers import (
-    CsvTransactionImporter,
-    RaiffeisenCsvTransactionImporter,
-    XmlIsoTransactionImporter,
-    SwiftMt940TransactionImporter
+    CsvGenericImporter,
+    CsvRaiffeisenImporter,
+    XmlIsoImporter,
+    SwiftMt940Importer
 )
 from ..forms import CategoryImportForm, TransactionImportForm
 from ..services import TransactionImportService
@@ -111,13 +111,13 @@ def import_transactions_view(request):
                     'description': form.cleaned_data['description_column'],
                     'amount': form.cleaned_data['amount_column'],
                 }
-                importer_instance = CsvTransactionImporter()
+                importer_instance = CsvGenericImporter()
             elif importer_type == 'raiffeisen_csv':
-                importer_instance = RaiffeisenCsvTransactionImporter()
+                importer_instance = CsvRaiffeisenImporter()
             elif importer_type == 'xml_iso':
-                importer_instance = XmlIsoTransactionImporter()
+                importer_instance = XmlIsoImporter()
             elif importer_type == 'swift_mt940':
-                importer_instance = SwiftMt940TransactionImporter()
+                importer_instance = SwiftMt940Importer()
             else:
                 messages.error(request, "Type d'importateur non valide.")
                 return redirect('import_transactions_view')

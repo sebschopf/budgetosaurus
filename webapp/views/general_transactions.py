@@ -5,8 +5,13 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from django.db.models import F
 import json
+
 from datetime import date
-from django.contrib.auth.decorators import login_required # NOUVEAU: Importez le décorateur
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.utils import timezone
+import csv
+from django.utils.translation import gettext as _
 
 from webapp.models import Category, Transaction, Account, Budget, SavingGoal
 from webapp.forms import TransactionForm
@@ -256,3 +261,48 @@ def get_common_descriptions(request):
     ).distinct()[:10]
 
     return JsonResponse(list(common_descriptions), safe=False)
+
+
+@login_required
+def export_transactions_csv(request):
+    """
+    Exporte toutes les transactions de l'utilisateur connecté au format CSV.
+    """
+    user = request.user
+    response = HttpResponse(content_type='text/csv')
+    # Définir le nom du fichier de téléchargement
+    response['Content-Disposition'] = f'attachment; filename="transactions_{user.username}_{timezone.now().strftime("%Y-%m-%d")}.csv"'
+
+    writer = csv.writer(response)
+
+    # Écrire l'en-tête du fichier CSV
+    writer.writerow([
+        _('Date'),
+        _('Description'),
+        _('Montant'),
+        _('Type de Transaction'),
+        _('Catégorie'),
+        _('Compte'),
+        _('Tags'),
+        _('Date de Création'),
+    ])
+
+    # Récupérer toutes les transactions de l'utilisateur
+    # Notez que j'ai inclus select_related et prefetch_related pour optimiser les requêtes
+    transactions = Transaction.objects.filter(user=user).select_related('account', 'category').prefetch_related('tags').order_by('date', 'created_at')
+
+    for transaction_obj in transactions:
+        # Collecter les tags en une chaîne de caractères séparée par des virgules
+        tags = ", ".join([tag.name for tag in transaction_obj.tags.all()])
+
+        writer.writerow([
+            transaction_obj.date.strftime('%Y-%m-%d'), # Format de date standard
+            transaction_obj.description,
+            str(transaction_obj.amount), # Convertir Decimal en chaîne
+            transaction_obj.get_transaction_type_display(), # Afficher le libellé du type
+            transaction_obj.category.name if transaction_obj.category else '', # Nom de la catégorie ou vide
+            transaction_obj.account.name, # Nom du compte
+            tags,
+            transaction_obj.created_at.strftime('%Y-%m-%d %H:%M:%S'), # Date de création avec heure
+        ])
+    return response

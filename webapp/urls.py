@@ -29,6 +29,9 @@ urlpatterns = [
     # URL pour récupérer les descriptions de transactions courantes (pour l'autocomplétion)
     path('get-common-descriptions/', general_transactions.get_common_descriptions, name='get_common_descriptions'),
 
+    # URL D'EXPORTATION
+    path('transactions/export/csv/', general_transactions.export_transactions_csv, name='export_transactions_csv'),
+
     # URL pour la page d'importation des transactions via CSV
     path('import-transactions/', imports.import_transactions_view, name='import_transactions_view'),
 

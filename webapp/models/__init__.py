@@ -12,6 +12,7 @@ from .saving_goals import SavingGoal
 from .categorization_rules import CategorizationRule
 from .allocations import Allocation, AllocationLine # Nouveaux modèles d'allocation
 from .fund_debits import FundDebitRecord, FundDebitLine # Nouveaux modèles de débits de fonds
+from .user_profile import UserProfile # Modèle pour le profil utilisateur
 
 #  __all__  pour ce qui est importé avec '*'
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     'AllocationLine', # allocation line
     'FundDebitRecord', # fond debit record
     'FundDebitLine',   # fond debit line
+    'UserProfile'  # profil utilisateur	
 ]
 
