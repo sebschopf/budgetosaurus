@@ -1,89 +1,140 @@
 # webapp/importers/csv_generic.py
-import csv
-import io
 from datetime import datetime
-from decimal import Decimal
-from .base import BaseTransactionImporter # Importer la classe de base
-import logging # Importer le module logging
+import csv
+from decimal import Decimal, InvalidOperation # pour gérer les erreurs de conversion décimales
 
-# Obtenir une instance du logger pour ce module
-logger = logging.getLogger(__name__)
+from django.db import transaction # Pour s'assurer que l'importation est atomique
+from django.utils.translation import gettext_lazy as _ # Pour l'internationalisation
 
-class CsvTransactionImporter(BaseTransactionImporter):
+from webapp.models import Transaction, Category, Account
+from .base import BaseTransactionImporter
+
+class CsvGenericImporter(BaseTransactionImporter):
     """
-    Implémentation concrète de BaseTransactionImporter pour les fichiers CSV génériques,
-    nécessitant un mappage de colonnes.
+    Importateur générique pour les fichiers CSV.
+    Configurez les colonnes attendues via self.config.
     """
-    def import_transactions(self, file_content: str, account, column_mapping: dict) -> list[dict]:
-        transactions_data = []
-        io_string = io.StringIO(file_content)
-        
-        reader = csv.DictReader(io_string)
-        
-        if reader.fieldnames is None:
-            logger.error("Le fichier CSV est vide ou son format d'en-tête est invalide.")
-            raise ValueError("Le fichier CSV est vide ou son format d'en-tête est invalide.")
+    def __init__(self, config):
+        """
+        Initialise l'importateur avec une configuration spécifique pour les colonnes CSV.
+        """
+        super().__init__()
+        self.config = config # La configuration doit définir 'date_column_index', 'description_column_index', etc.
 
-        required_internal_fields = ['date', 'description', 'amount']
+    def import_transactions(self, file_path, account, user):
+        """
+        Importe les transactions à partir d'un fichier CSV.
+        """
+        self.errors = [] # Réinitialiser les erreurs pour chaque importation
+        imported_transactions_count = 0
         
-        if not column_mapping:
-            logger.error("Le mappage des colonnes est requis pour l'importateur CSV générique.")
-            raise ValueError("Le mappage des colonnes est requis pour l'importateur CSV générique.")
+        # Utilisez transaction.atomic pour s'assurer que toutes les transactions sont importées
+        # ou qu'aucune ne l'est si une erreur survient.
+        with transaction.atomic():
+            with open(file_path, 'r', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                # Optionnel : sauter les lignes d'en-tête si configuré
+                for _ in range(self.config.get('header_rows', 0)):
+                    next(reader)
 
-        required_csv_columns = [column_mapping.get(field) for field in required_internal_fields if column_mapping.get(field)]
+                for i, row in enumerate(reader):
+                    line_num = i + 1 + self.config.get('header_rows', 0) # Numéro de ligne pour les messages d'erreur
+                    if not row: # Ignorer les lignes vides
+                        continue
+                    
+                    transaction_obj = self.process_row(row, account, user)
+                    if transaction_obj:
+                        imported_transactions_count += 1
+                    else:
+                        # Si process_row renvoie None, cela signifie une erreur a été ajoutée
+                        # et nous devons peut-être annuler la transaction atomique
+                        # ou simplement continuer en fonction de la stratégie d'erreur.
+                        # Ici, nous continuons pour collecter toutes les erreurs.
+                        pass
         
-        if not all(col in reader.fieldnames for col in required_csv_columns):
-            missing_cols = [col for col in required_csv_columns if col not in reader.fieldnames]
-            logger.error(
-                f"Le fichier CSV ne contient pas toutes les colonnes mappées requises. "
-                f"Colonnes manquantes: {', '.join(missing_cols)}. "
-                f"Colonnes trouvées dans le fichier: {', '.join(reader.fieldnames)}"
-            )
-            raise ValueError(
-                f"Le fichier CSV ne contient pas toutes les colonnes mappées requises. "
-                f"Colonnes manquantes: {', '.join(missing_cols)}. "
-                f"Colonnes trouvées dans le fichier: {', '.join(reader.fieldnames)}"
-            )
+        return imported_transactions_count, self.errors
 
-        for row_num, row in enumerate(reader, start=2):
+    def process_row(self, row, account, user):
+        """
+        Traite une seule ligne du fichier CSV et crée/met à jour une transaction.
+        """
+        try:
+            # Récupérer les indices de colonne depuis la configuration
+            date_col_idx = self.config['date_column_index']
+            description_col_idx = self.config['description_column_index']
+            amount_col_idx = self.config['amount_column_index']
+            transaction_type_col_idx = self.config.get('transaction_type_column_index') # Optionnel
+
+            # Extraire les données en toute sécurité
+            date_str = row[date_col_idx].strip()
+            description = row[description_col_idx].strip()
+            amount_str = row[amount_col_idx].replace(',', '.').strip() # Gérer les virgules comme séparateur décimal
+
+            
+            # Le champ 'date' de Transaction est un DateField, pas un DateTimeField.
+            # Cela signifie qu'il stocke uniquement la date (année, mois, jour) et n'est pas sensible aux fuseaux horaires.
+            # Nous devons juste nous assurer que nous parsons la chaîne en un objet Python `date`.
+            # Si le format de date dans votre CSV inclut l'heure, .date() l'ignorera.
+            # Le format de date est défini dans self.config['date_format'] (ex: '%Y-%m-%d')
+            parsed_datetime = datetime.strptime(date_str, self.config['date_format'])
+            transaction_date = parsed_datetime.date() # Extrait uniquement la partie date
+
             try:
-                date_str = row.get(column_mapping.get('date'))
-                description = row.get(column_mapping.get('description'))
-                amount_str = row.get(column_mapping.get('amount'))
+                amount = Decimal(amount_str)
+            except InvalidOperation:
+                self.errors.append(_(f"Ligne {row}: Montant invalide '{amount_str}'. Doit être un nombre valide."))
+                return None
 
-                if not date_str or not description or not amount_str:
-                    logger.warning(f"Ligne {row_num} ignorée (données manquantes): {row}")
-                    continue
+            # Déterminer le type de transaction (IN/OUT)
+            # Si un indice de colonne de type de transaction est fourni, utilisez-le.
+            # Sinon, déduisez le type en fonction du signe du montant.
+            transaction_type = 'OUT' # Valeur par défaut
+            if transaction_type_col_idx is not None:
+                type_str = row[transaction_type_col_idx].strip().upper()
+                if type_str in ['IN', 'INCOME', 'CREDIT']:
+                    transaction_type = 'IN'
+                elif type_str in ['OUT', 'EXPENSE', 'DEBIT']:
+                    transaction_type = 'OUT'
+            else:
+                if amount > 0:
+                    transaction_type = 'IN'
+                else:
+                    transaction_type = 'OUT'
+                    amount = abs(amount) # Stocker le montant des dépenses comme un nombre positif
 
-                try:
-                    transaction_date = datetime.strptime(date_str, '%d.%m.%Y').date()
-                except ValueError:
-                    try:
-                        transaction_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-                    except ValueError:
-                        logger.error(f"Format de date invalide pour '{date_str}'. Attendu 'DD.MM.YYYY' ou 'YYYY-MM-DD'.")
-                        raise ValueError(f"Format de date invalide pour '{date_str}'. Attendu 'DD.MM.YYYY' ou 'YYYY-MM-DD'.")
-                
-                amount_str_cleaned = amount_str.replace(',', '.')
-                amount = Decimal(amount_str_cleaned)
+            # Chercher une transaction existante pour éviter les doublons
+            # Critères de déduplication : même compte, même date, même montant, même description
+            existing_transaction = Transaction.objects.filter(
+                user=user,
+                account=account,
+                date=transaction_date,
+                amount=amount if transaction_type == 'IN' else -amount, # Comparer le montant stocké
+                description=description
+            ).first()
 
-                transaction_type = 'OUT' if amount < 0 else 'IN'
+            if existing_transaction:
+                self.warnings.append(_(f"Transaction existante trouvée et ignorée (doublon potentiel): {description} le {date_str} - Montant: {amount}"))
+                return None
 
-                transactions_data.append({
-                    'date': transaction_date,
-                    'description': description,
-                    'amount': abs(amount),
-                    'account': account,
-                    'transaction_type': transaction_type,
-                    'category': None
-                })
-            except ValueError as e:
-                logger.error(f"Erreur de parsing de ligne {row_num} CSV: {row} - {e}")
-                continue
-            except KeyError as e:
-                logger.error(f"Erreur de colonne manquante dans la ligne {row_num} CSV: {row} - {e}")
-                continue
-            except Exception as e:
-                logger.critical(f"Erreur inattendue à la ligne {row_num} CSV: {row} - {e}", exc_info=True)
-                continue
-        return transactions_data
+            # Créer la nouvelle transaction
+            transaction = Transaction.objects.create(
+                user=user,
+                date=transaction_date,
+                description=description,
+                amount=amount if transaction_type == 'IN' else -amount, # Stocker les dépenses comme négatives
+                category=None, # La catégorie sera assignée plus tard ou par règles
+                account=account,
+                transaction_type=transaction_type
+            )
+            return transaction
+
+        except IndexError:
+            self.errors.append(_(f"Ligne {row}: Colonne manquante ou indice invalide dans la configuration de l'importateur. Vérifiez les indices de colonne."))
+            return None
+        except ValueError as e:
+            self.errors.append(_(f"Ligne {row}: Erreur de parsing des données: {e}"))
+            return None
+        except Exception as e:
+            self.errors.append(_(f"Ligne {row}: Une erreur inattendue est survenue lors du traitement: {e}"))
+            return None
+

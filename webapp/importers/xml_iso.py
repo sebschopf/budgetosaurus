@@ -1,286 +1,148 @@
 # webapp/importers/xml_iso.py
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+import xml.etree.ElementTree as ET
+
+from django.db import transaction
+from django.utils.translation import gettext_lazy as _
+
+from webapp.models import Transaction, Account, Category
 from .base import BaseTransactionImporter
-import logging # Importer le module logging
 
-# Obtenir une instance du logger pour ce module
-logger = logging.getLogger(__name__)
-
-try:
-    from lxml import etree
-except ImportError:
-    etree = None
-    logger.warning("La bibliothèque 'lxml' n'est pas installée. L'importation XML ISO ne sera pas disponible.")
-
-class XmlIsoTransactionImporter(BaseTransactionImporter):
+class XmlIsoImporter(BaseTransactionImporter):
     """
-    Importateur pour les fichiers XML ISO 20022 (camt.053.001.08).
-    Adapte le parsing aux chemins XPath spécifiques de ce format, y compris les opérations groupées.
-    Extrait des détails plus précis sur la description et les parties liées (nom, IBAN).
+    Importateur pour les fichiers XML au format ISO 20022 (par exemple, camt.053).
     """
-    def import_transactions(self, file_content: str, account, column_mapping: dict = None) -> list[dict]:
-        if etree is None:
-            logger.error("La bibliothèque 'lxml' est requise pour l'importation XML ISO. Veuillez l'installer: pip install lxml")
-            raise ImportError("La bibliothèque 'lxml' est requise pour l'importation XML ISO. Veuillez l'installer: pip install lxml")
-        
-        transactions_data = []
+    def __init__(self):
+        super().__init__()
+
+    def import_transactions(self, file_path, account, user):
+        """
+        Importe les transactions à partir d'un fichier XML ISO 20022.
+        """
+        self.errors = []
+        self.warnings = []
+        imported_transactions_count = 0
+
         try:
-            logger.debug("Tentative de parsing XML...")
-            try:
-                # Essai de décodage avec utf-8, puis latin-1 si échec
-                root = etree.fromstring(file_content.encode('utf-8'))
-            except Exception:
-                logger.debug("Erreur Unicode lors du parsing XML avec utf-8. Essai avec latin-1...")
-                root = etree.fromstring(file_content.encode('latin-1'))
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+
+            # Les namespaces peuvent varier, il est donc préférable de les gérer dynamiquement ou de les ignorer si possible
+            # Pour simplifier, chercher des éléments sans préfixe de namespace pour les noms courants
+            # ou utiliser le namespace complet si c'est constant (ex: urn:iso:std:iso:20022:tech:xsd:camt.053.001.02)
+            # Une approche plus robuste serait de parser le namespace du root et de l'utiliser.
             
-            logger.debug(f"Racine XML trouvée: {root.tag}")
+            # Rechercher les entrées de relevé de compte (Ntry)
+            # Exemple de chemin XPath pour les transactions (à adapter si nécessaire)
+            # Il est crucial de connaître le namespace correct ou de l'ignorer.
+            # Dans la plupart des cas, les fichiers camt utilisent un namespace par défaut.
+            # Si le namespace est présent, utilisez {namespace_uri}TagName
+            # Ou utilisez un caractère joker pour le namespace local-name()='TagName'
             
-            ns = {'ns': 'urn:iso:std:iso:20022:tech:xsd:camt.053.001.08'} 
+            # Exemple générique: Trouver toutes les "Ntry" qui représentent une transaction
+            # Note: cela peut nécessiter une adaptation si le fichier XML utilise des namespaces complexes.
+            # Un namespace typique pour camt.053 est 'urn:iso:std:iso:20022:tech:xsd:camt.053.001.02'
+            # Pour l'exemple, nous allons chercher des éléments sans namespace défini,
+            # ou vous devrez déterminer le namespace du document.
+            
+            # Pour une approche générique qui ignore le namespace (si le tag est unique)
+            # Ou spécifiez un namespace si vous le connaissez (ex: '{urn:iso:std:iso:20022:tech:xsd:camt.053.001.02}Ntry')
+            # Ou utilisez un XPath plus robuste: .//*[local-name()='Ntry']
+            
+            # Supposons un chemin simplifié pour l'exemple. Adaptez selon votre XML réel.
+            # Si le XML a un namespace par défaut, vous devrez l'utiliser :
+            # namespace = {'ns': 'urn:iso:std:iso:20022:tech:xsd:camt.053.001.02'}
+            # entries = root.findall('.//ns:Ntry', namespace)
 
-            statements = root.xpath('/ns:Document/ns:BkToCstmrStmt/ns:Stmt', namespaces=ns)
-            logger.debug(f"Nombre de relevés (Stmt) trouvés: {len(statements)}")
+            # Une approche plus simple pour trouver tous les éléments 'Ntry' quel que soit leur namespace
+            entries = root.findall(".//*[local-name()='Ntry']")
 
-            if not statements:
-                statements = root.xpath('//ns:Stmt', namespaces=ns)
-                logger.debug(f"Aucune balise 'Stmt' trouvée au chemin direct. Tentative générique: {len(statements)}")
-                if not statements:
-                    logger.error("Aucune balise 'Stmt' trouvée dans le fichier XML. Vérifiez le namespace et la structure.")
-                    raise ValueError("Aucune balise 'Stmt' trouvée dans le fichier XML. Vérifiez le namespace et la structure.")
+            with transaction.atomic():
+                for entry in entries:
+                    # Date de la transaction (BookgDt ou ValDt)
+                    # Cherche la date de comptabilisation ou la date de valeur
+                    date_element = entry.find(".//*[local-name()='BookgDt']/*[local-name()='Dt']") or \
+                                   entry.find(".//*[local-name()='ValDt']/*[local-name()='Dt']")
+                    date_str = date_element.text if date_element is not None else None
 
-            for stmt in statements:
-                iban_node = stmt.xpath('./ns:Acct/ns:Id/ns:IBAN/text()', namespaces=ns)
-                statement_iban = iban_node[0] if iban_node else 'N/A'
-                logger.debug(f"Traitement du relevé pour IBAN: {statement_iban}")
-
-                entries = stmt.xpath('.//ns:Ntry', namespaces=ns)
-                logger.debug(f"Nombre d'entrées (Ntry) trouvées dans ce relevé: {len(entries)}")
-
-                if not entries:
-                    logger.info(f"Aucune balise <Ntry> trouvée dans le relevé pour IBAN {statement_iban}. Pas de transactions à importer.")
-                    continue
-
-                for entry_num, entry in enumerate(entries):
-                    entry_bookg_date_node = entry.xpath('./ns:BookgDt/ns:Dt/text()', namespaces=ns)
-                    entry_bookg_date_str = entry_bookg_date_node[0] if entry_bookg_date_node else None
-
-                    batch_details = entry.xpath('./ns:NtryDtls/ns:Btch', namespaces=ns)
+                    # Montant
+                    amt_element = entry.find(".//*[local-name()='Amt']")
+                    amount_str = amt_element.text if amt_element is not None else None
                     
-                    if batch_details:
-                        logger.debug(f"Opération groupée (Batch) détectée pour Ntry {entry_num + 1}. Traitement des TxDtls...")
-                        tx_dtls_list = entry.xpath('./ns:NtryDtls/ns:TxDtls', namespaces=ns)
-                        if not tx_dtls_list:
-                            logger.warning(f"Batch détecté mais aucune TxDtls trouvée pour Ntry {entry_num + 1}. Ignoré.")
-                            continue
+                    # Débit/Crédit (CdtDbtInd)
+                    c_d_ind_element = entry.find(".//*[local-name()='CdtDbtInd']")
+                    credit_debit_indicator = c_d_ind_element.text if c_d_ind_element is not None else None
 
-                        for tx_dtls_num, tx_dtls in enumerate(tx_dtls_list):
-                            amount_node = tx_dtls.xpath('./ns:Amt/text()', namespaces=ns)
-                            if not amount_node:
-                                amount_node = tx_dtls.xpath('./ns:Amt/ns:InstdAmt/text()', namespaces=ns)
-                            amount_str = amount_node[0] if amount_node else None
+                    # Description (NtryDtls -> TxDtls -> RmtInf -> Strd -> RfrdDocInf -> Nb) ou Narr
+                    # La description peut être dans plusieurs endroits dans ISO 20022
+                    # Voici un exemple, à adapter selon le champ le plus pertinent pour vous.
+                    # On peut chercher dans Purp, AddtlNtryInf, ou RmtInf/Ustrd/Strd/RfrdDocInf/Nb/Issr
+                    
+                    # Tentons de trouver une description commune:
+                    description_element = entry.find(".//*[local-name()='AddtlNtryInf']") or \
+                                          entry.find(".//*[local-name()='RemittanceInformation']/*[local-name()='Unstructured']")
+                    description = description_element.text.strip() if description_element is not None and description_element.text else "Description non disponible"
 
-                            CdtDbtInd_node = tx_dtls.xpath('./ns:CdtDbtInd/text()', namespaces=ns)
-                            CdtDbtInd = CdtDbtInd_node[0] if CdtDbtInd_node else None
+                    if not all([date_str, amount_str, credit_debit_indicator]):
+                        self.warnings.append(_(f"Skipping incomplete transaction entry: Date='{date_str}', Amount='{amount_str}', CdtDbtInd='{credit_debit_indicator}'"))
+                        continue
 
-                            # --- LOGIQUE DE DESCRIPTION PRÉCISE POUR TxDtls (transactions individuelles dans un batch) ---
-                            main_description_parts = []
-                            secondary_details = [] # Initialisation pour chaque transaction individuelle
-                            
-                            # 1. Nom du Débiteur/Créditeur (Partie liée) - souvent le plus important pour l'identification
-                            dbtr_name_node = tx_dtls.xpath('.//ns:RltdPties/ns:Dbtr/ns:Pty/ns:Nm/text()', namespaces=ns)
-                            cdtr_name_node = tx_dtls.xpath('.//ns:RltdPties/ns:Cdtr/ns:Pty/ns:Nm/text()', namespaces=ns)
-
-                            related_party_name = None
-                            if CdtDbtInd == 'DBIT' and cdtr_name_node: # Si c'est un débit, le créditeur est la contrepartie
-                                related_party_name = cdtr_name_node[0].strip()
-                            elif CdtDbtInd == 'CRDT' and dbtr_name_node: # Si c'est un crédit, le débiteur est la contrepartie
-                                related_party_name = dbtr_name_node[0].strip()
-                            
-                            if related_party_name:
-                                main_description_parts.append(related_party_name)
-
-                            # 2. Informations de remise non structurées (Ustrd) - Libellé de l'opération
-                            remittance_ustrd_node = tx_dtls.xpath('.//ns:RmtInf/ns:Ustrd/text()', namespaces=ns)
-                            if remittance_ustrd_node:
-                                ustrd_text = remittance_ustrd_node[0].strip()
-                                if ustrd_text and ustrd_text not in main_description_parts:
-                                    main_description_parts.append(ustrd_text)
-
-                            # 3. Référence de paiement structurée (Ref) ou AddtlRmtInf
-                            remittance_strd_ref_node = tx_dtls.xpath('.//ns:RmtInf/ns:Strd/ns:CdtrRefInf/ns:Ref/text()', namespaces=ns)
-                            if remittance_strd_ref_node:
-                                secondary_details.append(f"Ref: {remittance_strd_ref_node[0].strip()}")
-                            
-                            remittance_addtl_strd_node = tx_dtls.xpath('.//ns:RmtInf/ns:Strd/ns:AddtlRmtInf/text()', namespaces=ns)
-                            if remittance_addtl_strd_node:
-                                secondary_details.append(remittance_addtl_strd_node[0].strip())
-
-                            # 4. Bank Transaction Code (Prtry/Nm ou Cd)
-                            bk_tx_cd_node_nm = tx_dtls.xpath('.//ns:BkTxCd/ns:Prtry/ns:Nm/text()', namespaces=ns)
-                            if not bk_tx_cd_node_nm: # Fallback pour Cd si Nm n'existe pas
-                                bk_tx_cd_node_nm = tx_dtls.xpath('.//ns:BkTxCd/ns:Prtry/ns:Cd/text()', namespaces=ns)
-                            if bk_tx_cd_node_nm:
-                                secondary_details.append(f"Code Tx: {bk_tx_cd_node_nm[0].strip()}")
-
-                            # 5. IBAN de la contrepartie
-                            counterparty_iban = None
-                            dbtr_iban_node = tx_dtls.xpath('.//ns:RltdPties/ns:DbtrAcct/ns:Id/ns:IBAN/text()', namespaces=ns)
-                            cdtr_iban_node = tx_dtls.xpath('.//ns:RltdPties/ns:CdtrAcct/ns:Id/ns:IBAN/text()', namespaces=ns)
-                            
-                            if CdtDbtInd == 'DBIT' and cdtr_iban_node:
-                                counterparty_iban = cdtr_iban_node[0].strip()
-                            elif CdtDbtInd == 'CRDT' and dbtr_iban_node:
-                                counterparty_iban = dbtr_iban_node[0].strip()
-                            
-                            if counterparty_iban:
-                                secondary_details.append(f"IBAN: {counterparty_iban}")
-
-                            # Concaténer les parties de la description
-                            description = " - ".join(filter(None, main_description_parts))
-                            if secondary_details:
-                                description += f" ({' ; '.join(filter(None, secondary_details))})"
-                            
-                            if not description.strip():
-                                description = "Description non trouvée (TxDtls)"
-                            # --- FIN LOGIQUE DE DESCRIPTION PRÉCISE ---
-
-                            date_str_final = entry_bookg_date_str 
-
-                            # MODIFIÉ: Vérification de la validité de date_str_final
-                            if not date_str_final:
-                                logger.warning(f"TxDtls ignorée (date manquante): Montant={amount_str}, CdtDbtInd={CdtDbtInd}")
-                                continue # Ignorer cette transaction si la date est manquante
-
-                            if not all([amount_str, CdtDbtInd]):
-                                logger.warning(f"TxDtls ignorée (montant ou type manquant): Date={date_str_final}")
-                                continue # Ignorer si montant ou type manquant
-
-                            try:
-                                transaction_date = datetime.strptime(date_str_final, '%Y-%m-%d').date()
-                            except ValueError:
-                                logger.error(f"Erreur format date XML TxDtls: '{date_str_final}'. Attendu 'YYYY-MM-DD'.")
-                                raise ValueError(f"Format de date invalide pour '{date_str_final}'. Attendu 'YYYY-MM-DD'.")
-
-                            amount = Decimal(amount_str)
-                            transaction_type = 'IN' if CdtDbtInd == 'CRDT' else 'OUT'
-
-                            transactions_data.append({
-                                'date': transaction_date,
-                                'description': description,
-                                'amount': amount,
-                                'account': account,
-                                'transaction_type': transaction_type,
-                                'category': None
-                            })
-                            logger.debug(f"TxDtls ajoutée: {description} {amount} {transaction_type}")
-
-                    else: # C'est une entrée Ntry simple (non groupée)
-                        logger.debug(f"Opération simple détectée pour Ntry {entry_num + 1}. Traitement direct.")
-                        date_str_final = entry_bookg_date_str
-                        amount_node = entry.xpath('./ns:Amt/text()', namespaces=ns) 
-                        if not amount_node:
-                            amount_node = entry.xpath('./ns:Amt/ns:InstdAmt/text()', namespaces=ns)
-                        amount_str = amount_node[0] if amount_node else None
-
-                        CdtDbtInd_node = entry.xpath('./ns:CdtDbtInd/text()', namespaces=ns)
-                        CdtDbtInd = CdtDbtInd_node[0] if CdtDbtInd_node else None
-                        
-                        # --- LOGIQUE DE DESCRIPTION PRÉCISE POUR Ntry simple ---
-                        main_description_parts = []
-                        secondary_details = [] # Initialisation pour chaque entrée simple
-
-                        # 1. Informations additionnelles de l'entrée (AddtlNtryInf) - Souvent le libellé principal ici
-                        addtl_ntry_info_node = entry.xpath('./ns:AddtlNtryInf/text()', namespaces=ns)
-                        if addtl_ntry_info_node:
-                            main_description_parts.append(addtl_ntry_info_node[0].strip())
-
-                        # 2. Informations de remise non structurées (Ustrd) - Peut compléter AddtlNtryInf
-                        remittance_ustrd_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RmtInf/ns:Ustrd/text()', namespaces=ns)
-                        if remittance_ustrd_node and remittance_ustrd_node[0].strip() not in main_description_parts:
-                            main_description_parts.append(remittance_ustrd_node[0].strip())
-
-                        # 3. Nom du Débiteur/Créditeur (Partie liée) - Toujours pertinent
-                        related_party_name = None
-                        dbtr_name_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RltdPties/ns:Dbtr/ns:Pty/ns:Nm/text()', namespaces=ns)
-                        cdtr_name_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RltdPties/ns:Cdtr/ns:Pty/ns:Nm/text()', namespaces=ns)
-                        
-                        if CdtDbtInd == 'DBIT' and cdtr_name_node:
-                            related_party_name = cdtr_name_node[0].strip()
-                        elif CdtDbtInd == 'CRDT' and dbtr_name_node:
-                            related_party_name = dbtr_name_node[0].strip()
-                        
-                        if related_party_name and related_party_name not in main_description_parts:
-                            main_description_parts.insert(0, related_party_name) # Ajouter au début si pertinent
-
-                        # 4. Référence de paiement structurée (Ref) ou AddtlRmtInf
-                        remittance_strd_ref_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RmtInf/ns:Strd/ns:CdtrRefInf/ns:Ref/text()', namespaces=ns)
-                        if remittance_strd_ref_node:
-                            secondary_details.append(f"Ref: {remittance_strd_ref_node[0].strip()}")
-                        
-                        remittance_addtl_strd_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RmtInf/ns:Strd/ns:AddtlRmtInf/text()', namespaces=ns)
-                        if remittance_addtl_strd_node:
-                            secondary_details.append(remittance_addtl_strd_node[0].strip())
-
-                        # 5. Bank Transaction Code (Prtry/Nm ou Cd)
-                        bk_tx_cd_node_nm = entry.xpath('.//ns:BkTxCd/ns:Prtry/ns:Nm/text()', namespaces=ns)
-                        if not bk_tx_cd_node_nm:
-                            bk_tx_cd_node_nm = entry.xpath('.//ns:BkTxCd/ns:Prtry/ns:Cd/text()', namespaces=ns)
-                        if bk_tx_cd_node_nm and bk_tx_cd_node_nm[0].strip() not in main_description_parts and bk_tx_cd_node_nm[0].strip() not in secondary_details:
-                            secondary_details.append(f"Code Tx: {bk_tx_cd_node_nm[0].strip()}")
-
-                        # 6. IBAN de la contrepartie
-                        counterparty_iban = None
-                        dbtr_iban_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RltdPties/ns:DbtrAcct/ns:Id/ns:IBAN/text()', namespaces=ns)
-                        cdtr_iban_node = entry.xpath('.//ns:NtryDtls/ns:TxDtls/ns:RltdPties/ns:CdtrAcct/ns:Id/ns:IBAN/text()', namespaces=ns)
-                        
-                        if CdtDbtInd == 'DBIT' and cdtr_iban_node:
-                            counterparty_iban = cdtr_iban_node[0].strip()
-                        elif CdtDbtInd == 'CRDT' and dbtr_iban_node:
-                            counterparty_iban = dbtr_iban_node[0].strip()
-                        
-                        if counterparty_iban:
-                            secondary_details.append(f"IBAN: {counterparty_iban}")
-
-                        description = " - ".join(filter(None, main_description_parts))
-                        if secondary_details:
-                            description += f" ({' ; '.join(filter(None, secondary_details))})"
-                        
-                        if not description.strip():
-                            description = "Description non trouvée (Ntry)"
-                        # --- FIN LOGIQUE DE DESCRIPTION PRÉCISE ---
-
-                        # MODIFIÉ: Vérification de la validité de date_str_final
-                        if not date_str_final:
-                            logger.warning(f"Entrée XML simple ignorée (date manquante): Montant={amount_str}, CdtDbtInd={CdtDbtInd}")
-                            continue # Ignorer cette transaction si la date est manquante
-
-                        if not all([amount_str, CdtDbtInd]):
-                            logger.warning(f"Entrée XML simple ignorée (montant ou type manquant): Date={date_str_final}")
-                            continue # Ignorer si montant ou type manquant
-
-                        try:
-                            transaction_date = datetime.strptime(date_str_final, '%Y-%m-%d').date()
-                        except ValueError:
-                            logger.error(f"Erreur format date XML simple: '{date_str_final}'. Attendu 'YYYY-MM-DD'.")
-                            raise ValueError(f"Format de date invalide pour '{date_str_final}'. Attendu 'YYYY-MM-DD'.")
-
+                    # Le champ 'date' de Transaction est un DateField, pas un DateTimeField.
+                    # Les dates ISO 20022 sont souvent au format YYYY-MM-DD
+                    try:
+                        parsed_datetime = datetime.strptime(date_str, '%Y-%m-%d')
+                        transaction_date = parsed_datetime.date() # Extrait uniquement la partie date
+                    except ValueError:
+                        self.errors.append(_(f"Format de date XML invalide '{date_str}'. Attendu: 'YYYY-MM-DD'."))
+                        continue # Passe à l'entrée suivante
+                    
+                    try:
                         amount = Decimal(amount_str)
-                        transaction_type = 'IN' if CdtDbtInd == 'CRDT' else 'OUT'
+                    except InvalidOperation:
+                        self.errors.append(_(f"Montant XML invalide '{amount_str}'."))
+                        continue
 
-                        transactions_data.append({
-                            'date': transaction_date,
-                            'description': description,
-                            'amount': amount,
-                            'account': account,
-                            'transaction_type': transaction_type,
-                            'category': None
-                        })
-                        logger.debug(f"Transaction simple ajoutée: {description} {amount} {transaction_type}")
+                    # Appliquer le signe basé sur l'indicateur débit/crédit
+                    transaction_type = 'OUT'
+                    if credit_debit_indicator == 'CRDT': # Crédit = Revenu
+                        transaction_type = 'IN'
+                    elif credit_debit_indicator == 'DBIT': # Débit = Dépense
+                        pass # transaction_type reste 'OUT'
 
-            return transactions_data
-        except etree.XMLSyntaxError as e:
-            logger.error(f"Erreur de syntaxe XML: {e}. Le fichier est peut-être malformé.")
-            raise ValueError(f"Erreur de syntaxe XML: {e}. Le fichier est peut-être malformé.")
+                    amount = abs(amount) # Toujours stocker le montant absolu
+
+                    # Vérifier l'existence de doublons
+                    existing_transaction = Transaction.objects.filter(
+                        user=user,
+                        account=account,
+                        date=transaction_date,
+                        amount=amount if transaction_type == 'IN' else -amount,
+                        description=description
+                    ).first()
+
+                    if existing_transaction:
+                        self.warnings.append(_(f"Transaction existante trouvée et ignorée (doublon potentiel): {description} le {transaction_date} - Montant: {amount}."))
+                        continue
+
+                    # Créer la transaction
+                    Transaction.objects.create(
+                        user=user,
+                        date=transaction_date,
+                        description=description,
+                        amount=amount if transaction_type == 'IN' else -amount,
+                        category=None,
+                        account=account,
+                        transaction_type=transaction_type
+                    )
+                    imported_transactions_count += 1
+
+        except FileNotFoundError:
+            self.errors.append(_("Fichier XML non trouvé. Veuillez vérifier le chemin."))
+        except ET.ParseError as e:
+            self.errors.append(_(f"Erreur de parsing XML: {e}. Le fichier n'est peut-être pas un XML valide."))
         except Exception as e:
-            logger.critical(f"Erreur lors du parsing du fichier XML ISO: {e}. Assurez-vous du format et des chemins XPath.", exc_info=True)
-            raise ValueError(f"Erreur lors du parsing du fichier XML ISO: {e}. Assurez-vous du format et des chemins XPath.")
+            self.errors.append(_(f"Erreur inattendue lors de l'importation du fichier XML: {e}"))
+
+        return imported_transactions_count, self.errors + self.warnings
+
