@@ -1,353 +1,316 @@
 // webapp/static/webapp/js/dashboard_scripts.js
 
-document.addEventListener('DOMContentLoaded', function() {
-    const categorySelect = document.getElementById('id_category');
-    const subcategorySelect = document.getElementById('id_subcategory');
-    const subcategoryContainer = document.getElementById('subcategory-field-container');
-    const accountSelect = document.getElementById('id_account');
-    const descriptionInput = document.getElementById('id_description');
-    const commonDescriptionsList = document.getElementById('commonDescriptionsList');
+/**
+ * Composant Alpine.js pour la gestion du formulaire d'ajout/édition de transaction.
+ * Encapsule l'état réactif et les méthodes pour l'interactivité du formulaire.
+ *
+ * @returns {Object} L'objet de configuration du composant Alpine.js.
+ */
+function transactionForm() {
+    // Récupération des données initiales depuis le DOM (passées via Django json_script)
+    const allCategoriesDataElement = document.getElementById('allCategoriesData');
+    const allSubcategoriesDataElement = document.getElementById('allSubcategoriesData');
+    
+    // Assurez-vous que ces données sont correctement parsées, ou utilisez des tableaux vides par défaut.
+    const allCategories = allCategoriesDataElement ? JSON.parse(allCategoriesDataElement.textContent) : [];
+    const allSubcategories = allSubcategoriesDataElement ? JSON.parse(allSubcategoriesDataElement.textContent) : [];
 
-    const dateInput = document.getElementById('id_date');
-    const todayBtn = document.getElementById('today-date-btn');
-    const yesterdayBtn = document.getElementById('yesterday-date-btn');
+    // Récupération des valeurs initiales des champs de formulaire
+    const initialValues = {
+        date: document.getElementById('id_date')?.value || '',
+        description: document.getElementById('id_description')?.value || '',
+        amount: parseFloat(document.getElementById('id_amount')?.value) || null,
+        category: document.getElementById('id_category')?.value || '',
+        subcategory: document.getElementById('id_subcategory')?.value || '',
+        account: document.getElementById('id_account')?.value || '',
+        transactionType: document.getElementById('id_transaction_type')?.value || 'expense', // Valeur par défaut
+        tags: Array.from(document.querySelectorAll('input[name="tags"]:checked'))
+                   .map(cb => parseInt(cb.value))
+    };
 
     const LAST_ACCOUNT_KEY = 'lastSelectedAccount';
 
-    // Éléments pour la suppression par lot
-    const selectAllCheckbox = document.getElementById('select-all-transactions');
-    const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
-    const deleteSelectedBtn = document.getElementById('delete-selected-btn');
-    const transactionsForm = document.getElementById('transactions-form');
+    return {
+        // --- PROPRIÉTÉS RÉACTIVES (ÉTAT DU COMPOSANT) ---
+        date: initialValues.date,
+        description: initialValues.description,
+        amount: initialValues.amount,
+        selectedCategory: initialValues.category,
+        selectedSubcategory: initialValues.subcategory,
+        selectedAccount: initialValues.account,
+        transactionType: initialValues.transactionType,
+        selectedTags: initialValues.tags,
+        
+        allCategories: allCategories, // Utilisé pour findCategoryById et hasSubcategoriesForSelectedCategory
+        allSubcategories: allSubcategories, // Utilisé pour filteredSubcategories
+        commonDescriptions: [],
+        
+        isLoadingSuggestion: false, // Indicateur de chargement pour les suggestions AJAX
+        formSubmitted: false, // Indique si le formulaire a été soumis au moins une fois (pour la validation visuelle)
 
-    // Récupérer les données de catégorie et sous-catégorie du DOM
-    const allCategories = JSON.parse(document.getElementById('allCategoriesData').textContent);
-    const allSubcategories = JSON.parse(document.getElementById('allSubcategoriesData').textContent);
+        // --- PROPRIÉTÉS CALCULÉES (GETTERS) ---
 
-    /**
-     * Crée un élément span pour un badge de catégorie.
-     * @param {string} text Le texte du badge (ex: "Fonds", "Budget", "Objectif").
-     * @param {string} className La classe CSS pour la couleur (ex: "fund-managed", "budgeted", "goal-linked").
-     * @returns {HTMLElement} L'élément span du badge.
-     */
-    function createCategoryBadge(text, className) {
-        const span = document.createElement('span');
-        span.classList.add('category-info-icon', className);
-        span.textContent = text;
-        return span;
-    }
-
-    /**
-     * Peuple le dropdown des catégories principales.
-     * @param {HTMLElement} selectElement L'élément <select> à peupler.
-     * @param {Array} categoriesData Les données des catégories.
-     * @param {string|number|null} initialValue La valeur initiale à sélectionner.
-     */
-    function populateMainCategories(selectElement, categoriesData, initialValue = null) {
-        selectElement.innerHTML = '<option value="">Sélectionner Catégorie Principale</option>';
-        categoriesData.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category.id;
-            option.textContent = category.name; // Texte de l'option sans HTML
-            option.dataset.isFundManaged = category.is_fund_managed;
-            option.dataset.isBudgeted = category.is_budgeted;
-            option.dataset.isGoalLinked = category.is_goal_linked;
-            selectElement.appendChild(option);
-        });
-        if (initialValue) {
-            selectElement.value = initialValue;
-        }
-        // Déclencher le changement pour mettre à jour les sous-catégories et l'affichage initial de l'icône
-        selectElement.dispatchEvent(new Event('change'));
-    }
-
-    /**
-     * Peuple le dropdown des sous-catégories en fonction de la catégorie parente sélectionnée.
-     * @param {string} parentCategoryId L'ID de la catégorie parente.
-     * @param {HTMLElement} subcategorySelectElement L'élément <select> des sous-catégories.
-     * @param {string|null} initialSubcategoryId L'ID de la sous-catégorie à pré-sélectionner.
-     */
-    function populateSubcategories(parentCategoryId, subcategorySelectElement, initialSubcategoryId = null) {
-        subcategorySelectElement.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-        const childrenOfParent = allSubcategories.filter(cat => cat.parent === parseInt(parentCategoryId));
-
-        if (childrenOfParent.length > 0) {
-            childrenOfParent.forEach(subcategory => {
-                const option = document.createElement('option');
-                option.value = subcategory.id;
-                option.textContent = subcategory.name; // Texte de l'option sans HTML
-                option.dataset.isFundManaged = subcategory.is_fund_managed;
-                option.dataset.isBudgeted = subcategory.is_budgeted;
-                option.dataset.isGoalLinked = subcategory.is_goal_linked;
-                subcategorySelectElement.appendChild(option);
-            });
-            subcategoryContainer.style.display = 'block'; // Afficher le champ
-        } else {
-            subcategoryContainer.style.display = 'none'; // Cacher le champ
-        }
-
-        if (initialSubcategoryId) {
-            // S'assurer que l'option existe avant de tenter de la sélectionner
-            const optionExists = Array.from(subcategorySelectElement.options).some(option => option.value == initialSubcategoryId);
-            if (optionExists) {
-                subcategorySelectElement.value = initialSubcategoryId;
+        /**
+         * Retourne les sous-catégories filtrées par la catégorie principale.
+         * Note: Avec le rendu des options par Django, cette fonction est principalement utilisée
+         * pour déterminer la visibilité du champ de sous-catégorie (`hasSubcategoriesForSelectedCategory`).
+         * Elle ne peuple plus directement les <option> du DOM.
+         * @returns {Array<Object>} Liste des sous-catégories pertinentes.
+         */
+        get filteredSubcategories() {
+            if (!this.selectedCategory) {
+                return [];
             }
-        }
-        // Met à jour l'icône affichée à côté du champ select
-        updateCategoryIconDisplay(subcategorySelectElement);
-    }
+            // Retourne toutes les sous-catégories qui ont le parent sélectionné
+            return this.allSubcategories.filter(cat => cat.parent === parseInt(this.selectedCategory));
+        },
 
-    /**
-     * Ajoute ou met à jour les icônes d'information de la catégorie à côté de l'élément select.
-     * Permet d'afficher plusieurs badges (Fonds, Budget, Objectif).
-     * @param {HTMLElement} selectElement L'élément <select> de la catégorie.
-     */
-    function updateCategoryIconDisplay(selectElement) {
-        // Supprimer tous les badges existants associés à ce select
-        let currentNextSibling = selectElement.nextElementSibling;
-        while (currentNextSibling && currentNextSibling.classList.contains('category-info-icon')) {
-            const temp = currentNextSibling.nextElementSibling;
-            currentNextSibling.remove();
-            currentNextSibling = temp;
-        }
+        /**
+         * Indique si la catégorie principale sélectionnée a des sous-catégories.
+         * @returns {boolean} True si des sous-catégories existent pour la catégorie sélectionnée.
+         */
+        get hasSubcategoriesForSelectedCategory() {
+            return this.filteredSubcategories.length > 0;
+        },
 
-        const selectedOption = selectElement.options[selectElement.selectedIndex];
-        if (selectedOption && selectedOption.value) { // N'ajouter que si une catégorie réelle est sélectionnée
-            const isFundManaged = selectedOption.dataset.isFundManaged === 'true'; // 'true' est une chaîne de caractères du dataset
-            const isBudgeted = selectedOption.dataset.isBudgeted === 'true';
-            const isGoalLinked = selectedOption.dataset.isGoalLinked === 'true';
+        // --- MÉTHODES DU COMPOSANT ---
 
-            const parentNode = selectElement.parentNode;
+        /**
+         * Méthode d'initialisation du composant. Appelé automatiquement par Alpine.js via `x-init`.
+         */
+        init() {
+            this.loadLastAccount();
+            this.loadCommonDescriptions();
 
-            // Ajouter les badges pertinents
-            if (isFundManaged) {
-                parentNode.insertBefore(createCategoryBadge('Fonds', 'fund-managed'), selectElement.nextSibling);
-            }
-            if (isBudgeted) {
-                parentNode.insertBefore(createCategoryBadge('Budget', 'budgeted'), selectElement.nextSibling);
-            }
-            if (isGoalLinked) {
-                parentNode.insertBefore(createCategoryBadge('Objectif', 'goal-linked'), selectElement.nextSibling);
-            }
-        }
-    }
-
-
-    function formatDate(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    todayBtn.addEventListener('click', function() {
-        dateInput.value = formatDate(new Date());
-    });
-
-    yesterdayBtn.addEventListener('click', function() {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        dateInput.value = formatDate(yesterday);
-    });
-
-    function loadCommonDescriptions() {
-        fetch(`/get-common-descriptions/`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('La réponse du réseau pour les descriptions n\'était pas ok.');
-                }
-                return response.json();
-            })
-            .then(data => {
-                commonDescriptionsList.innerHTML = '';
-                data.forEach(description => {
-                    const option = document.createElement('option');
-                    option.value = description;
-                    commonDescriptionsList.appendChild(option);
-                });
-            })
-            .catch(error => {
-                console.error('Erreur lors du chargement des descriptions courantes:', error);
-            });
-    }
-
-    // Event listener for main category change
-    categorySelect.addEventListener('change', function() {
-        const selectedParentId = this.value;
-        populateSubcategories(selectedParentId, subcategorySelect);
-        updateCategoryIconDisplay(this); // Update icon for main category
-    });
-
-    // Event listener for subcategory change
-    subcategorySelect.addEventListener('change', function() {
-        updateCategoryIconDisplay(this); // Update icon for subcategory
-    });
-
-
-    const lastSelectedAccountId = localStorage.getItem(LAST_ACCOUNT_KEY);
-    if (lastSelectedAccountId) {
-        const optionExists = Array.from(accountSelect.options).some(option => option.value === lastSelectedAccountId);
-        if (optionExists) {
-            accountSelect.value = lastSelectedAccountId;
-        }
-    }
-
-    accountSelect.addEventListener('change', function() {
-        localStorage.setItem(LAST_ACCOUNT_KEY, this.value);
-    });
-
-    // Initial population and icon display
-    populateMainCategories(categorySelect, allCategories, categorySelect.value);
-    // Si une sous-catégorie était déjà sélectionnée (e.g. après une erreur de formulaire),
-    // populateSubcategories sera appelée par le changement de categorySelect et la resélectionnera.
-    // Assurons un affichage initial des flags pour la sous-catégorie si elle est déjà pré-remplie.
-    if (subcategorySelect.value) {
-        updateCategoryIconDisplay(subcategorySelect);
-    }
-
-
-    if (!categorySelect.value) { // If no main category is initially selected, hide subcategory dropdown
-        subcategoryContainer.style.display = 'none';
-    }
-
-
-    loadCommonDescriptions();
-
-    // --- Logique pour la suggestion de catégorisation (Fuzzy Matching) ---
-    let suggestionTimeout;
-    descriptionInput.addEventListener('input', function() {
-        clearTimeout(suggestionTimeout); // Annule le précédent timeout
-        const description = this.value.trim();
-
-        if (description.length < 3) { // Ne suggère pas pour des descriptions trop courtes
-            return;
-        }
-
-        suggestionTimeout = setTimeout(() => {
-            fetch(`/suggest-categorization/?description=${encodeURIComponent(description)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Erreur lors de la suggestion de catégorisation.');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.category_id) {
-                        // Mettre à jour la catégorie principale
-                        categorySelect.value = data.category_id;
-
-                        // Charger les sous-catégories si une sous-catégorie est suggérée
-                        if (data.subcategory_id) {
-                            // Pass initial subcategory value directly to populateSubcategories
-                            populateSubcategories(data.category_id, subcategorySelect, data.subcategory_id);
-                        } else {
-                            // Si seule une catégorie principale est suggérée, s'assurer que la sous-catégorie est vide/cachée
-                            subcategorySelect.innerHTML = '<option value="">Sélectionner une sous-catégorie</option>';
-                            subcategoryContainer.style.display = 'none';
-                            updateCategoryIconDisplay(subcategorySelect); // Clear icon if subcategory is hidden
+            // S'assurer que le champ de sous-catégorie est correctement affiché/masqué
+            // et que la valeur de la sous-catégorie est valide pour la catégorie parente initiale.
+            this.$nextTick(() => {
+                if (this.selectedCategory) {
+                    if (this.hasSubcategoriesForSelectedCategory) {
+                        // Si une sous-catégorie est pré-sélectionnée mais n'est pas valide pour le parent
+                        if (this.selectedSubcategory && !this.filteredSubcategories.some(cat => cat.id === parseInt(this.selectedSubcategory))) {
+                            this.selectedSubcategory = ''; // Réinitialiser
                         }
-
-                        // Update icon for main category after setting its value
-                        updateCategoryIconDisplay(categorySelect);
-
-                        // Mettre à jour les tags
-                        const tagsCheckboxes = document.querySelectorAll('input[name="tags"]');
-                        tagsCheckboxes.forEach(checkbox => {
-                            checkbox.checked = data.tag_ids.includes(parseInt(checkbox.value));
-                        });
-
-                        console.log('Suggestion appliquée:', data);
                     } else {
-                        // Si aucune suggestion, on ne fait rien pour ne pas effacer la saisie de l'utilisateur
-                        console.log('Aucune suggestion trouvée.');
+                        this.selectedSubcategory = ''; // Si pas de sous-catégories pour le parent, effacer la sous-catégorie
                     }
-                })
-                .catch(error => {
-                    console.error('Erreur lors de la suggestion:', error);
-                });
-        }, 500); // Délai de 500ms après la dernière frappe
-    });
-    // --- Fin de la logique de suggestion ---
+                }
+            });
 
+            this.$watch('description', (value) => {
+                if (value && value.length >= 3) {
+                    this.suggestCategorization(value);
+                }
+            });
+        },
 
-    // --- Logique pour la suppression par lot ---
-    function updateDeleteButtonVisibility() {
-        const anyCheckboxChecked = Array.from(transactionCheckboxes).some(cb => cb.checked);
-        if (anyCheckboxChecked) {
-            deleteSelectedBtn.classList.remove('hidden');
-        } else {
-            deleteSelectedBtn.classList.add('hidden');
-        }
-    }
+        /**
+         * Réinitialise tous les champs du formulaire.
+         */
+        clearForm() {
+            this.date = '';
+            this.description = '';
+            this.amount = null;
+            this.selectedCategory = '';
+            this.selectedSubcategory = '';
+            this.loadLastAccount(); // Réinitialise le compte au dernier utilisé
+            this.transactionType = 'expense'; 
+            this.selectedTags = [];
 
-    // Gérer la case à cocher "Tout sélectionner"
-    selectAllCheckbox.addEventListener('change', function() {
-        transactionCheckboxes.forEach(checkbox => {
-            checkbox.checked = this.checked;
-        });
-        updateDeleteButtonVisibility();
-    });
-
-    // Gérer les cases à cocher individuelles
-    transactionCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            if (!this.checked) {
-                selectAllCheckbox.checked = false;
-            }
-            updateDeleteButtonVisibility();
-        });
-    });
-
-    // Gérer le bouton "Supprimer la sélection"
-    deleteSelectedBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const selectedIds = Array.from(transactionCheckboxes)
-                            .filter(cb => cb.checked)
-                            .map(cb => cb.value);
-
-        if (selectedIds.length === 0) {
-            // Utilisez votre fonction de toast pour les messages d'information
+            this.formSubmitted = false; // Réinitialise l'état de soumission pour masquer les erreurs visuelles
+            // Réinitialiser les classes d'erreur visuelles de tous les champs
+            this.$root.querySelectorAll('.border-red-500').forEach(el => {
+                el.classList.remove('border-red-500');
+            });
             if (typeof showToast !== 'undefined') {
-                showToast("Veuillez sélectionner au moins une transaction à supprimer.", 'info');
-            } else {
-                alert("Veuillez sélectionner au moins une transaction à supprimer.");
+                showToast("Formulaire effacé !", 'info');
             }
-            return;
-        }
+        },
 
-        // Utilisez votre fonction de modale de confirmation personnalisée
-        showConfirmationModal(
-            "Confirmer la suppression",
-            `Êtes-vous sûr de vouloir supprimer les ${selectedIds.length} transaction(s) sélectionnée(s) ?`,
-            (confirmed) => {
-                if (confirmed) {
-                    const tempForm = document.createElement('form');
-                    tempForm.method = 'POST';
-                    tempForm.action = '{% url "delete_selected_transactions" %}';
-                    tempForm.style.display = 'none';
+        /**
+         * Définit la date du champ date.
+         * @param {string} type - 'today' ou 'yesterday'.
+         */
+        setDate(type) {
+            const dateObj = new Date();
+            if (type === 'yesterday') {
+                dateObj.setDate(dateObj.getDate() - 1);
+            }
+            this.date = dateObj.toISOString().slice(0, 10);
+        },
 
-                    const csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrfmiddlewaretoken';
-                    csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                    tempForm.appendChild(csrfInput);
+        /**
+         * Charge le dernier compte sélectionné depuis le localStorage.
+         */
+        loadLastAccount() {
+            const lastSelectedAccountId = localStorage.getItem(LAST_ACCOUNT_KEY);
+            if (lastSelectedAccountId) {
+                const accountSelectElement = document.getElementById('id_account');
+                if (accountSelectElement && Array.from(accountSelectElement.options).some(option => option.value === lastSelectedAccountId)) {
+                    this.selectedAccount = lastSelectedAccountId;
+                }
+            }
+        },
 
-                    selectedIds.forEach(id => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'transaction_ids';
-                        input.value = id;
-                        tempForm.appendChild(input);
+        /**
+         * Sauvegarde le compte sélectionné dans le localStorage.
+         */
+        saveLastAccount() {
+            localStorage.setItem(LAST_ACCOUNT_KEY, this.selectedAccount);
+        },
+
+        /**
+         * Réinitialise la sous-catégorie quand la catégorie principale change.
+         */
+        updateSubcategoriesDropdown() {
+            this.selectedSubcategory = ''; 
+        },
+
+        /**
+         * Pas besoin de cette méthode pour les badges, x-html est réactif.
+         */
+        updateSubcategoryBadge() {
+            // Cette méthode est appelée par le @change, mais ne fait plus d'opération DOM directe
+            // car le x-html des badges est réactif à selectedSubcategory.
+        },
+
+        /**
+         * Génère le HTML pour un badge.
+         * @returns {string} HTML du badge.
+         */
+        createCategoryBadgeHtml(text, className) {
+            return `<span class="category-info-icon ${className}">${text}</span>`;
+        },
+
+        /**
+         * Génère le HTML pour les badges d'une catégorie.
+         * @returns {string} HTML combiné des badges.
+         */
+        categoryBadgeHtml(category) {
+            if (!category || !category.id) {
+                return '';
+            }
+            let badgesHtml = '';
+            if (category.is_fund_managed) {
+                badgesHtml += this.createCategoryBadgeHtml('Fonds', 'fund-managed');
+            }
+            if (category.is_budgeted) {
+                badgesHtml += this.createCategoryBadgeHtml('Budget', 'budgeted');
+            }
+            if (category.is_goal_linked) {
+                badgesHtml += this.createCategoryBadgeHtml('Objectif', 'goal-linked');
+            }
+            return badgesHtml;
+        },
+        
+        /**
+         * Trouve une catégorie par son ID.
+         * @returns {Object|null} L'objet catégorie ou null.
+         */
+        findCategoryById(categoryId, categoryList) {
+            if (!categoryId || !categoryList) return null;
+            return categoryList.find(cat => cat.id === parseInt(categoryId));
+        },
+
+        /**
+         * Charge les descriptions courantes.
+         */
+        async loadCommonDescriptions() {
+            try {
+                const response = await fetch('/get-common-descriptions/');
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status} lors du chargement des descriptions courantes.`);
+                }
+                const data = await response.json();
+                this.commonDescriptions = data;
+            } catch (error) {
+                console.error('Erreur lors du chargement des descriptions courantes:', error);
+                if (typeof showToast !== 'undefined') {
+                    showToast("Erreur lors du chargement des descriptions courantes.", 'error');
+                }
+            }
+        },
+
+        /**
+         * Suggère une catégorisation via AJAX.
+         */
+        async suggestCategorization(description) {
+            this.isLoadingSuggestion = true;
+            try {
+                const response = await fetch(`/suggest-categorization/?description=${encodeURIComponent(description)}`);
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status} lors de la suggestion de catégorisation.`);
+                }
+                const data = await response.json();
+
+                if (data.category_id) {
+                    this.selectedCategory = data.category_id.toString();
+                    
+                    this.$nextTick(() => { 
+                        // S'assure que filteredSubcategories est à jour avant de vérifier la sous-catégorie
+                        if (data.subcategory_id) {
+                            if (this.filteredSubcategories.some(sub => sub.id === parseInt(data.subcategory_id))) {
+                                this.selectedSubcategory = data.subcategory_id.toString();
+                            } else {
+                                this.selectedSubcategory = ''; 
+                            }
+                        } else {
+                            this.selectedSubcategory = '';
+                        }
                     });
 
-                    document.body.appendChild(tempForm);
-                    tempForm.submit();
-                }
-            }
-        );
-    });
+                    if (data.tag_ids && Array.isArray(data.tag_ids)) {
+                        this.selectedTags = data.tag_ids.map(id => parseInt(id));
+                    } else {
+                        this.selectedTags = [];
+                    }
 
-    // Initialiser la visibilité du bouton au chargement
-    updateDeleteButtonVisibility();
-    // --- Fin de la logique pour la suppression par lot ---
-});
+                    console.log('Suggestion appliquée:', data);
+                } else {
+                    console.log('Aucune suggestion trouvée pour la description.');
+                }
+            } catch (error) {
+                console.error('Erreur lors de la suggestion de catégorisation:', error);
+                if (typeof showToast !== 'undefined') {
+                    showToast("Erreur lors de la suggestion de catégorisation.", 'error');
+                }
+            } finally {
+                this.isLoadingSuggestion = false;
+            }
+        },
+
+        /**
+         * Valide le formulaire côté client.
+         * @returns {boolean} True si valide.
+         */
+        validateForm(event) {
+            this.formSubmitted = true; // Indique que le formulaire a été soumis
+            let isValid = true;
+            
+            // Re-vérifie la validité des champs et applique/retire la classe d'erreur
+            const fieldsToValidate = [
+                { id: 'id_date', value: this.date, condition: !this.date, message: "La date est requise." },
+                { id: 'id_description', value: this.description.trim(), condition: !this.description.trim(), message: "La description est requise." },
+                { id: 'id_amount', value: this.amount, condition: (this.amount === null || isNaN(this.amount) || parseFloat(this.amount) <= 0), message: "Le montant doit être un nombre positif." },
+                { id: 'id_category', value: this.selectedCategory, condition: !this.selectedCategory, message: "La catégorie principale est requise." },
+                // La sous-catégorie est conditionnelle
+                { id: 'id_subcategory', value: this.selectedSubcategory, condition: (this.hasSubcategoriesForSelectedCategory && !this.selectedSubcategory), message: "La sous-catégorie est requise pour cette catégorie principale." },
+            ];
+
+            fieldsToValidate.forEach(field => {
+                const element = document.getElementById(field.id);
+                if (field.condition) {
+                    isValid = false;
+                    element?.classList.add('border-red-500');
+                    if (typeof showToast !== 'undefined') {
+                        showToast(field.message, 'error');
+                    }
+                } else {
+                    element?.classList.remove('border-red-500');
+                }
+            });
+
+            return isValid;
+        },
+    };
+}

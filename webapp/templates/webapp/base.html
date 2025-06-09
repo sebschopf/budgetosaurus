@@ -35,6 +35,16 @@
         </script>
         {% endif %}
 
+        {# IMPORTANT: Ces scripts doivent être présents pour Alpine.js pour la gestion des catégories #}
+        {# Ils sont généralement générés par les vues Django qui préparent ces données. #}
+        {# Assurez-vous que votre contexte Django inclut 'all_categories_json' et 'all_subcategories_json' #}
+        <script id="allCategoriesData" type="application/json">
+            {{ all_categories_json|default:"[]"|safe }}
+        </script>
+        <script id="allSubcategoriesData" type="application/json">
+            {{ all_subcategories_json|default:"[]"|safe }}
+        </script>
+
         {% block content %}
             {# Le contenu spécifique de chaque page ira ici #}
         {% endblock %}
@@ -71,9 +81,6 @@
 
                 modalContent = document.getElementById('globalConfirmationModalContent');
                 confirmBtn = document.getElementById('globalConfirmBtn');
-                // Fix: ensure the correct ID for cancel button is used if there are multiple.
-                // Original: cancelBtn = document.getElementById('globalCancelModalBtn') || document.getElementById('globalCancelBtn');
-                // Simplified assuming 'globalCancelBtn' is always correct.
                 cancelBtn = document.getElementById('globalCancelBtn');
                 modalTitle = document.getElementById('globalConfirmationModalTitle');
                 modalMessage = document.getElementById('globalConfirmationModalMessage');
@@ -102,8 +109,8 @@
         }
     </script>
 
-    {% block extra_js %}{% endblock %}
-
+    {# Déplacé ici pour s'assurer que Alpine.js est chargé après l'initialisation de transactionForm() #}
+    {% block extra_js %}{% endblock %} 
     {# Alpine.js local - Ajouté ici pour être disponible globalement #}
     {# /!\ cdn.min.js doit être placé dans webapp/static/webapp/js/vendors/ #}
     <script src="{% static 'webapp/js/vendors/cdn.min.js' %}"></script>

@@ -1,7 +1,7 @@
 {# webapp/templates/webapp/dashboard_includes/transaction_form.html #}
-<div class="form-section">
+<div class="form-section" x-data="transactionForm()">
     <h2>Ajouter une Nouvelle Transaction</h2>
-    <form method="post" action="{% url 'add_transaction_submit' %}">
+    <form method="post" action="{% url 'add_transaction_submit' %}" @submit="validateForm($event)">
         {% csrf_token %}
         
         {# Affichage des erreurs non liées à un champ spécifique #}
@@ -15,58 +15,123 @@
 
         <div class="form-field-group">
             <label for="{{ form.date.id_for_label }}">Date</label>
-            {{ form.date }}
+            <input type="date" id="{{ form.date.id_for_label }}" name="{{ form.date.name }}"
+                   x-model="date"
+                   class="p-2 border rounded-md w-full"
+                   {% if form.date.value %}value="{{ form.date.value|date:'Y-m-d' }}"{% endif %}>
             <div class="date-quick-buttons">
-                <button type="button" id="today-date-btn">Aujourd'hui</button>
-                <button type="button" id="yesterday-date-btn">Hier</button>
+                <button type="button" @click="setDate('today')">Aujourd'hui</button>
+                <button type="button" @click="setDate('yesterday')">Hier</button>
             </div>
             {% if form.date.errors %}<p class="text-red-500 text-xs mt-1">{{ form.date.errors }}</p>{% endif %}
         </div>
 
         <div class="form-field-group">
             <label for="{{ form.description.id_for_label }}">Description</label>
-            {{ form.description }}
-            <datalist id="commonDescriptionsList"></datalist> {# Pour l'autocomplétion #}
+            <input type="text" id="{{ form.description.id_for_label }}" name="{{ form.description.name }}"
+                   x-model.debounce.500ms="description"
+                   class="p-2 border rounded-md w-full" list="commonDescriptionsList"
+                   value="{{ form.description.value|default:'' }}">
+            <datalist id="commonDescriptionsList">
+                <template x-for="desc in commonDescriptions" :key="desc">
+                    <option :value="desc"></option>
+                </template>
+            </datalist>
             {% if form.description.errors %}<p class="text-red-500 text-xs mt-1">{{ form.description.errors }}</p>{% endif %}
         </div>
 
         <div class="form-field-group">
             <label for="{{ form.amount.id_for_label }}">Montant</label>
-            {{ form.amount }}
+            <input type="number" id="{{ form.amount.id_for_label }}" name="{{ form.amount.name }}"
+                   step="0.01" x-model.number="amount"
+                   class="p-2 border rounded-md w-full"
+                   value="{{ form.amount.value|default:'' }}">
             {% if form.amount.errors %}<p class="text-red-500 text-xs mt-1">{{ form.amount.errors }}</p>{% endif %}
         </div>
 
         <div class="form-field-group">
             <label for="{{ form.category.id_for_label }}">Catégorie Principale</label>
-            {{ form.category }}
+            <select id="{{ form.category.id_for_label }}" name="{{ form.category.name }}"
+                    x-model="selectedCategory"
+                    @change="updateSubcategoriesDropdown"
+                    class="p-2 border rounded-md w-full">
+                <option value="">Sélectionner Catégorie Principale</option>
+                <template x-for="category in allCategories" :key="category.id">
+                    <option :value="category.id"
+                            :data-is-fund-managed="category.is_fund_managed"
+                            :data-is-budgeted="category.is_budgeted"
+                            :data-is-goal-linked="category.is_goal_linked"
+                            x-text="category.name">
+                    </option>
+                </template>
+            </select>
+            {# Ici, nous allons injecter le badge de catégorie après le select #}
+            <span x-html="categoryBadgeHtml(findCategoryById(selectedCategory, allCategories))"
+                  x-show="selectedCategory !== ''">
+            </span>
             {% if form.category.errors %}<p class="text-red-500 text-xs mt-1">{{ form.category.errors }}</p>{% endif %}
         </div>
 
-        <div id="subcategory-field-container" class="form-field-group">
+        {# x-transition pour une apparition/disparition fluide #}
+        <div id="subcategory-field-container" class="form-field-group"
+             x-show="hasSubcategoriesForSelectedCategory" x-transition>
             <label for="{{ form.subcategory.id_for_label }}">Sous-catégorie</label>
-            {{ form.subcategory }}
+            <select id="{{ form.subcategory.id_for_label }}" name="{{ form.subcategory.name }}"
+                    x-model="selectedSubcategory"
+                    @change="updateSubcategoryBadge"
+                    class="p-2 border rounded-md w-full">
+                <option value="">Sélectionner Sous-catégorie</option>
+                <template x-for="subcategory in filteredSubcategories" :key="subcategory.id">
+                    <option :value="subcategory.id"
+                            :data-is-fund-managed="subcategory.is_fund_managed"
+                            :data-is-budgeted="subcategory.is_budgeted"
+                            :data-is-goal-linked="subcategory.is_goal_linked"
+                            x-text="subcategory.name">
+                    </option>
+                </template>
+            </select>
+            {# Ici, nous allons injecter le badge de sous-catégorie après le select #}
+            <span x-html="categoryBadgeHtml(findCategoryById(selectedSubcategory, filteredSubcategories))"
+                  x-show="selectedSubcategory !== ''">
+            </span>
             {% if form.subcategory.errors %}<p class="text-red-500 text-xs mt-1">{{ form.subcategory.errors }}</p>{% endif %}
         </div>
 
         <div class="form-field-group">
             <label for="{{ form.account.id_for_label }}">Compte</label>
-            {{ form.account }}
+            <select id="{{ form.account.id_for_label }}" name="{{ form.account.name }}"
+                    x-model="selectedAccount"
+                    @change="saveLastAccount"
+                    class="p-2 border rounded-md w-full">
+                {% for id, name in form.account.field.choices %}
+                    <option value="{{ id }}" {% if id|slugify == form.account.value|slugify %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
             {% if form.account.errors %}<p class="text-red-500 text-xs mt-1">{{ form.account.errors }}</p>{% endif %}
         </div>
 
         <div class="form-field-group">
             <label for="{{ form.transaction_type.id_for_label }}">Type de transaction</label>
-            {{ form.transaction_type }}
+            <select id="{{ form.transaction_type.id_for_label }}" name="{{ form.transaction_type.name }}"
+                    x-model="transactionType"
+                    class="p-2 border rounded-md w-full">
+                {% for value, label in form.transaction_type.field.choices %}
+                    <option value="{{ value }}" {% if value == form.transaction_type.value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
             {% if form.transaction_type.errors %}<p class="text-red-500 text-xs mt-1">{{ form.transaction_type.errors }}</p>{% endif %}
         </div>
 
         {# Nouveau champ pour les tags #}
         <div class="form-field-group">
             <label>Tags</label>
-            <div class="flex flex-wrap gap-2"> {# Utilisation de flexbox pour aligner les cases à cocher #}
+            <div class="flex flex-wrap gap-2">
                 {% for checkbox in form.tags %}
                     <div class="flex items-center">
-                        {{ checkbox.tag }} {# Rend la case à cocher et son input #}
+                        <input type="checkbox" name="{{ checkbox.data.name }}" id="{{ checkbox.id_for_label }}" value="{{ checkbox.data.value }}"
+                               {% if checkbox.data.selected %}checked{% endif %}
+                               x-model="selectedTags"
+                               class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
                         <label for="{{ checkbox.id_for_label }}" class="ml-2 text-gray-700">{{ checkbox.choice_label }}</label>
                     </div>
                 {% endfor %}
@@ -76,6 +141,10 @@
 
         <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300">
             Ajouter Transaction
+        </button>
+        {# Bouton pour effacer le formulaire, ajouté pour la prochaine étape #}
+        <button type="button" @click="clearForm()" class="w-full mt-3 bg-gray-400 text-white p-3 rounded-md hover:bg-gray-500 transition duration-300">
+            Effacer le formulaire
         </button>
     </form>
 </div>

@@ -35,14 +35,7 @@
     {% endblock %}
 
     {% block extra_js %}
-        {# Définir les données des catégories et sous-catégories en JSON à l'aide de json_script #}
-        <script id="allCategoriesData" type="application/json">
-            {{ all_categories_data_json|safe }}
-        </script>
-        <script id="allSubcategoriesData" type="application/json">
-            {{ all_subcategories_data_json|safe }}
-        </script>
+        {# Les données allCategoriesData et allSubcategoriesData sont maintenant dans base.html #}
         {# Inclure les scripts spécifiques au tableau de bord #}
         {% include 'webapp/dashboard_includes/dashboard_scripts.html' %}
     {% endblock %}
-    
