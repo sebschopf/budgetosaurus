@@ -4,42 +4,44 @@
 from django.urls import path, re_path # re_path pour les regex dans les URLs
 # Importe les vues directement depuis leurs modules refactorisés
 from .views import (
-    general_transactions, # Contient dashboard_view, add_transaction_submit, load_subcategories, get_common_descriptions
-    transaction_actions,  # Contient delete_selected_transactions, get_transaction_form_for_edit, suggest_transaction_categorization
-    summary_views,        # Contient recap_overview_view, category_transactions_summary_view, all_transactions_summary_view
-    split_transactions_views, # Contient split_transaction_view, process_split_transaction
-    fund_allocations_views,   # Contient allocate_income_view, process_allocation_income
-    fund_debits_views,        # Contient debit_funds_view, process_fund_debit
-    imports,              # 
-    budgets,              # 
-    review_transactions,  # !!!! pour l'instant, update_transaction_category reste ici mais cela peut changer
-    glossary              # 
+    general_transactions,
+    transaction_actions,
+    summary_views,
+    split_transactions_views,
+    fund_allocations_views,
+    fund_debits_views,
+    imports, # Cette vue est importante
+    budgets,
+    review_transactions,
+    glossary
 )
 
 urlpatterns = [
     # URL de la page d'accueil/tableau de bord
     path('', general_transactions.dashboard_view, name='dashboard_view'),
-    
+
     # URL pour la soumission du formulaire d'ajout de transaction (POST seulement)
     path('add-transaction-submit/', general_transactions.add_transaction_submit, name='add_transaction_submit'),
-    
+
     # URL pour la requête AJAX de chargement des sous-catégories
     path('load-subcategories/', general_transactions.load_subcategories, name='load_subcategories'),
-    
+
     # URL pour récupérer les descriptions de transactions courantes (pour l'autocomplétion)
     path('get-common-descriptions/', general_transactions.get_common_descriptions, name='get_common_descriptions'),
 
     # URL pour la page d'importation des transactions via CSV
     path('import-transactions/', imports.import_transactions_view, name='import_transactions_view'),
 
+    # URL pour l'importation des catégories (manquait le name)
+    path('import-categories/', imports.import_categories, name='import_categories'),
+
     # URL pour la page de l'aperçu des budgets
     path('budget-overview/', budgets.budget_overview, name='budget_overview'),
 
-    # URLs pour la révision des transactions (ces vues n'ont pas encore été refactorisées)
-    # NOTE: update_transaction_category est toujours dans review_transactions.py pour le moment.
+    # URLs pour la révision des transactions
     path('review-transactions/', review_transactions.review_transactions_view, name='review_transactions_view'),
     path('update-transaction-category/<int:transaction_id>/', review_transactions.update_transaction_category, name='update_transaction_category'),
-    
+
     # URL pour obtenir le formulaire d'édition de transaction via AJAX
     path('get-transaction-form/<int:transaction_id>/', transaction_actions.get_transaction_form_for_edit, name='get_transaction_form_for_edit'),
 
@@ -56,8 +58,8 @@ urlpatterns = [
     path('recap-overview/', summary_views.recap_overview_view, name='recap_overview_view'),
 
     # URLs pour le récapitulatif des transactions par catégorie avec filtres de période
-    re_path(r'^category-transactions-summary/(?:(?P<year>\d{4})/)?(?:(?P<month>\d{1,2})/)?$', 
-            summary_views.category_transactions_summary_view, 
+    re_path(r'^category-transactions-summary/(?:(?P<year>\d{4})/)?(?:(?P<month>\d{1,2})/)?$',
+            summary_views.category_transactions_summary_view,
             name='category_transactions_summary_view'),
 
     # URL pour le récapitulatif de toutes les transactions
