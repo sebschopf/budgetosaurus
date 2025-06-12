@@ -1,0 +1,55 @@
+<div 
+    x-data="transactionEditor"
+    x-cloak
+>
+    <div 
+        x-show="isOpen"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4"
+        style="display: none;"
+    >
+        <div 
+            @click.away="closeForm()"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform scale-95"
+            x-transition:enter-end="opacity-100 transform scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform scale-100"
+            x-transition:leave-end="opacity-0 transform scale-95"
+            class="bg-white rounded-lg shadow-xl p-6 relative max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+        >
+            <!-- Bouton de fermeture -->
+            <button 
+                @click="closeForm()" 
+                class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10"
+            >
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <!-- Titre de la modale -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Modifier la transaction</h2>
+            
+            <!-- Indicateur de chargement -->
+            <div x-show="isLoading" class="flex justify-center my-8">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <span class="ml-3 text-gray-600">Chargement du formulaire...</span>
+            </div>
+            
+            <!-- Contenu du formulaire -->
+            <form x-show="!isLoading" x-html="formHtml" class="form-content"></form>
+            
+            <!-- Message d'erreur si pas de contenu -->
+            <div x-show="!isLoading && !formHtml" class="text-center text-red-600 my-8">
+                <p>Erreur lors du chargement du formulaire. Veuillez réessayer.</p>
+                <button @click="closeForm()" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded">
+                    Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

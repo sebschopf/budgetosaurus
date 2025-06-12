@@ -1,37 +1,33 @@
-# webapp/models/accounts.py
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import User
+from decimal import Decimal
 
 class Account(models.Model):
-    """
-    Modèle représentant un compte bancaire ou une source de fonds.
-    Ajout d'un champ 'account_type' pour mieux définir la nature du compte.
-    """
     ACCOUNT_TYPES = [
-        ('INDIVIDUAL', 'Individuel'),
-        ('COMMON', 'Commun'),
-        ('SAVINGS', 'Épargne'),
-        ('OTHER', 'Autre'), # Pour les cas non couverts
+        ('CH', 'Compte Courant'),
+        ('EP', 'Compte d\'Épargne'),
+        ('CR', 'Compte de Crédit'),
+        ('ES', 'Espèces'),
     ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts', verbose_name="Utilisateur")   # Lien vers l'utilisateur propriétaire du compte
-    name = models.CharField(max_length=100, unique=True, verbose_name="Nom du compte")
-    currency = models.CharField(max_length=3, default='CHF', verbose_name="Devise")
-    initial_balance = models.DecimalField(max_digits=15, decimal_places=2, default=0.00, verbose_name="Solde initial")
-    account_type = models.CharField(
-        max_length=10,
-        choices=ACCOUNT_TYPES,
-        default='INDIVIDUAL', # Valeur par défaut
-        verbose_name="Type de compte",
-        help_text="Définissez si ce compte est individuel, commun, d'épargne, etc."
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts')
+    name = models.CharField(max_length=100)
+    account_type = models.CharField(max_length=2, choices=ACCOUNT_TYPES, default='CH')
+    currency = models.CharField(max_length=3, default='CHF')
+    initial_balance = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    
+    # Indique si le compte est partagé avec le ménage
+    is_shared = models.BooleanField(
+        default=False, 
+        help_text="Si activé, ce compte est partagé avec les membres du ménage"
     )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Compte Bancaire"
-        verbose_name_plural = "Comptes Bancaires"
-        ordering = ['name']
+        unique_together = ['user', 'name']
 
     def __str__(self):
-        """Retourne une représentation en chaîne de caractères de l'objet."""
-        return f"{self.name} ({self.currency}) - {self.get_account_type_display()}"
+        shared_status = " (Partagé)" if self.is_shared else ""
+        return f"{self.name}{shared_status} ({self.get_account_type_display()}) - {self.user.username}"

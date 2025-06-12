@@ -1,42 +1,152 @@
-{# webapp/templates/webapp/dashboard_includes/latest_transactions_table.html #}
-<h2>Dernières Transactions</h2>
-{% if transactions %}
-    <div class="overflow-x-auto bg-white rounded-lg shadow-md mb-8"> {# Conteneur pour le défilement et styles de base #}
+{% load static %}
+{% load custom_filters %}
+
+{% if latest_transactions %}
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <form id="transactions-form" method="post" action="{% url 'delete_selected_transactions' %}">
             {% csrf_token %}
-            <div class="flex justify-end p-4"> {# Conteneur pour les actions par lot #}
-                <button type="button" id="delete-selected-btn" class="hidden action-button bg-red-600 hover:bg-red-700 text-white">Supprimer la sélection</button>
+            <div class="flex justify-end p-4 bg-gray-50 border-b border-gray-200">
+                <button type="button" id="delete-selected-btn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out text-sm">
+                    Supprimer la sélection
+                </button>
             </div>
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                            <input type="checkbox" id="select-all-transactions" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                        </th> {# Checkbox "Tout sélectionner" #}
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Description</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Montant</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Catégorie</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Compte</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for transaction in transactions %}
-                        <tr class="hover:bg-gray-50 transition-colors duration-150">
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox form-checkbox h-4 w-4 text-blue-600 rounded">
-                            </td> {# Checkbox pour chaque transaction #}
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.date|date:"d M Y" }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.description }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium transaction-amount {% if transaction.amount >= 0 %}income text-green-600{% else %}expense text-red-600{% endif %}">{{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.category.name|default:'N/A' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.account.name|default:'N/A' }}</td>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="py-3 pl-4 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                                <input type="checkbox" id="select-all-transactions" class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            </th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Date</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-3/12">Description</th>
+                            <th scope="col" class="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Montant</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Catégorie</th>
+                            <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Compte</th>
+                            <th scope="col" class="relative py-3 pl-3 pr-4 w-1/12">
+                                <span class="sr-only">Actions</span>
+                            </th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for transaction in latest_transactions %}
+                            <tr class="hover:bg-gray-50 transition-colors duration-150">
+                                <td class="py-4 pl-4 pr-3 whitespace-nowrap">
+                                    <input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                </td>
+                                <td class="px-3 py-4 text-sm text-gray-900">{{ transaction.date|date:"d M Y" }}</td>
+                                <td class="px-3 py-4 text-sm text-gray-900">
+                                    <div class="truncate w-full max-w-xs" title="{{ transaction.description }}">
+                                        {{ transaction.description }}
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 text-right text-sm font-bold {% if transaction.transaction_type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}
+                                </td>
+                                <td class="px-3 py-4 text-sm text-gray-900">
+                                    <div class="truncate w-full max-w-xs" title="{{ transaction.category.name|default:'N/A' }}">
+                                        {{ transaction.category.name|default:'N/A' }}
+                                    </div>
+                                </td>
+                                <td class="px-3 py-4 text-sm text-gray-900">
+                                    <div class="truncate w-full max-w-xs" title="{{ transaction.account.name|default:'N/A' }}">
+                                        {{ transaction.account.name|default:'N/A' }}
+                                    </div>
+                                </td>
+                                <td class="py-4 pl-3 pr-4 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button 
+                                            type="button"
+                                            onclick="triggerEdit({{ transaction.id }})"
+                                            class="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-blue-100 transition duration-150 transform hover:scale-110"
+                                            title="Modifier la transaction"
+                                        >
+                                            <i class="fas fa-pencil-alt text-base"></i>
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onclick="showConfirmationModal('Supprimer la transaction', 'Êtes-vous sûr de vouloir supprimer cette transaction ?', (confirmed) => { if (confirmed) { window.location.href = '{% url "delete_transaction" transaction.id %}'; } })"
+                                            class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition duration-150 transform hover:scale-110"
+                                            title="Supprimer la transaction"
+                                        >
+                                            <i class="fas fa-trash-alt text-base"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </form>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('select-all-transactions');
+        const transactionCheckboxes = document.querySelectorAll('.transaction-checkbox');
+        const deleteSelectedBtn = document.getElementById('delete-selected-btn');
+        const transactionsForm = document.getElementById('transactions-form');
+
+        // Gestion du "Tout sélectionner"
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                transactionCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                toggleDeleteButton();
+            });
+        }
+
+        // Gestion des checkboxes individuelles
+        transactionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const checkedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+                const totalCount = transactionCheckboxes.length;
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = checkedCount === totalCount;
+                    selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalCount;
+                }
+                
+                toggleDeleteButton();
+            });
+        });
+
+        // Afficher/masquer le bouton de suppression
+        function toggleDeleteButton() {
+            const checkedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+            if (deleteSelectedBtn) {
+                if (checkedCount > 0) {
+                    deleteSelectedBtn.classList.remove('hidden');
+                } else {
+                    deleteSelectedBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        // Gestion du clic sur le bouton de suppression
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.addEventListener('click', function() {
+                const checkedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+                if (checkedCount > 0) {
+                    showConfirmationModal(
+                        'Supprimer les transactions sélectionnées',
+                        `Êtes-vous sûr de vouloir supprimer ${checkedCount} transaction(s) ?`,
+                        function(confirmed) {
+                            if (confirmed && transactionsForm) {
+                                transactionsForm.submit();
+                            }
+                        }
+                    );
+                }
+            });
+        }
+    });
+    </script>
+
 {% else %}
-    <p class="no-transactions text-center text-gray-600 my-10">Aucune transaction trouvée. Ajoutez-en une pour commencer !</p>
+    <p class="text-center text-gray-600 text-lg my-10 p-4 bg-white rounded-lg shadow-md">
+        Aucune transaction trouvée. Ajoutez-en une pour commencer !
+    </p>
 {% endif %}

@@ -1,87 +1,299 @@
-{# webapp/templates/webapp/all_transactions_summary.html #}
 {% extends 'webapp/base.html' %}
+{% load static %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
-{% block extra_head %}
-{% load static %}
-<link rel="stylesheet" href="{% static 'webapp/css/pages/_all_transactions_summary.css' %}">
-{% endblock %}
-
 {% block content %}
-    <div class="section-header">
+<div x-data="allTransactionsSummary" class="max-w-7xl mx-auto">
+    <!-- En-tête -->
+    <div class="section-header text-center mb-8">
         <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
-        <p class="text-lg text-gray-700">Toutes vos transactions enregistrées, avec leur statut de ventilation.</p>
+        <p class="text-lg text-gray-700">Gérez toutes vos transactions et utilisez les outils de gestion des fonds</p>
     </div>
 
-    {% if transactions %}
-        <div class="transactions-table-container">
-            {# Utilise flexbox pour l'en-tête et le corps, pour un meilleur contrôle du scroll et sticky header #}
-            <div class="overflow-x-auto"> {# Permet le défilement horizontal sur petits écrans #}
-                <div class="transactions-grid-header"> {# En-tête de la grille #}
-                    <div class="grid-cell-header">Date</div> 
-                    <div class="grid-cell-header">Description</div> 
-                    <div class="grid-cell-header text-right">Montant</div> {# Ajout de text-right pour l'alignement #}
-                    <div class="grid-cell-header">Catégorie</div> 
-                    <div class="grid-cell-header">Compte</div> 
-                    <div class="grid-cell-header">Type</div> 
-                    <div class="grid-cell-header">Ventilé</div> 
-                    <div class="grid-cell-header">Actions</div> 
-                </div>
-
-                <div class="transactions-grid-body"> {# Corps de la grille avec les données #}
-                    {% for transaction in transactions %}
-                        <div class="grid-row">
-                            <div class="grid-cell">{{ transaction.date|date:"d M Y" }}</div>
-                            <div class="grid-cell">
-                                {# Utilisation de la classe de troncature pour les descriptions longues #}
-                                <span class="truncated-description-wrapper" title="{{ transaction.description }}">
-                                    <span class="truncated-description-content">{{ transaction.description }}</span>
-                                </span>
-                            </div>
-                            <div class="grid-cell amount {% if transaction.amount >= 0 %}income{% else %}expense{% endif %} text-right"> {# Ajout de text-right pour l'alignement #}
-                                {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
-                            </div>
-                            <div class="grid-cell">{{ transaction.category_name }}</div>
-                            <div class="grid-cell">{{ transaction.account_name }}</div>
-                            <div class="grid-cell">{{ transaction.get_transaction_type_display }}</div>
-                            <div class="grid-cell allocated-status {% if transaction.is_allocated %}allocated-true{% else %}allocated-false{% endif %}">
-                                {% if transaction.is_allocated %}Oui{% else %}Non{% endif %}
-                            </div>
-                            <div class="grid-cell">
-                                <div class="action-buttons-wrapper">
-                                    {# Bouton "Ventiler" pour les revenus des comptes communs (s'il n'est pas déjà alloué) #}
-                                    {% if transaction.transaction_type == 'IN' and transaction.account_type == 'COMMON' and not transaction.is_allocated %}
-                                        <a href="{% url 'allocate_income_view' transaction_id=transaction.id %}" class="btn-action-small btn-allocate">
-                                            Ventiler
-                                        </a>
-                                    {% endif %}
-
-                                    {# Bouton "Débiter des fonds" pour les dépenses #}
-                                    {% if transaction.transaction_type == 'OUT' %}
-                                        {% if transaction.account_type == 'COMMON' or transaction.account_type == 'INDIVIDUAL' %}
-                                            <a href="{% url 'debit_funds_view' transaction_id=transaction.id %}" class="btn-action-small btn-debit">
-                                                Débiter Fonds
-                                            </a>
-                                        {% endif %}
-                                    {% endif %}
-
-                                    {# Bouton "Diviser" pour les dépenses (qui ne sont pas des transferts) #}
-                                    {% if transaction.transaction_type == 'OUT' %}
-                                    <a href="{% url 'split_transaction_view_with_id' transaction_id=transaction.id %}" class="btn-action-small btn-split">
-                                        Diviser
-                                    </a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+    <!-- Filtres et recherche -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Recherche -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
+                <input 
+                    type="text" 
+                    x-model="searchTerm"
+                    placeholder="Description, montant..."
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+            </div>
+            
+            <!-- Filtre par catégorie -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <select x-model="selectedCategory" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Toutes les catégories</option>
+                    <template x-for="category in availableCategories" :key="category">
+                        <option :value="category" x-text="category"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <!-- Filtre par type -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select x-model="typeFilter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Tous</option>
+                    <option value="positive">Revenus</option>
+                    <option value="negative">Dépenses</option>
+                </select>
+            </div>
+            
+            <!-- Filtre par statut -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
+                <select x-model="statusFilter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Tous</option>
+                    <option value="allocated">Alloués</option>
+                    <option value="debited">Débités</option>
+                    <option value="unprocessed">Non traités</option>
+                </select>
             </div>
         </div>
-    {% else %}
-        <p class="no-transactions-message text-center text-gray-600 my-10">Aucune transaction trouvée.</p>
-    {% endif %}
+    </div>
 
-    <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
+    <!-- Statistiques -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-sm font-semibold text-gray-700">Total</h3>
+            <p class="text-xl font-bold text-blue-600" x-text="filteredTransactions.length"></p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-sm font-semibold text-gray-700">Revenus</h3>
+            <p class="text-xl font-bold text-green-600" x-text="`${totalIncome.toFixed(2)} CHF`"></p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-sm font-semibold text-gray-700">Dépenses</h3>
+            <p class="text-xl font-bold text-red-600" x-text="`${Math.abs(totalExpenses).toFixed(2)} CHF`"></p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <h3 class="text-sm font-semibold text-gray-700">Solde</h3>
+            <p class="text-xl font-bold" :class="{ 'text-green-600': netBalance >= 0, 'text-red-600': netBalance < 0 }" x-text="`${netBalance.toFixed(2)} CHF`"></p>
+        </div>
+    </div>
+
+    <!-- Liste des transactions -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compte</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-for="transaction in filteredTransactions" :key="transaction.id">
+                        <tr>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDate(transaction.date)"></td>
+                            <td class="px-4 py-3 text-sm text-gray-900" x-text="transaction.description"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" 
+                                :class="{ 'text-green-600': transaction.amount >= 0, 'text-red-600': transaction.amount < 0 }"
+                                x-text="`${transaction.amount.toFixed(2)} ${transaction.account_currency}`">
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.category_name"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.account_name"></td>
+                            <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                <span x-show="transaction.is_allocated" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Alloué
+                                </span>
+                                <span x-show="transaction.is_fund_debited" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    Débité
+                                </span>
+                                <span x-show="!transaction.is_allocated && !transaction.is_fund_debited" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Non traité
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+                                <div class="flex items-center justify-center space-x-1">
+                                    <template x-if="transaction.amount < 0">
+                                        <a :href="`/debit-funds/${transaction.id}/`" 
+                                           class="text-red-600 hover:text-red-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                           title="Débiter des fonds">
+                                            <i class="fas fa-wallet mr-1"></i>
+                                            <span class="hidden sm:inline text-xs">Débiter</span>
+                                        </a>
+                                    </template>
+                                    <template x-if="transaction.amount > 0">
+                                        <a :href="`/allocate-income/${transaction.id}/`" 
+                                           class="text-green-600 hover:text-green-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                           title="Allouer revenus">
+                                            <i class="fas fa-hand-holding-usd mr-1"></i>
+                                            <span class="hidden sm:inline text-xs">Allouer</span>
+                                        </a>
+                                    </template>
+                                    <a :href="`/split-transaction/${transaction.id}/`" 
+                                       class="text-purple-600 hover:text-purple-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                       title="Diviser transaction">
+                                        <i class="fas fa-scissors mr-1"></i>
+                                        <span class="hidden sm:inline text-xs">Diviser</span>
+                                    </a>
+                                    <button 
+                                        @click="$dispatch('open-edit-form', { transactionId: transaction.id })"
+                                        class="text-blue-600 hover:text-blue-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                        title="Éditer">
+                                        <i class="fas fa-edit mr-1"></i>
+                                        <span class="hidden sm:inline text-xs">Éditer</span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Message si aucune transaction -->
+    <div x-show="transactions.length === 0" class="bg-white rounded-lg shadow-md p-8 text-center">
+        <i class="fas fa-info-circle text-blue-400 text-4xl mb-3"></i>
+        <h3 class="text-lg font-semibold text-gray-700 mb-3">Aucune transaction trouvée</h3>
+        <p class="text-gray-600 mb-4">Commencez par importer vos transactions ou en créer de nouvelles.</p>
+        <a href="{% url 'import_transactions_view' %}" 
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            <i class="fas fa-upload mr-2"></i>Importer des transactions
+        </a>
+    </div>
+
+    <!-- Actions -->
+    <div class="text-center mt-6 space-x-4">
+        <a href="{% url 'recap_overview_view' %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300">
+            <i class="fas fa-chart-bar mr-2"></i>Récapitulatifs
+        </a>
+        <a href="{% url 'dashboard_view' %}" 
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+            <i class="fas fa-tachometer-alt mr-2"></i>Tableau de Bord
+        </a>
+    </div>
+
+    <!-- Modal d'édition -->
+    {% include 'webapp/includes/transaction_editor_modal.html' %}
+
+    <!-- Données pour Alpine.js -->
+    <script id="transactionsData" type="application/json">
+        [
+            {% for transaction in transactions %}
+            {
+                "id": {{ transaction.id }},
+                "date": "{{ transaction.date|date:'Y-m-d' }}",
+                "description": "{{ transaction.description|escapejs }}",
+                "amount": {{ transaction.amount }},
+                "category_name": "{{ transaction.category_name|escapejs }}",
+                "account_name": "{{ transaction.account_name|escapejs }}",
+                "account_currency": "{{ transaction.account_currency|escapejs }}",
+                "transaction_type": "{{ transaction.transaction_type }}",
+                "is_allocated": {{ transaction.is_allocated|yesno:"true,false" }},
+                "is_fund_debited": {{ transaction.is_fund_debited|yesno:"true,false" }},
+                "account_type": "{{ transaction.account_type }}"
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    </script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'webapp/js/transaction-editor.js' %}"></script>
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('allTransactionsSummary', () => ({
+        // État
+        transactions: [],
+        searchTerm: '',
+        selectedCategory: '',
+        typeFilter: '',
+        statusFilter: '',
+        
+        // Initialisation
+        init() {
+            this.loadData();
+        },
+        
+        loadData() {
+            const dataElement = document.getElementById('transactionsData');
+            if (dataElement) {
+                try {
+                    this.transactions = JSON.parse(dataElement.textContent);
+                } catch (e) {
+                    console.error('Erreur parsing données:', e);
+                    this.transactions = [];
+                }
+            }
+        },
+        
+        // Getters calculés
+        get availableCategories() {
+            return [...new Set(this.transactions.map(t => t.category_name))].filter(Boolean);
+        },
+        
+        get filteredTransactions() {
+            return this.transactions.filter(transaction => {
+                // Filtre de recherche
+                if (this.searchTerm) {
+                    const searchLower = this.searchTerm.toLowerCase();
+                    if (!transaction.description.toLowerCase().includes(searchLower) &&
+                        !transaction.amount.toString().includes(searchLower)) {
+                        return false;
+                    }
+                }
+                
+                // Filtre par catégorie
+                if (this.selectedCategory && transaction.category_name !== this.selectedCategory) {
+                    return false;
+                }
+                
+                // Filtre par type
+                if (this.typeFilter === 'positive' && transaction.amount <= 0) return false;
+                if (this.typeFilter === 'negative' && transaction.amount >= 0) return false;
+                
+                // Filtre par statut
+                if (this.statusFilter === 'allocated' && !transaction.is_allocated) return false;
+                if (this.statusFilter === 'debited' && !transaction.is_fund_debited) return false;
+                if (this.statusFilter === 'unprocessed' && (transaction.is_allocated || transaction.is_fund_debited)) return false;
+                
+                return true;
+            });
+        },
+        
+        get totalIncome() {
+            return this.filteredTransactions
+                .filter(t => t.amount > 0)
+                .reduce((sum, t) => sum + t.amount, 0);
+        },
+        
+        get totalExpenses() {
+            return this.filteredTransactions
+                .filter(t => t.amount < 0)
+                .reduce((sum, t) => sum + t.amount, 0);
+        },
+        
+        get netBalance() {
+            return this.totalIncome + this.totalExpenses;
+        },
+        
+        // Méthodes
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+            });
+        }
+    }));
+});
+</script>
 {% endblock %}

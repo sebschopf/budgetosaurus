@@ -1,90 +1,234 @@
-{# webapp/templates/webapp/review_transactions.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% block title %}{{ page_title }}{% endblock %}
+{% block title %}Transactions à Revoir{% endblock %}
 
-    {% block extra_head %}
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'webapp/css/pages/_review_transactions.css' %}">
-    {# Assurez-vous que tailwind_output.css est bien compilé et chargé via main.css #}
-    {% endblock %}
+{% block content %}
+<div x-data="reviewTransactions" class="max-w-7xl mx-auto">
+    <!-- En-tête -->
+    <div class="section-header text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">
+            Catégorisez vos transactions non classées pour une meilleure organisation
+        </p>
+    </div>
 
-    {% block content %}
-        <div class="section-header text-center mb-8"> {# Ajout des classes Tailwind pour le header #}
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
-            <p class="text-lg text-gray-700">Transactions nécessitant votre attention pour catégorisation ou correction.</p>
+    <!-- Debug info (à supprimer plus tard) -->
+    <div class="bg-yellow-100 border border-yellow-400 rounded p-4 mb-4">
+        <p><strong>Debug:</strong> {{ transactions_to_review|length }} transactions trouvées</p>
+        <p><strong>Utilisateur:</strong> {{ request.user.username }}</p>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-exclamation-triangle text-yellow-600 text-xl mr-2"></i>
+                <h3 class="text-sm font-semibold text-gray-700">À Revoir</h3>
+            </div>
+            <p class="text-2xl font-bold text-yellow-600 mt-1" x-text="transactions.length"></p>
         </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-check-circle text-green-600 text-xl mr-2"></i>
+                <h3 class="text-sm font-semibold text-gray-700">Sélectionnées</h3>
+            </div>
+            <p class="text-2xl font-bold text-green-600 mt-1" x-text="selectedTransactions.length"></p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-calculator text-blue-600 text-xl mr-2"></i>
+                <h3 class="text-sm font-semibold text-gray-700">Montant Total</h3>
+            </div>
+            <p class="text-xl font-bold text-blue-600 mt-1" x-text="`${totalAmount.toFixed(2)} CHF`"></p>
+        </div>
+    </div>
 
-        {% if transactions_to_review %}
-            <div class="overflow-x-auto bg-white rounded-lg shadow-md p-5 mb-8"> {# Conteneur pour le défilement et styles de base #}
-                <form id="transactions-form" method="post" action="{% url 'delete_selected_transactions' %}">
-                    {% csrf_token %}
-                    <div class="flex justify-end p-4"> {# Conteneur pour les actions par lot #}
-                        <button type="button" id="delete-selected-btn" class="hidden action-button bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md text-sm font-semibold">Supprimer la sélection</button>
-                    </div>
-                    <table class="min-w-full divide-y divide-gray-200"> {# Table complète #}
-                        <thead class="bg-gray-50"> {# En-tête de table #}
-                            <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
-                                    <input type="checkbox" id="select-all-transactions" class="form-checkbox h-4 w-4 text-blue-600 rounded">
-                                </th> {# Checkbox #}
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Date</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-4/12">Description</th>
-                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Montant</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Compte</th>
-                                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
+    <!-- Filtres et actions -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <!-- Recherche -->
+            <div class="flex-1">
+                <input 
+                    type="text" 
+                    x-model="searchTerm"
+                    placeholder="Rechercher par description..."
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+            </div>
+            
+            <!-- Actions de sélection -->
+            <div class="flex items-center space-x-2">
+                <button 
+                    @click="selectAll()"
+                    class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 text-sm"
+                >
+                    <i class="fas fa-check-square mr-1"></i>Tout sélectionner
+                </button>
+                <button 
+                    @click="clearSelection()"
+                    class="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300 text-sm"
+                >
+                    <i class="fas fa-times mr-1"></i>Désélectionner
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des transactions -->
+    <div x-show="filteredTransactions.length > 0">
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left">
+                                <input 
+                                    type="checkbox" 
+                                    :checked="allFilteredSelected"
+                                    @change="toggleAllFiltered()"
+                                    class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                >
+                            </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compte</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="transaction in filteredTransactions" :key="transaction.id">
+                            <tr :class="{ 'bg-blue-50': selectedTransactions.includes(transaction.id) }">
+                                <td class="px-4 py-3">
+                                    <input 
+                                        type="checkbox" 
+                                        :value="transaction.id"
+                                        x-model="selectedTransactions"
+                                        class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                    >
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="formatDate(transaction.date)"></td>
+                                <td class="px-4 py-3 text-sm text-gray-900" x-text="transaction.description"></td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium" 
+                                    :class="{ 'text-green-600': transaction.amount >= 0, 'text-red-600': transaction.amount < 0 }"
+                                    x-text="`${transaction.amount.toFixed(2)} ${transaction.account_currency}`">
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500" x-text="transaction.account_name"></td>
+                                <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <button 
+                                            @click="$dispatch('open-edit-form', { transactionId: transaction.id })"
+                                            class="text-blue-600 hover:text-blue-900 inline-flex items-center px-2 py-1 rounded"
+                                            title="Éditer et catégoriser"
+                                        >
+                                            <i class="fas fa-edit mr-1"></i>
+                                            <span class="hidden sm:inline">Éditer</span>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200"> {# Corps de table #}
-                            {% for transaction in transactions_to_review %}
-                                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox form-checkbox h-4 w-4 text-blue-600 rounded">
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.date|date:"d M Y" }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.description }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium amount {% if transaction.amount >= 0 %}income text-green-600{% else %}expense text-red-600{% endif %}">{{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.account.name|default:'N/A' }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        <div class="flex items-center justify-center space-x-2">
-                                            <button type="button" class="action-button bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-md text-xs font-semibold edit-btn" data-transaction-id="{{ transaction.id }}">Éditer</button>
-                                            <button type="button" class="action-button bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded-md text-xs font-semibold delete-btn" data-transaction-id="{{ transaction.id }}">Supprimer</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </form>
-            </div>
-        {% else %}
-            <p class="no-transactions text-center text-gray-600 my-10">Aucune transaction à revoir pour le moment. Tout est catégorisé !</p>
-        {% endif %}
-
-        {# Panneau latéral d'édition de transaction - Styles Tailwind appliqués directement #}
-        <div id="editTransactionSidePanel" class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-out flex flex-col pt-16 border-l border-gray-200">
-            <div class="side-panel-header flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50 sticky top-16 z-10">
-                <h2 class="text-xl font-semibold text-gray-800 m-0 p-0 border-none">Éditer la Transaction</h2>
-                <button type="button" class="close-side-panel-button text-gray-500 text-3xl font-bold cursor-pointer hover:text-gray-800 bg-transparent border-none p-0 leading-none">&times;</button>
-            </div>
-            <div class="side-panel-content p-8 flex-grow overflow-y-auto">
-                <form id="editTransactionForm" method="post">
-                    {% csrf_token %}
-                    <div id="side-panel-form-fields">
-                        {# Les champs du formulaire TransactionForm seront insérés ici par JS #}
-                        <p class="text-center text-gray-500">Chargement du formulaire...</p>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 mt-4 font-semibold">
-                        Sauvegarder
-                    </button>
-                </form>
+                        </template>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
 
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
+    <!-- Message si aucune transaction -->
+    <div x-show="transactions.length === 0" class="bg-white rounded-lg shadow-md p-12 text-center">
+        <i class="fas fa-check-circle text-green-400 text-6xl mb-4"></i>
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">Excellent travail !</h3>
+        <div class="text-gray-600 space-y-2 max-w-2xl mx-auto">
+            <p>Toutes vos transactions sont correctement catégorisées.</p>
+            <p>Vous pouvez maintenant consulter vos récapitulatifs et gérer vos fonds.</p>
+        </div>
+    </div>
 
-    {% block extra_js %}
-        {# Inclure les scripts spécifiques à la page de révision des transactions #}
-        {% include 'webapp/review_transactions_includes/review_transactions_scripts.html' %}
-    {% endblock %}
+    <!-- Modal d'édition -->
+    {% include 'webapp/includes/transaction_editor_modal.html' %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'webapp/js/transaction-editor.js' %}"></script>
+<script>
+// Données des transactions (générées côté serveur)
+window.transactionsData = {{ transactions_json|safe }};
+
+document.addEventListener('alpine:init', () => {
+    Alpine.data('reviewTransactions', () => ({
+        // État
+        transactions: [],
+        selectedTransactions: [],
+        searchTerm: '',
+        
+        // Initialisation
+        init() {
+            this.loadData();
+            console.log("Review transactions component initialized");
+        },
+        
+        loadData() {
+            try {
+                this.transactions = window.transactionsData || [];
+                console.log("Transactions loaded:", this.transactions.length);
+            } catch (e) {
+                console.error('Erreur parsing données:', e);
+                this.transactions = [];
+            }
+        },
+        
+        // Getters calculés
+        get filteredTransactions() {
+            if (!this.searchTerm) return this.transactions;
+            
+            const searchLower = this.searchTerm.toLowerCase();
+            return this.transactions.filter(transaction => 
+                transaction.description.toLowerCase().includes(searchLower) ||
+                transaction.amount.toString().includes(searchLower) ||
+                transaction.account_name.toLowerCase().includes(searchLower)
+            );
+        },
+        
+        get totalAmount() {
+            return this.filteredTransactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+        },
+        
+        get allFilteredSelected() {
+            return this.filteredTransactions.length > 0 && 
+                   this.filteredTransactions.every(t => this.selectedTransactions.includes(t.id));
+        },
+        
+        // Méthodes de sélection
+        selectAll() {
+            this.selectedTransactions = this.filteredTransactions.map(t => t.id);
+        },
+        
+        clearSelection() {
+            this.selectedTransactions = [];
+        },
+        
+        toggleAllFiltered() {
+            if (this.allFilteredSelected) {
+                const filteredIds = this.filteredTransactions.map(t => t.id);
+                this.selectedTransactions = this.selectedTransactions.filter(id => !filteredIds.includes(id));
+            } else {
+                const filteredIds = this.filteredTransactions.map(t => t.id);
+                this.selectedTransactions = [...new Set([...this.selectedTransactions, ...filteredIds])];
+            }
+        },
+        
+        // Utilitaires
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+            });
+        }
+    }));
+});
+</script>
+{% endblock %}

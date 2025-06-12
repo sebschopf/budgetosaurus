@@ -1,9 +1,9 @@
 # webapp/views/general_transactions.py
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
-from django.db.models import F
+from django.db.models import F, Sum
 import json
 
 from datetime import date
@@ -13,37 +13,69 @@ from django.utils import timezone
 import csv
 from django.utils.translation import gettext as _
 
-from webapp.models import Category, Transaction, Account, Budget, SavingGoal
+from webapp.models import Category, Transaction, Account, Budget, SavingGoal, Tag
 from webapp.forms import TransactionForm
 from webapp.services import TransactionService
 
-@login_required # NOUVEAU: Protégez cette vue pour les utilisateurs connectés
+@login_required
 def dashboard_view(request):
     """
     Vue principale affichant le tableau de bord : soldes des comptes,
     formulaire d'ajout de transaction et dernières transactions.
     Utilise TransactionService pour la logique métier, filtré par l'utilisateur connecté.
     """
-    transaction_service = TransactionService() # NOUVEAU: Plus besoin de passer des arguments à l'initialisation
+    transaction_service = TransactionService()
 
-    # NOUVEAU: Passez request.user aux méthodes de service
-    account_balances = transaction_service.get_account_balances(request.user)
+    # Récupérer les comptes avec leurs soldes calculés
+    accounts = Account.objects.filter(user=request.user).order_by('name')
+    
+    # Calculer le solde pour chaque compte
+    for account in accounts:
+        total_balance_change = account.transactions.filter(user=request.user).aggregate(Sum('amount'))['amount__sum'] or 0
+        account.balance = account.initial_balance + total_balance_change
+
     latest_transactions = transaction_service.get_latest_transactions(request.user, limit=10)
 
-    form = TransactionForm(user=request.user) # NOUVEAU: Passez l'utilisateur au formulaire
+    # Calcul des totaux pour l'aperçu rapide
+    current_month = date.today().month
+    current_year = date.today().year
+
+    # Solde total de tous les comptes de l'utilisateur
+    total_balance_change = Transaction.objects.filter(user=request.user).aggregate(Sum('amount'))['amount__sum'] or 0
+    total_initial_balance = Account.objects.filter(user=request.user).aggregate(Sum('initial_balance'))['initial_balance__sum'] or 0
+    total_balance = total_initial_balance + total_balance_change
+    
+    # Récupérer la devise de base pour l'affichage
+    base_currency = accounts.first().currency if accounts.exists() else 'CHF'
+
+    # Revenu du mois courant
+    monthly_income = Transaction.objects.filter(
+        user=request.user,
+        transaction_type='IN',
+        date__month=current_month,
+        date__year=current_year
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+
+    # Dépenses du mois courant (en valeur absolue)
+    monthly_expense = Transaction.objects.filter(
+        user=request.user,
+        transaction_type='OUT',
+        date__month=current_month,
+        date__year=current_year
+    ).aggregate(Sum('amount'))['amount__sum'] or 0
+    monthly_expense = abs(monthly_expense)
+
+    # Préparation des données pour les catégories et sous-catégories (pour Alpine.js)
+    form = TransactionForm(user=request.user)
 
     all_categories_data = []
     all_subcategories_data = []
 
-    # NOUVEAU: Filtrer les catégories par l'utilisateur connecté
     categories = Category.objects.filter(user=request.user, parent__isnull=True).order_by('name')
 
-    current_year = date.today().year
-    current_month = date.today().month
-    # NOUVEAU: Filtrer les budgets et objectifs d'épargne par l'utilisateur
     budgeted_category_ids_for_current_period = set(
         Budget.objects.filter(
-            user=request.user, # NOUVEAU
+            user=request.user,
             period_type='M',
             start_date__year=current_year,
             start_date__month=current_month
@@ -52,7 +84,7 @@ def dashboard_view(request):
 
     goal_linked_category_ids = set(
         SavingGoal.objects.filter(
-            user=request.user, # NOUVEAU
+            user=request.user,
             status='OU'
         ).values_list('category__id', flat=True)
     )
@@ -69,8 +101,7 @@ def dashboard_view(request):
             'is_budgeted': is_budgeted_for_display,
             'is_goal_linked': is_goal_linked_for_display
         })
-        # S'assurer que les sous-catégories sont aussi filtrées par l'utilisateur
-        for child_cat in cat.children.filter(user=request.user).order_by('name'): # NOUVEAU
+        for child_cat in cat.children.filter(user=request.user).order_by('name'):
             child_is_budgeted_for_display = child_cat.is_budgeted
             child_is_fund_managed_for_display = child_cat.is_fund_managed
             child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids
@@ -87,222 +118,126 @@ def dashboard_view(request):
     all_categories_data_json = json.dumps(all_categories_data)
     all_subcategories_data_json = json.dumps(all_subcategories_data)
 
+    # Récupérer tous les tags disponibles pour l'utilisateur
+    available_tags = Tag.objects.filter(user=request.user).order_by('name')
+
     context = {
         'page_title': 'Tableau de Bord',
-        'account_balances': account_balances,
-        'transactions': latest_transactions,
+        'accounts': accounts,  # Objets Account avec balance calculée
+        'latest_transactions': latest_transactions,
         'form': form,
         'all_categories_data_json': all_categories_data_json,
         'all_subcategories_data_json': all_subcategories_data_json,
+        'available_tags': available_tags,  # Pour les checkboxes des tags
+        'total_balance': total_balance,
+        'base_currency': base_currency,
+        'monthly_income': monthly_income,
+        'monthly_expense': monthly_expense,
     }
     return render(request, 'webapp/index.html', context)
-
-
-@login_required # Protégez cette vue
-@require_POST
-def add_transaction_submit(request):
-    """
-    Gère la soumission du formulaire d'ajout de transaction depuis le tableau de bord.
-    Utilise TransactionService pour la création pour l'utilisateur connecté.
-    """
-    # Passez l'utilisateur au formulaire pour qu'il filtre les choix
-    form = TransactionForm(request.POST, user=request.user)
-    transaction_service = TransactionService()
-
-    if form.is_valid():
-        try:
-            cleaned_data = form.cleaned_data
-            tags_list = list(cleaned_data.pop('tags'))
-
-            final_category = cleaned_data.pop('final_category')
-
-            transaction_data = {
-                'date': cleaned_data['date'],
-                'description': cleaned_data['description'],
-                'amount': cleaned_data['amount'],
-                'category': final_category,
-                'account': cleaned_data['account'],
-                'transaction_type': cleaned_data['transaction_type'],
-                'tags': tags_list,
-            }
-
-            # NOUVEAU: Passez request.user à la méthode create_transaction
-            transaction_service.create_transaction(transaction_data, request.user)
-            messages.success(request, "Transaction enregistrée avec succès!")
-            return redirect('dashboard_view')
-        except Exception as e:
-            messages.error(request, f"Erreur lors de l'enregistrement de la transaction: {e}")
-
-    # Re-rendre la page si le formulaire est invalide
-    all_categories_data = []
-    all_subcategories_data = []
-
-    current_year = date.today().year
-    current_month = date.today().month
-    # Filtrer les budgets et objectifs d'épargne par l'utilisateur
-    budgeted_category_ids_for_current_period = set(
-        Budget.objects.filter(
-            user=request.user, # NOUVEAU
-            period_type='M',
-            start_date__year=current_year,
-            start_date__month=current_month
-        ).values_list('category__id', flat=True)
-    )
-    goal_linked_category_ids = set(
-        SavingGoal.objects.filter(
-            user=request.user, # NOUVEAU
-            status='OU'
-        ).values_list('category__id', flat=True)
-    )
-
-    # Filtrer les catégories par l'utilisateur connecté
-    for cat in Category.objects.filter(user=request.user, parent__isnull=True).order_by('name'):
-        is_budgeted_for_display = cat.is_budgeted
-        is_fund_managed_for_display = cat.is_fund_managed
-        is_goal_linked_for_display = cat.id in goal_linked_category_ids
-
-        all_categories_data.append({
-            'id': cat.id,
-            'name': cat.name,
-            'is_fund_managed': is_fund_managed_for_display,
-            'is_budgeted': is_budgeted_for_display,
-            'is_goal_linked': is_goal_linked_for_display
-        })
-        # S'assurer que les sous-catégories sont aussi filtrées par l'utilisateur
-        for child_cat in cat.children.filter(user=request.user).order_by('name'): # NOUVEAU
-            child_is_budgeted_for_display = child_cat.is_budgeted
-            child_is_fund_managed_for_display = child_cat.is_fund_managed
-            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids
-
-            all_subcategories_data.append({
-                'id': child_cat.id,
-                'name': child_cat.name,
-                'parent': cat.id,
-                'is_fund_managed': child_is_fund_managed_for_display,
-                'is_budgeted': child_is_budgeted_for_display,
-                'is_goal_linked': child_is_goal_linked_for_display
-            })
-
-    context = {
-        'page_title': 'Tableau de Bord',
-        # Passez request.user aux méthodes de service pour le re-rendu
-        'account_balances': transaction_service.get_account_balances(request.user),
-        'transactions': transaction_service.get_latest_transactions(request.user, limit=10),
-        'form': form,
-        'all_categories_data_json': json.dumps(all_categories_data),
-        'all_subcategories_data_json': json.dumps(all_subcategories_data),
-    }
-    return render(request, 'webapp/index.html', context)
-
-
-@login_required # Protégez cette vue
-@require_GET
-def load_subcategories(request):
-    """
-    Vue AJAX pour charger les sous-catégories en fonction d'une catégorie parente sélectionnée,
-    incluant le statut is_fund_managed, is_budgeted et is_goal_linked, pour l'utilisateur connecté.
-    """
-    parent_id = request.GET.get('parent_category_id')
-    subcategories = []
-    if parent_id:
-        try:
-            # Filtrer par l'utilisateur
-            parent_category = Category.objects.get(pk=parent_id, user=request.user)
-            # Filtrer les enfants par l'utilisateur
-            children = parent_category.children.filter(user=request.user).order_by('name')
-
-            # Ajoutez les imports nécessaires pour Budget et SavingGoal (si non déjà importés globalement dans la vue)
-            # Ils sont déjà importés en haut du fichier, donc pas besoin ici.
-
-            current_year = date.today().year
-            current_month = date.today().month
-            # Filtrer les objectifs d'épargne par l'utilisateur
-            goal_linked_category_ids = set(
-                SavingGoal.objects.filter(user=request.user, status='OU').values_list('category__id', flat=True)
-            )
-
-            for child in children:
-                is_budgeted_for_display = child.is_budgeted
-                is_fund_managed_for_display = child.is_fund_managed
-                is_goal_linked_for_display = child.id in goal_linked_category_ids
-
-                subcategories.append({
-                    'id': child.id,
-                    'name': child.name,
-                    'is_fund_managed': is_fund_managed_for_display,
-                    'is_budgeted': is_budgeted_for_display,
-                    'is_goal_linked': is_goal_linked_for_display
-                })
-        except Category.DoesNotExist:
-            pass # Si la catégorie parente n'existe pas ou n'appartient pas à l'utilisateur
-    return JsonResponse(subcategories, safe=False)
-
-
-@login_required # Protégez cette vue
-@require_GET
-def get_common_descriptions(request):
-    """
-    Vue AJAX pour récupérer les descriptions de transactions les plus courantes pour l'utilisateur connecté.
-    """
-    # Filtrer les transactions par l'utilisateur
-    common_descriptions = Transaction.objects.filter(
-        user=request.user, # NOUVEAU
-        description__isnull=False
-    ).exclude(
-        description__exact=''
-    ).values(
-        'description'
-    ).annotate(
-        count=F('description')
-    ).order_by(
-        '-count'
-    ).values_list(
-        'description', flat=True
-    ).distinct()[:10]
-
-    return JsonResponse(list(common_descriptions), safe=False)
 
 
 @login_required
-def export_transactions_csv(request):
+@require_POST
+def add_transaction_submit(request):
     """
-    Exporte toutes les transactions de l'utilisateur connecté au format CSV.
+    Traite la soumission du formulaire d'ajout de transaction via AJAX.
+    Utilise TransactionService pour la logique métier.
     """
-    user = request.user
-    response = HttpResponse(content_type='text/csv')
-    # Définir le nom du fichier de téléchargement
-    response['Content-Disposition'] = f'attachment; filename="transactions_{user.username}_{timezone.now().strftime("%Y-%m-%d")}.csv"'
+    transaction_service = TransactionService()
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        form = TransactionForm(request.POST, user=request.user)
+        
+        if form.is_valid():
+            try:
+                cleaned_data = form.cleaned_data
+                tags_list = list(cleaned_data.pop('tags'))
+                
+                # Récupérer la catégorie finale (sous-catégorie ou catégorie principale)
+                final_category = cleaned_data.pop('final_category', None)
+                
+                transaction_data = {
+                    'date': cleaned_data['date'],
+                    'description': cleaned_data['description'],
+                    'amount': cleaned_data['amount'],
+                    'category': final_category,
+                    'account': cleaned_data['account'],
+                    'transaction_type': cleaned_data['transaction_type'],
+                    'tags': tags_list,
+                }
+                
+                # Créer la transaction avec l'utilisateur
+                transaction = transaction_service.create_transaction(transaction_data, request.user)
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Transaction '{transaction.description}' ajoutée avec succès."
+                })
+                
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': f"Erreur lors de l'ajout de la transaction: {str(e)}"
+                })
+        else:
+            # Retourner les erreurs du formulaire
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = [str(error) for error in error_list]
+            
+            return JsonResponse({
+                'success': False,
+                'message': "Veuillez corriger les erreurs dans le formulaire.",
+                'errors': errors
+            })
+    
+    # Si ce n'est pas une requête AJAX, rediriger vers le dashboard
+    return redirect('dashboard_view')
 
-    writer = csv.writer(response)
 
-    # Écrire l'en-tête du fichier CSV
-    writer.writerow([
-        _('Date'),
-        _('Description'),
-        _('Montant'),
-        _('Type de Transaction'),
-        _('Catégorie'),
-        _('Compte'),
-        _('Tags'),
-        _('Date de Création'),
+@login_required
+def split_transaction_view(request, transaction_id):
+    """
+    Vue pour diviser une transaction en plusieurs transactions.
+    """
+    # S'assurer que la transaction appartient à l'utilisateur connecté
+    original_transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
+    
+    # Récupérer toutes les catégories pour cet utilisateur
+    all_categories = Category.objects.filter(user=request.user, parent__isnull=True).order_by('name')
+    all_subcategories = Category.objects.filter(user=request.user, parent__isnull=False).order_by('name')
+    
+    all_categories_json = json.dumps([
+        {
+            'id': cat.id,
+            'name': cat.name,
+            'is_fund_managed': cat.is_fund_managed,
+            'is_budgeted': cat.is_budgeted
+        }
+        for cat in all_categories
     ])
-
-    # Récupérer toutes les transactions de l'utilisateur
-    # Notez que j'ai inclus select_related et prefetch_related pour optimiser les requêtes
-    transactions = Transaction.objects.filter(user=user).select_related('account', 'category').prefetch_related('tags').order_by('date', 'created_at')
-
-    for transaction_obj in transactions:
-        # Collecter les tags en une chaîne de caractères séparée par des virgules
-        tags = ", ".join([tag.name for tag in transaction_obj.tags.all()])
-
-        writer.writerow([
-            transaction_obj.date.strftime('%Y-%m-%d'), # Format de date standard
-            transaction_obj.description,
-            str(transaction_obj.amount), # Convertir Decimal en chaîne
-            transaction_obj.get_transaction_type_display(), # Afficher le libellé du type
-            transaction_obj.category.name if transaction_obj.category else '', # Nom de la catégorie ou vide
-            transaction_obj.account.name, # Nom du compte
-            tags,
-            transaction_obj.created_at.strftime('%Y-%m-%d %H:%M:%S'), # Date de création avec heure
-        ])
-    return response
+    
+    all_subcategories_json = json.dumps([
+        {
+            'id': cat.id,
+            'name': cat.name,
+            'parent': cat.parent.id,
+            'is_fund_managed': cat.is_fund_managed,
+            'is_budgeted': cat.is_budgeted
+        }
+        for cat in all_subcategories
+    ])
+    
+    if request.method == 'POST':
+        # Traitement du formulaire de division
+        messages.success(request, "Transaction divisée avec succès.")
+        return redirect('dashboard_view')
+    
+    context = {
+        'original_transaction': original_transaction,
+        'all_categories_json': all_categories_json,
+        'all_subcategories_json': all_subcategories_json,
+    }
+    
+    return render(request, 'webapp/split_transaction.html', context)

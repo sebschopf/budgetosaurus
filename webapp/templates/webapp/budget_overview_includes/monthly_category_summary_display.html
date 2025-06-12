@@ -1,13 +1,16 @@
 {# webapp/templates/webapp/budget_overview_includes/monthly_category_summary_display.html #}
-{# Le titre h2 et le paragraphe d'introduction ont été déplacés dans le template parent #}
-
 {% if monthly_category_summary_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté et marge inférieure via Tailwind #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {% for item in monthly_category_summary_data %}
-            {# Réutilise la classe 'card' pour un style cohérent et ajoute les classes Tailwind #}
-            <div class="card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto">
+            <div 
+                class="card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto"
+                x-data="{ amount: {{ item.total_amount }} }"
+            >
                 <h3 class="text-xl font-semibold text-gray-700 mb-2">{{ item.category_name }}</h3>
-                <p class="balance text-2xl font-bold mt-2 {% if item.total_amount >= 0 %}positive{% else %}negative{% endif %}">
+                <p 
+                    class="balance text-2xl font-bold mt-2"
+                    :class="{ 'text-green-600': amount >= 0, 'text-red-600': amount < 0 }"
+                >
                     {{ item.total_amount|floatformat:2 }} CHF
                 </p>
             </div>

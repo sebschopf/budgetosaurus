@@ -1,8 +1,18 @@
 {# webapp/templates/webapp/budget_overview_includes/monthly_summary.html #}
-<div class="summary-card bg-white rounded-lg shadow-md p-6 text-center mb-6 border border-gray-200 max-w-sm mx-auto">
+<div 
+    class="summary-card bg-white rounded-lg shadow-md p-6 text-center mb-6 border border-gray-200 max-w-sm mx-auto"
+    x-data="{ netBalance: {{ total_income_month|add:total_expense_month|default:0 }} }"
+>
     <h3 class="text-xl font-semibold text-gray-700 mb-4">Résumé du mois</h3>
-    <p class="text-lg text-gray-600 mb-2">Revenus Totaux : <span class="income font-bold">{{ total_income_month|floatformat:2 }} CHF</span></p>
-    <p class="text-lg text-gray-600 mb-2">Dépenses Totales : <span class="expense font-bold">{{ total_expense_month|floatformat:2 }} CHF</span></p>
-    <p class="text-lg text-gray-600 mb-0">Solde Net : <span class="font-bold {% if total_income_month|add:total_expense_month >= 0 %}positive{% else %}negative{% endif %}">{{ total_income_month|add:total_expense_month|floatformat:2 }} CHF</span></p>
+    <p class="text-lg text-gray-600 mb-2">Revenus Totaux : <span class="font-bold text-green-600">{{ total_income_month|floatformat:2|default:"0.00" }} CHF</span></p>
+    <p class="text-lg text-gray-600 mb-2">Dépenses Totales : <span class="font-bold text-red-600">{{ total_expense_month|floatformat:2|default:"0.00" }} CHF</span></p>
+    <p class="text-lg text-gray-600 mb-0">
+        Solde Net : 
+        <span 
+            class="font-bold"
+            :class="{ 'text-green-600': netBalance >= 0, 'text-red-600': netBalance < 0 }"
+        >
+            {{ total_income_month|add:total_expense_month|floatformat:2|default:"0.00" }} CHF
+        </span>
+    </p>
 </div>
-

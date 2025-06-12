@@ -1,165 +1,237 @@
-    {# webapp/templates/webapp/import_transactions.html #}
-    {% extends 'webapp/base.html' %}
-    {% load static %} {# Assurez-vous que ceci est chargé pour static files #}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% block title %}Importer Transactions{% endblock %}
+{% block content %}
+<div class="container mx-auto p-4">
+    <h1 class="text-2xl font-semibold mb-4">Importer des Transactions</h1>
 
-    {% block extra_head %}
-        {# Ajoutez ici des liens CSS ou scripts JS spécifiques à cette page si nécessaire #}
-        <link rel="stylesheet" href="{% static 'webapp/css/pages/_import_forms.css' %}">
-    {% endblock %}
-
-    {% block content %}
-        <div class="container mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-lg shadow-md mt-8">
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 rounded-lg text-center py-3 bg-gray-100 shadow-sm">
-                Importer des Transactions
-            </h2>
-
-            {% include 'webapp/includes/messages.html' %} {# Pour afficher les messages de Django #}
-
-            <form method="post" enctype="multipart/form-data" class="space-y-6 p-4 border border-gray-200 rounded-md">
-                {% csrf_token %}
-
-                {# Champ de sélection du fichier #}
-                <div class="form-field-group">
-                    <label for="{{ form.csv_file.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.csv_file.label }}</label>
-                    {{ form.csv_file }}
-                    {% if form.csv_file.errors %}<p class="text-red-500 text-xs mt-1">{{ form.csv_file.errors }}</p>{% endif %}
-                    {% if form.csv_file.help_text %}<p class="helptext text-gray-500 text-sm mt-1">{{ form.csv_file.help_text }}</p>{% endif %}
-                </div>
-
-                {# Champ de sélection du compte de destination #}
-                <div class="form-field-group">
-                    <label for="{{ form.account.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.account.label }}</label>
-                    {{ form.account }}
-                    {% if form.account.errors %}<p class="text-red-500 text-xs mt-1">{{ form.account.errors }}</p>{% endif %}
-                </div>
-
-                {# Champ de sélection du type d'importateur #}
-                <div class="form-field-group">
-                    <label for="{{ form.importer_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.importer_type.label }}</label>
-                    {{ form.importer_type }}
-                    {% if form.importer_type.errors %}<p class="text-red-500 text-xs mt-1">{{ form.importer_type.errors }}</p>{% endif %}
-                    {# Le help_text de ce champ est géré par le JS pour les types d'importateurs #}
-                </div>
-
-                {# Section pour le mappage des colonnes - toujours visible, mais avec des hints et lecture seule #}
-                <div id="column-mapping-section" class="border-t border-gray-200 pt-6 mt-6">
-                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Mappage des colonnes</h3>
-                    <p class="text-sm text-gray-600 mb-4">Veuillez entrer le nom exact des colonnes de votre fichier. Les champs en lecture seule indiquent un format fixe.</p>
-
-                    {# Champ pour le nom de la colonne Date #}
-                    <div class="form-field-group">
-                        <label for="{{ form.date_column.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.date_column.label }}</label>
-                        {{ form.date_column }}
-                        {% if form.date_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.date_column.errors }}</p>{% endif %}
-                        <p class="helptext text-gray-500 text-sm mt-1" id="date_column_helptext">{{ form.date_column.help_text }}</p>
-                    </div>
-
-                    {# Champ pour le nom de la colonne Description #}
-                    <div class="form-field-group">
-                        <label for="{{ form.description_column.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.description_column.label }}</label>
-                        {{ form.description_column }}
-                        {% if form.description_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.description_column.errors }}</p>{% endif %}
-                        <p class="helptext text-gray-500 text-sm mt-1" id="description_column_helptext">{{ form.description_column.help_text }}</p>
-                    </div>
-
-                    {# Champ pour le nom de la colonne Montant #}
-                    <div class="form-field-group">
-                        <label for="{{ form.amount_column.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">{{ form.amount_column.label }}</label>
-                        {{ form.amount_column }}
-                        {% if form.amount_column.errors %}<p class="text-red-500 text-xs mt-1">{{ form.amount_column.errors }}</p>{% endif %}
-                        <p class="helptext text-gray-500 text-sm mt-1" id="amount_column_helptext">{{ form.amount_column.help_text }}</p>
-                    </div>
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300">
-                    Importer les Transactions
-                </button>
-            </form>
-
-            {# Bouton d'Exportation CSV #}
-            <div class="flex justify-center mt-8">
-                <a href="{% url 'export_transactions_csv' %}" class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                    Exporter les Transactions (CSV)
-                </a>
+    <!-- Instructions détaillées -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        <h2 class="text-xl font-semibold text-blue-800 mb-4">Guide d'importation - Choisissez votre format</h2>
+        
+        <div class="space-y-4">
+            <div class="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                <h3 class="font-semibold text-gray-800 mb-2">🏦 XML ISO 20022 (Recommandé pour Raiffeisen)</h3>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Quand l'utiliser :</strong> Si vous avez téléchargé un fichier XML depuis votre e-banking Raiffeisen
+                </p>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Comment l'obtenir :</strong> E-banking Raiffeisen → Comptes → Mouvements → Exporter → Format XML (camt.053)
+                </p>
+                <p class="text-sm text-green-600">✅ Mappage automatique, données complètes, format standardisé</p>
             </div>
 
-            <div class="flex justify-center mt-6">
-                <a href="{% url 'dashboard_view' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Retour au Tableau de Bord</a>
+            <div class="bg-white rounded-lg p-4 border-l-4 border-green-500">
+                <h3 class="font-semibold text-gray-800 mb-2">📊 CSV Raiffeisen</h3>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Quand l'utiliser :</strong> Si vous avez exporté un CSV depuis Raiffeisen avec leur format standard
+                </p>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Comment l'obtenir :</strong> E-banking Raiffeisen → Comptes → Mouvements → Exporter → Format CSV
+                </p>
+                <p class="text-sm text-green-600">✅ Mappage automatique, simple à utiliser</p>
+            </div>
+
+            <div class="bg-white rounded-lg p-4 border-l-4 border-yellow-500">
+                <h3 class="font-semibold text-gray-800 mb-2">📋 CSV Générique</h3>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Quand l'utiliser :</strong> Pour tout autre fichier CSV (autre banque, fichier personnalisé, etc.)
+                </p>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Ce qu'il faut :</strong> Un fichier CSV avec une ligne d'en-tête contenant les noms des colonnes
+                </p>
+                <p class="text-sm text-yellow-600">⚠️ Vous devrez indiquer quelles colonnes correspondent à quoi</p>
+            </div>
+
+            <div class="bg-white rounded-lg p-4 border-l-4 border-purple-500">
+                <h3 class="font-semibold text-gray-800 mb-2">🏛️ SWIFT MT940</h3>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Quand l'utiliser :</strong> Si votre banque fournit des relevés au format SWIFT MT940
+                </p>
+                <p class="text-sm text-gray-600 mb-2">
+                    <strong>Format :</strong> Fichier texte structuré utilisé par les banques pour les relevés
+                </p>
+                <p class="text-sm text-purple-600">🔧 Format technique, moins courant pour les particuliers</p>
             </div>
         </div>
-    {% endblock %}
 
-    {% block extra_js %}
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const importerTypeSelect = document.getElementById('id_importer_type');
-            const dateColumnInput = document.getElementById('id_date_column');
-            const descriptionColumnInput = document.getElementById('id_description_column');
-            const amountColumnInput = document.getElementById('id_amount_column');
+        <div class="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p class="text-sm text-yellow-800">
+                <strong>💡 Conseil :</strong> Si vous êtes client Raiffeisen, commencez par essayer le format XML ISO 20022. 
+                C'est le plus complet et ne nécessite aucune configuration.
+            </p>
+        </div>
+    </div>
 
-            // textes d'aide originaux pour réinitialisation
-            const originalHelpTexts = {
-                date_column: document.getElementById('date_column_helptext').textContent,
-                description_column: document.getElementById('description_column_helptext').textContent,
-                amount_column: document.getElementById('amount_column_helptext').textContent
-            };
-
-            function applyColumnFieldState() {
-                const selectedType = importerTypeSelect.value;
-
-                // Reset tous les champs à leur état initial
-                [
-                    { input: dateColumnInput, helpTextId: 'date_column_helptext', originalValue: 'Date' },
-                    { input: descriptionColumnInput, helpTextId: 'description_column_helptext', originalValue: 'Description' },
-                    { input: amountColumnInput, helpTextId: 'amount_column_helptext', originalValue: 'Montant' }
-                ].forEach(field => {
-                    field.input.readOnly = false;
-                    field.input.classList.remove('bg-gray-200', 'cursor-not-allowed');
-                    document.getElementById(field.helpTextId).textContent = originalHelpTexts[field.helpTextId.replace('_helptext', '')];
-                    // Restore les valeurs initiales
-                    field.input.value = field.input.dataset.initialValue || field.originalValue;
-                });
-
-                // Appliquer des états spécifiques en fonction du type d'importateur sélectionné
-                if (selectedType === 'raiffeisen_csv') {
-                    dateColumnInput.value = 'Date comptable';
-                    descriptionColumnInput.value = 'Libellé';
-                    amountColumnInput.value = 'Débit/Crédit (format fixe)';
-                    [dateColumnInput, descriptionColumnInput, amountColumnInput].forEach(input => {
-                        input.readOnly = true;
-                        input.classList.add('bg-gray-200', 'cursor-not-allowed');
-                    });
-                    document.getElementById('date_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
-                    document.getElementById('description_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
-                    document.getElementById('amount_column_helptext').textContent = "Ce format utilise les colonnes 'Débit' et 'Crédit' du fichier Raiffeisen.";
-                } else if (selectedType === 'xml_iso' || selectedType === 'swift_mt940') {
-                    dateColumnInput.value = 'Non applicable';
-                    descriptionColumnInput.value = 'Non applicable';
-                    amountColumnInput.value = 'Non applicable';
-                    [dateColumnInput, descriptionColumnInput, amountColumnInput].forEach(input => {
-                        input.readOnly = true;
-                        input.classList.add('bg-gray-200', 'cursor-not-allowed');
-                    });
-                    document.getElementById('date_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
-                    document.getElementById('description_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
-                    document.getElementById('amount_column_helptext').textContent = "Le mappage n'est pas nécessaire pour ce format.";
-                }
-                // Pour 'generic_csv' , les champs restent modifiables avec leurs valeurs/aides d'origine
+    <div x-data="{ 
+        selectedImporter: 'xml_iso',
+        isUploading: false,
+        file: null,
+        fileAccept: '.xml',
+        fileHelpText: 'Sélectionnez un fichier XML à importer.',
+        importerDescription: 'Importer un fichier XML ISO 20022.',
+        init() {
+            this.updateImporterDescription();
+        },
+        updateImporterDescription() {
+            switch (this.selectedImporter) {
+                case 'boursorama':
+                    this.importerDescription = 'Importer un fichier CSV depuis Boursorama.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier CSV Boursorama à importer.';
+                    break;
+                case 'fortuneo':
+                    this.importerDescription = 'Importer un fichier CSV depuis Fortuneo.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier CSV Fortuneo à importer.';
+                    break;
+                case 'linxea':
+                    this.importerDescription = 'Importer un fichier CSV depuis Linxea.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier CSV Linxea à importer.';
+                    break;
+                case 'xml_iso':
+                    this.importerDescription = 'Importer un fichier XML ISO 20022.';
+                    this.fileAccept = '.xml';
+                    this.fileHelpText = 'Sélectionnez un fichier XML (camt.053) à importer.';
+                    break;
+                case 'raiffeisen_csv':
+                    this.importerDescription = 'Importer un fichier CSV Raiffeisen.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier CSV Raiffeisen à importer.';
+                    break;
+                case 'generic_csv':
+                    this.importerDescription = 'Importer un fichier CSV générique.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier CSV générique à importer.';
+                    break;
+                case 'swift_mt940':
+                    this.importerDescription = 'Importer un fichier SWIFT MT940.';
+                    this.fileAccept = '.txt,.mt940,.sta';
+                    this.fileHelpText = 'Sélectionnez un fichier MT940 à importer.';
+                    break;
+                default:
+                    this.importerDescription = 'Sélectionnez un format d\'importation.';
+                    this.fileAccept = '.csv';
+                    this.fileHelpText = 'Sélectionnez un fichier à importer.';
             }
+        },
+        validateFile(event) {
+            this.file = event.target.files[0];
+            if (this.file) {
+                this.fileHelpText = `Fichier sélectionné : ${this.file.name}`;
+            } else {
+                this.fileHelpText = 'Sélectionnez un fichier à importer.';
+            }
+        }
+    }">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
 
-            // magasin initial des valeurs depuis Django pour generic_csv si le formulaire est re-rendu
-            // Cette ligne est nécessaire pour que les champs puissent être réinitialisés correctement
-            dateColumnInput.dataset.initialValue = dateColumnInput.value;
-            descriptionColumnInput.dataset.initialValue = descriptionColumnInput.value;
-            amountColumnInput.dataset.initialValue = amountColumnInput.value;
+            <!-- Sélection du compte -->
+            <div class="mb-6">
+                <label for="{{ form.account.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ form.account.label }}
+                </label>
+                {{ form.account }}
+                {% if form.account.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.account.errors.0 }}</p>
+                {% endif %}
+                <p class="mt-1 text-sm text-gray-500">
+                    Choisissez le compte bancaire dans lequel importer les transactions
+                </p>
+            </div>
 
-            // Écouter les changements sur le sélecteur d'importateur
-            importerTypeSelect.addEventListener('change', applyColumnFieldState);
+            <!-- Select Importer -->
+            <div class="mb-4">
+                <label for="{{ form.importer_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ form.importer_type.label }}
+                </label>
+                <select 
+                    name="{{ form.importer_type.name }}" 
+                    id="{{ form.importer_type.id_for_label }}"
+                    x-model="selectedImporter" 
+                    @change="updateImporterDescription"
+                    class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                    <option value="xml_iso">XML ISO 20022</option>
+                    <option value="raiffeisen_csv">CSV Raiffeisen</option>
+                    <option value="boursorama">Boursorama</option>
+                    <option value="fortuneo">Fortuneo</option>
+                    <option value="linxea">Linxea</option>
+                    <option value="generic_csv">CSV Générique</option>
+                    <option value="swift_mt940">SWIFT MT940</option>
+                </select>
+                {% if form.importer_type.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.importer_type.errors.0 }}</p>
+                {% endif %}
+            </div>
 
-            // Appeler la fonction une fois au chargement de la page pour définir l'état initial
-            applyColumnFieldState();
-        });
-    </script>
-    {% endblock %}
+            <!-- Aide contextuelle -->
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <h4 class="font-semibold text-gray-700 mb-2">📋 Ce qui va se passer :</h4>
+                <div x-show="selectedImporter === 'xml_iso'">
+                    <p class="text-sm text-gray-600">✅ Lecture automatique du fichier XML</p>
+                    <p class="text-sm text-gray-600">✅ Extraction des dates, montants et descriptions</p>
+                    <p class="text-sm text-gray-600">✅ Détection automatique des débits/crédits</p>
+                    <p class="text-sm text-green-600 mt-2"><strong>Aucune configuration nécessaire !</strong></p>
+                </div>
+                <div x-show="selectedImporter === 'raiffeisen_csv'">
+                    <p class="text-sm text-gray-600">✅ Lecture du CSV avec le format Raiffeisen</p>
+                    <p class="text-sm text-gray-600">✅ Mappage automatique des colonnes</p>
+                    <p class="text-sm text-green-600 mt-2"><strong>Aucune configuration nécessaire !</strong></p>
+                </div>
+                <div x-show="selectedImporter === 'generic_csv'">
+                    <p class="text-sm text-gray-600">⚙️ Vous devrez indiquer les noms des colonnes</p>
+                    <p class="text-sm text-gray-600">⚙️ Le système lira votre fichier selon vos indications</p>
+                    <p class="text-sm text-yellow-600 mt-2"><strong>Configuration requise ci-dessous !</strong></p>
+                </div>
+                <div x-show="selectedImporter === 'swift_mt940'">
+                    <p class="text-sm text-gray-600">✅ Analyse du format SWIFT MT940</p>
+                    <p class="text-sm text-gray-600">✅ Extraction des mouvements bancaires</p>
+                    <p class="text-sm text-blue-600 mt-2"><strong>Format technique automatique</strong></p>
+                </div>
+            </div>
+
+            <!-- Fichier -->
+            <div class="mb-6">
+                <label for="{{ form.csv_file.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    {{ form.csv_file.label }}
+                </label>
+                <input 
+                    type="file" 
+                    name="{{ form.csv_file.name }}" 
+                    id="{{ form.csv_file.id_for_label }}"
+                    :accept="fileAccept"
+                    @change="validateFile"
+                    required
+                    class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                <p class="mt-1 text-sm text-gray-500" x-text="fileHelpText"></p>
+                {% if form.csv_file.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.csv_file.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <button 
+                type="submit" 
+                :disabled="isUploading"
+                class="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <span x-show="!isUploading" class="flex items-center justify-center">
+                    <i class="fas fa-upload mr-2"></i>Importer les Transactions
+                </span>
+                <span x-show="isUploading" class="flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Importation en cours...
+                </span>
+            </button>
+        </form>
+
+        <!-- Informations sur le format sélectionné -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-4">
+            <h4 class="font-semibold text-gray-700 mb-2">Format sélectionné :</h4>
+            <p class="text-sm text-gray-600" x-text="importerDescription"></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

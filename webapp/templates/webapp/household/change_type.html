@@ -1,0 +1,104 @@
+{% extends 'webapp/base.html' %}
+{% load static %}
+
+{% block title %}Modifier le type de ménage{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Modifier le type de {{ household.name }}</h1>
+    
+    <div class="bg-white rounded-lg shadow-md p-8 mb-8">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-info-circle text-blue-600 text-2xl mr-3"></i>
+                <div>
+                    <h3 class="text-lg font-semibold text-blue-800">Information importante</h3>
+                    <p class="text-blue-700 mt-1">
+                        Changer le type de ménage réappliquera automatiquement les paramètres de partage par défaut.
+                        Vos paramètres personnalisés pourraient être modifiés.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Type de ménage actuel
+                </label>
+                <p class="text-lg font-semibold text-gray-800 mb-4">{{ household.get_household_type_display }}</p>
+            </div>
+            
+            <div>
+                <label for="{{ form.household_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nouveau type de ménage
+                </label>
+                {{ form.household_type }}
+                {% if form.household_type.errors %}
+                    <p class="text-red-500 text-sm mt-1">{{ form.household_type.errors.0 }}</p>
+                {% endif %}
+            </div>
+            
+            <!-- Explications des types de ménage -->
+            <div class="bg-gray-50 p-4 rounded-md">
+                <h3 class="font-medium text-gray-700 mb-2">Types de ménage disponibles:</h3>
+                
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <p class="font-medium">Personne seule</p>
+                        <p class="text-gray-600">Pour une personne gérant ses propres finances.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Couple - Tout partagé</p>
+                        <p class="text-gray-600">Pour un couple partageant tous leurs comptes et finances.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Couple - Comptes mixtes</p>
+                        <p class="text-gray-600">Pour un couple avec des comptes personnels et communs.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Couple - Comptes séparés</p>
+                        <p class="text-gray-600">Pour un couple gérant leurs finances séparément.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Famille - Tout partagé</p>
+                        <p class="text-gray-600">Pour une famille partageant tous leurs comptes.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Famille - Comptes mixtes</p>
+                        <p class="text-gray-600">Pour une famille avec des comptes personnels et communs.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Colocation</p>
+                        <p class="text-gray-600">Pour des colocataires avec finances séparées mais dépenses communes.</p>
+                    </div>
+                    
+                    <div>
+                        <p class="font-medium">Configuration personnalisée</p>
+                        <p class="text-gray-600">Définissez manuellement les paramètres de partage.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex justify-between">
+                <a href="{% url 'household_detail' household_id=household.id %}" 
+                   class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300">
+                    <i class="fas fa-arrow-left mr-2"></i>Annuler
+                </a>
+                <button type="submit" 
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+                    <i class="fas fa-save mr-2"></i>Modifier le type
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -34,6 +34,12 @@ class Category(models.Model):
         verbose_name="Catégorie budgétisée",
         help_text="Indique si cette catégorie est associée à un budget planifié."
     )
+    # Indique si cette catégorie est partagée avec les membres du ménage
+    is_shared = models.BooleanField(
+        default=False,
+        help_text="Si activé, cette catégorie est partagée avec les membres du ménage"
+    )
+
 
     class Meta:
         verbose_name = "Catégorie"

@@ -1,130 +1,135 @@
-    {# webapp/templates/webapp/debit_funds.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
-    {% load webapp_filters %} {# Charge les filtres de template personnalisés #}
+{% block title %}Débit de Fonds{% endblock %}
 
-    {% block title %}{{ page_title }}{% endblock %}
-
-    {% block extra_head %}
-    {% endblock %}
-
-    {% block content %}
-        {# h1 stylé par h1 dans _base.css #}
-        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
-
-        {% if original_transaction %}
-            <div class="debit-form-container bg-gray-50 rounded-lg shadow-md p-6 mb-8 border border-gray-200"> {# Ajout des classes Tailwind #}
-                <div class="original-transaction-info bg-red-50 rounded-lg p-5 mb-6 text-center border border-red-200"> {# Ajout des classes Tailwind #}
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-3">Transaction à Débiter des Fonds</h2>
-                    <p class="text-base text-gray-700 mb-1">Date: {{ original_transaction.date|date:"d M Y" }}</p>
-                    <p class="text-base text-gray-700 mb-1">Description: {{ original_transaction.description }}</p>
-                    <p class="text-2xl font-bold mt-2">Montant: <span class="amount negative">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
-                    <p class="text-base text-gray-700 mb-0">Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
-                </div>
-
-                {# Affichage des messages d'erreur Django (gérés par toast.js) #}
-                {% if messages %}
-                    <ul class="messages">
-                        {% for message in messages %}
-                            <li class="{{ message.tags }}">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                <form method="post" id="debitFundsForm" action="{% url 'process_fund_debit' original_transaction.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
-
-                    {# Formulaire principal de FundDebitRecord (pour les notes globales par exemple) #}
-                    <div class="form-field-group mb-4">
-                        <label for="{{ form.notes.id_for_label }}">Notes générales sur le débit (optionnel)</label>
-                        {{ form.notes }}
-                        {% if form.notes.errors %}<p class="text-red-500 text-xs mt-1">{{ form.notes.errors }}</p>{% endif %}
-                    </div>
-
-                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Lignes de Débit</h3>
-
-                    {# Management form pour le formset Django #}
-                    {{ formset.management_form }}
-
-                    {# .form-row-header est stylé dans pages/_debit_funds.css #}
-                    <div class="form-row-header">
-                        <span>Fonds / Enveloppe</span>
-                        <span>Montant</span>
-                        <span>Notes (ligne)</span>
-                        <span></span> {# For delete button #}
-                    </div>
-
-                    <div id="debit-lines-container">
-                        {% for line_form in formset %}
-                            <div class="debit-line {% if line_form.errors %}has-error{% endif %} mb-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm" id="form-{{ forloop.counter0 }}"> {# Ajout des classes Tailwind #}
-                                {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
-                                {% if line_form.errors %}
-                                    <ul class="errorlist col-span-full text-red-600 text-sm list-none p-0"> {# Ajout des classes Tailwind #}
-                                        {% for field_name, errors in line_form.errors.items %}
-                                            <li>{{ line_form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
-                                        {% endfor %}
-                                        {% if line_form.non_field_errors %}
-                                            {% for error in line_form.non_field_errors %}
-                                                <li>{{ error }}</li>
-                                            {% endfor %}
-                                        {% endif %}
-                                    </ul>
-                                {% endif %}
-
-                                {# Rendering form fields #}
-                                {{ line_form.id }} {# Hidden field for line form ID, needed for can_delete #}
-                                <div>
-                                    {{ line_form.category }}
-                                    {# Une icone ou un texte pour indiquer que c'est une catégorie gérée par les fonds #}
-                                    {% comment %} Le span `fund-managed-icon` est maintenant injecté par JS et stylisé par `_category_icons.css` {% endcomment %}
-                                </div>
-                                {{ line_form.amount }}
-                                {{ line_form.notes }}
-                                {% if formset.can_delete %}
-                                    <div class="flex items-center justify-center">
-                                        {{ line_form.DELETE }} {# Checkbox for deletion (can be hidden via CSS) #}
-                                        <label for="{{ line_form.DELETE.id_for_label }}" class="sr-only">Supprimer</label>
-                                        <button type="button" class="delete-line-btn">X</button>
-                                    </div>
-                                {% else %}
-                                    <div></div> {# Empty space if no delete button #}
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    <button type="button" id="add-debit-line-btn" class="add-line-btn bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-300 font-semibold mt-4 block mx-auto max-w-xs">Ajouter une ligne de débit</button> {# Ajout des classes Tailwind #}
-
-                    <div id="debit-summary-box" class="debit-summary bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6 text-center font-semibold text-yellow-800"> {# Ajout des classes Tailwind #}
-                        Montant restant à débiter: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
-                    </div>
-
-                    <button type="submit" class="main-submit-btn w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 font-bold text-lg">Débiter les Fonds</button> {# Ajout des classes Tailwind #}
-                </form>
-            </div>
-        {% else %}
-            <p class="text-center text-gray-700 text-lg my-10">
-                Aucune transaction de dépense à débiter des fonds. Veuillez sélectionner une transaction de type 'Dépense'
-                depuis la page <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
-            </p>
-        {% endif %}
-
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
-
-    {% block extra_js %}
-        {# Passer le montant original au JavaScript via un élément de script masqué #}
-        <script id="originalTransactionAmountData" type="application/json">
-            {{ original_transaction.amount|floatformat:2 }}
-        </script>
-        {# Passer les données des catégories gérées par les fonds au JavaScript #}
-        <script id="fundManagedCategoriesData" type="application/json">
-            {{ fund_managed_categories_json|safe }}
-        </script>
-
-        {# Lien vers le fichier JavaScript externe #}
-        <script src="{% static 'webapp/js/debit_funds.js' %}"></script>
-    {% endblock %}
+{% block content %}
+<div x-data="fundDebitManager" class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Débit de Fonds</h1>
     
+    <!-- Information sur la transaction originale -->
+    <div class="original-transaction-info bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <h2 class="text-lg font-semibold text-blue-800 mb-2">Transaction à débiter</h2>
+        <p><strong>Date:</strong> {{ original_transaction.date|date:"d/m/Y" }}</p>
+        <p><strong>Description:</strong> {{ original_transaction.description }}</p>
+        <p><strong>Montant:</strong> <span class="font-bold text-red-600">{{ original_transaction.amount|floatformat:2 }} CHF</span></p>
+        <p><strong>Compte:</strong> {{ original_transaction.account.name }}</p>
+    </div>
+
+    <!-- Résumé des calculs -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6" :class="{ 'border-green-500 border-2': isBalanced }">
+        <h3 class="text-lg font-semibold mb-4">Résumé du débit</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <p class="text-sm text-gray-600">Montant original</p>
+                <p class="text-xl font-bold" x-text="`${originalAmount.toFixed(2)} CHF`"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Total débité</p>
+                <p class="text-xl font-bold" x-text="`${totalDebited.toFixed(2)} CHF`"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Restant</p>
+                <p class="text-xl font-bold" :class="remainingClass" x-text="`${remainingAmount.toFixed(2)} CHF`"></p>
+            </div>
+        </div>
+        <div x-show="isBalanced" class="mt-4 p-3 bg-green-100 border border-green-400 rounded-md">
+            <p class="text-green-700 font-medium">✓ Le montant est entièrement débité</p>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <form id="debitFundsForm" method="post" @submit.prevent="submitForm()">
+        {% csrf_token %}
+        
+        <!-- Lignes de débit -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Lignes de débit</h3>
+                <button type="button" @click="addDebitLine()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                    <i class="fas fa-plus mr-2"></i>Ajouter une ligne
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="(line, index) in debitLines" :key="line.id">
+                    <div x-show="!line.isDeleted" 
+                         class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-gray-200 rounded-lg">
+                        
+                        <!-- Catégorie -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fonds/Enveloppe</label>
+                            <select x-model="line.category" 
+                                    class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner le fonds</option>
+                                <template x-for="category in fundCategories" :key="category.id">
+                                    <option :value="category.id" x-text="category.name"></option>
+                                </template>
+                            </select>
+                            <div x-show="line.category" x-html="getCategoryBadges(line.category)" class="mt-1"></div>
+                        </div>
+
+                        <!-- Montant -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Montant</label>
+                            <input type="number" x-model.number="line.amount" step="0.01" 
+                                   placeholder="Montant à débiter"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Notes -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <input type="text" x-model="line.notes" 
+                                   placeholder="Notes (optionnel)"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-end">
+                            <button type="button" @click="removeDebitLine(line.id)"
+                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <div x-show="debitLines.filter(l => !l.isDeleted).length === 0" 
+                     class="text-center py-8 text-gray-500">
+                    Aucune ligne de débit. Cliquez sur "Ajouter une ligne" pour commencer.
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes générales -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <label for="id_notes" class="block text-sm font-medium text-gray-700 mb-2">Notes générales</label>
+            {{ form.notes }}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-between">
+            <a href="{% url 'dashboard_view' %}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <button type="submit" 
+                    :disabled="!isBalanced"
+                    :class="{ 'opacity-50 cursor-not-allowed': !isBalanced }"
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md">
+                <i class="fas fa-save mr-2"></i>Enregistrer le débit
+            </button>
+        </div>
+    </form>
+
+    <!-- Données pour Alpine.js -->
+    <script id="originalTransactionAmountData" type="application/json">{{ original_transaction.amount|floatformat:2 }}</script>
+    <script id="fundManagedCategoriesData" type="application/json">{{ fund_categories_json|safe }}</script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'webapp/js/alpine-fund-management.js' %}"></script>
+{% endblock %}

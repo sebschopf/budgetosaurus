@@ -1,38 +1,154 @@
-{# webapp/templates/webapp/recap_overview.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
 
-    {% block title %}{{ page_title }}{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 
-    {% block extra_head %}
-    {# Pas de CSS spécifique pour cette page dans ce bloc, il doit être importé via main.css #}
-    {% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="section-header text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">Explorez les différents récapitulatifs de vos transactions et accédez aux outils avancés.</p>
+    </div>
 
-    {% block content %}
-        <div class="section-header text-center mb-8"> {# Ajout des classes Tailwind pour le header #}
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
-            <p class="text-lg text-gray-700">Explorez les différents récapitulatifs de vos transactions et accédez aux outils avancés.</p>
-        </div>
-
-        <div class="recap-grid gap-6 mt-8"> {# Ajout des classes Tailwind pour gap et margin-top #}
-            <div class="recap-card"> {# Simplifié, le reste est dans _cards.css #}
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Récapitulatif par Catégorie</h2>
+    <!-- Section Récapitulatifs -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-chart-bar mr-3 text-blue-600"></i>
+            Récapitulatifs
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-tags text-blue-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">Par Catégorie</h3>
+                </div>
                 <p class="text-gray-600 leading-normal mb-6">Visualisez vos transactions regroupées par catégories (celles qui gèrent un fonds) pour le mois ou l'année de votre choix.</p>
-                {# Le bouton utilise maintenant la classe btn définie dans _buttons.css #}
-                <a href="{% url 'category_transactions_summary_view' %}" class="btn btn-primary">Voir le récapitulatif</a>
+                <a href="{% url 'category_transactions_summary_view' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+                    <i class="fas fa-eye mr-2"></i>Voir le récapitulatif
+                </a>
             </div>
 
-            <div class="recap-card"> {# Simplifié, le reste est dans _cards.css #}
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Toutes les Transactions</h2>
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-list text-green-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">Toutes les Transactions</h3>
+                </div>
                 <p class="text-gray-600 leading-normal mb-6">Consultez la liste complète de toutes vos transactions enregistrées, avec l'indication de leur statut de ventilation.</p>
-                <a href="{% url 'all_transactions_summary_view' %}" class="btn btn-primary">Voir toutes les transactions</a>
+                <a href="{% url 'all_transactions_summary_view' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300">
+                    <i class="fas fa-list-ul mr-2"></i>Voir toutes les transactions
+                </a>
             </div>
 
-            <div class="recap-card"> {# Simplifié, le reste est dans _cards.css #}
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Diviser une Transaction</h2>
-                <p class="text-gray-600 leading-normal mb-6">Utilisez cet outil pour diviser une transaction unique (par exemple, un paiement groupé) en plusieurs transactions distinctes et catégorisées. (Fonctionnalité en développement)</p>
-                <a href="{% url 'split_transaction_view' %}" class="btn btn-primary">Accéder à l'outil</a>
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">À Revoir</h3>
+                </div>
+                <p class="text-gray-600 leading-normal mb-6">Transactions nécessitant votre attention pour catégorisation ou correction.</p>
+                <a href="{% url 'review_transactions_view' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition duration-300">
+                    <i class="fas fa-edit mr-2"></i>Revoir les transactions
+                </a>
             </div>
         </div>
+    </div>
 
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
+    <!-- Section Outils de Gestion -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-tools mr-3 text-purple-600"></i>
+            Outils de Gestion des Fonds
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-minus-circle text-red-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">Débiter des Fonds</h3>
+                </div>
+                <p class="text-gray-600 leading-normal mb-6">Débitez une dépense de vos enveloppes budgétaires. Répartissez le montant entre plusieurs fonds si nécessaire.</p>
+                <div class="space-y-2">
+                    <a href="{% url 'all_transactions_summary_view' %}" 
+                       class="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition duration-300">
+                        <i class="fas fa-wallet mr-2"></i>Sélectionner une transaction
+                    </a>
+                    <p class="text-xs text-gray-500 text-center">Cliquez sur une transaction pour la débiter</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-plus-circle text-green-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">Allouer des Revenus</h3>
+                </div>
+                <p class="text-gray-600 leading-normal mb-6">Répartissez un revenu entre vos différentes enveloppes budgétaires selon vos priorités.</p>
+                <div class="space-y-2">
+                    <a href="{% url 'all_transactions_summary_view' %}" 
+                       class="block w-full text-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300">
+                        <i class="fas fa-hand-holding-usd mr-2"></i>Sélectionner une transaction
+                    </a>
+                    <p class="text-xs text-gray-500 text-center">Cliquez sur une transaction pour l'allouer</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-cut text-blue-600 text-2xl mr-3"></i>
+                    <h3 class="text-xl font-semibold text-gray-700">Diviser une Transaction</h3>
+                </div>
+                <p class="text-gray-600 leading-normal mb-6">Divisez une transaction unique en plusieurs transactions distinctes et catégorisées.</p>
+                <div class="space-y-2">
+                    <a href="{% url 'all_transactions_summary_view' %}" 
+                       class="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+                        <i class="fas fa-scissors mr-2"></i>Sélectionner une transaction
+                    </a>
+                    <p class="text-xs text-gray-500 text-center">Cliquez sur une transaction pour la diviser</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Accès Rapide -->
+    <div class="mb-12">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-bolt mr-3 text-yellow-600"></i>
+            Accès Rapide
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <a href="{% url 'dashboard_view' %}" 
+               class="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition duration-300">
+                <i class="fas fa-tachometer-alt text-blue-600 text-xl mr-3"></i>
+                <span class="font-medium text-blue-800">Tableau de Bord</span>
+            </a>
+            
+            <a href="{% url 'budget_overview' %}" 
+               class="flex items-center p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition duration-300">
+                <i class="fas fa-chart-pie text-green-600 text-xl mr-3"></i>
+                <span class="font-medium text-green-800">Aperçu Budgets</span>
+            </a>
+            
+            <a href="{% url 'import_transactions_view' %}" 
+               class="flex items-center p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition duration-300">
+                <i class="fas fa-upload text-purple-600 text-xl mr-3"></i>
+                <span class="font-medium text-purple-800">Importer</span>
+            </a>
+            
+            <a href="{% url 'glossary_view' %}" 
+               class="flex items-center p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition duration-300">
+                <i class="fas fa-book text-gray-600 text-xl mr-3"></i>
+                <span class="font-medium text-gray-800">Glossaire</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="{% url 'dashboard_view' %}" 
+           class="inline-flex items-center px-6 py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300">
+            <i class="fas fa-arrow-left mr-2"></i>Retour au Tableau de Bord
+        </a>
+    </div>
+</div>
+{% endblock %}

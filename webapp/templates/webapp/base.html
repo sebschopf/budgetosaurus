@@ -1,74 +1,77 @@
-{# webapp/templates/webapp/base.html #}
+{% load static %}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Mon Budget Personnel{% endblock %} - Budgetosaurus</title>
-    <!-- Google Fonts: Inter pour une typographie moderne -->
+    
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    {# Lien vers le fichier CSS principal centralisé (qui importe tailwind_output.css) #}
-    {% load static %}
-    <link rel="stylesheet" href="{% static 'webapp/css/main.css' %}">
-    {# Ajout de Font Awesome pour les icônes, s'il n'est pas déjà dans main.css #}
+    
+    <!-- CSS Tailwind compilé -->
+    <link rel="stylesheet" href="{% static 'webapp/css/tailwind_output.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
     {% block extra_head %}{% endblock %}
 </head>
-{# Le body prend toute la hauteur, est en flexbox colonne pour pousser le footer en bas si on en ajoute un #}
-<body class="bg-gray-100 font-inter antialiased min-h-screen flex flex-col"> 
-    <div class="h-20 w-full"></div> {# Espace de compensation pour la navbar fixe #}
-
-    {# Inclure la barre de navigation #}
+<body class="bg-gray-100 font-inter antialiased min-h-screen flex flex-col">
+    
     {% include 'webapp/includes/navbar.html' %}
-
-    {# Conteneur principal de tout le contenu de la page, centré #}
-    {# Ajout des classes Tailwind pour le padding du container #}
-    <div class="bg-white rounded-lg shadow-md my-5 w-full flex-grow px-4 py-8 sm:px-6 md:px-8 lg:px-20 xl:px-24"> 
-        {# Passe les messages Django au JavaScript pour l'affichage des toasts #}
-        {% if messages %}
-        <script id="django-messages" type="application/json">
-            [
-                {% for message in messages %}
-                {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
-                {% endfor %}
-            ]
-        </script>
-        {% endif %}
-
-        {# IMPORTANT: Ces scripts doivent être présents pour Alpine.js pour la gestion des catégories #}
-        {# Ils sont généralement générés par les vues Django qui préparent ces données. #}
-        {# Assurez-vous que votre contexte Django inclut 'all_categories_json' et 'all_subcategories_json' #}
-        <script id="allCategoriesData" type="application/json">
-            {{ all_categories_json|default:"[]"|safe }}
-        </script>
-        <script id="allSubcategoriesData" type="application/json">
-            {{ all_subcategories_json|default:"[]"|safe }}
-        </script>
-
-        {% block content %}
-            {# Le contenu spécifique de chaque page ira ici #}
-        {% endblock %}
-    </div>
-
-    {# Inclure toast.js après le contenu pour s'assurer que le DOM est prêt #}
+    
+    <main class="flex-grow w-full px-4 py-4 sm:px-6 lg:px-8 pt-20">
+        <div class="max-w-7xl mx-auto">
+            <!-- Messages Django -->
+            {% if messages %}
+            <script id="django-messages" type="application/json">
+                [
+                    {% for message in messages %}
+                    {"message": "{{ message|safe }}", "tags": "{{ message.tags }}"}{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            </script>
+            {% endif %}
+            
+            <!-- Données pour Alpine.js -->
+            <script id="allCategoriesData" type="application/json">
+                {{ all_categories_data_json|default:"[]"|safe }}
+            </script>
+            <script id="allSubcategoriesData" type="application/json">
+                {{ all_subcategories_data_json|default:"[]"|safe }}
+            </script>
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    
+    <!-- Scripts dans le bon ordre -->
+    <!-- 1. Toast.js (vanilla JS, fonctionne indépendamment) -->
     <script src="{% static 'webapp/js/toast.js' %}"></script>
-    {# Script pour la modale de confirmation (pour les suppressions par lot, etc.) #}
+    
+    <!-- 2. Composants Alpine.js (AVANT Alpine.js) -->
+    <script src="{% static 'webapp/js/alpine-components.js' %}"></script>
+    
+    <!-- 3. Alpine.js core (EN DERNIER) -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.0/cdn.min.js"></script>
+    
+    <!-- Scripts globaux -->
     <script>
+        // Fonction pont pour l'édition
+        function triggerEdit(transactionId) {
+            window.dispatchEvent(new CustomEvent('open-edit-form', { 
+                detail: { transactionId: transactionId } 
+            }));
+        }
+        
+        // Modale de confirmation globale
         function showConfirmationModal(title, message, callback) {
-            // Créer les éléments de la modale si n'existent pas
             let modal = document.getElementById('globalConfirmationModal');
-            let modalContent = document.getElementById('globalConfirmationModalContent');
-            let confirmBtn = document.getElementById('globalConfirmBtn');
-            let cancelBtn = document.getElementById('globalCancelBtn');
-            let modalTitle = document.getElementById('globalConfirmationModalTitle');
-            let modalMessage = document.getElementById('globalConfirmationModalMessage');
-
+            
             if (!modal) {
                 modal = document.createElement('div');
-                modal.id = 'globalConfirmationModal';
-                modal.classList.add('fixed', 'inset-0', 'bg-gray-900', 'bg-opacity-50', 'flex', 'items-center', 'justify-center', 'z-50', 'p-4', 'hidden'); // 'hidden' initial
+                modal.classList.add('fixed', 'inset-0', 'bg-gray-900', 'bg-opacity-50', 'flex', 'items-center', 'justify-center', 'z-50', 'p-4', 'hidden');
                 modal.innerHTML = `
-                    <div id="globalConfirmationModalContent" class="bg-white rounded-lg shadow-xl p-6 relative max-w-sm w-full text-center">
+                    <div class="bg-white rounded-lg shadow-xl p-6 relative max-w-sm w-full text-center">
                         <h2 id="globalConfirmationModalTitle" class="text-2xl font-bold text-gray-800 mb-4"></h2>
                         <p id="globalConfirmationModalMessage" class="text-gray-700 mb-6"></p>
                         <div class="flex justify-center space-x-4">
@@ -79,13 +82,9 @@
                 `;
                 document.body.appendChild(modal);
 
-                modalContent = document.getElementById('globalConfirmationModalContent');
-                confirmBtn = document.getElementById('globalConfirmBtn');
-                cancelBtn = document.getElementById('globalCancelBtn');
-                modalTitle = document.getElementById('globalConfirmationModalTitle');
-                modalMessage = document.getElementById('globalConfirmationModalMessage');
-
-                // Écouteurs d'événements pour les boutons
+                const confirmBtn = document.getElementById('globalConfirmBtn');
+                const cancelBtn = document.getElementById('globalCancelBtn');
+                
                 confirmBtn.onclick = () => {
                     modal.classList.add('hidden');
                     callback(true);
@@ -94,7 +93,6 @@
                     modal.classList.add('hidden');
                     callback(false);
                 };
-                // Fermer la modale si on clique en dehors
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
                         modal.classList.add('hidden');
@@ -103,16 +101,29 @@
                 });
             }
 
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
-            modal.classList.remove('hidden'); // Afficher la modale
+            document.getElementById('globalConfirmationModalTitle').textContent = title;
+            document.getElementById('globalConfirmationModalMessage').textContent = message;
+            modal.classList.remove('hidden');
         }
+        
+        // Affichage des messages Django
+        document.addEventListener('DOMContentLoaded', () => {
+            const messagesScript = document.getElementById('django-messages');
+            if (messagesScript) {
+                try {
+                    const messages = JSON.parse(messagesScript.textContent);
+                    messages.forEach(msg => {
+                        if (typeof showToast === 'function') {
+                            showToast(msg.message, msg.tags);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error parsing Django messages:', e);
+                }
+            }
+        });
     </script>
-
-    {# Déplacé ici pour s'assurer que Alpine.js est chargé après l'initialisation de transactionForm() #}
-    {% block extra_js %}{% endblock %} 
-    {# Alpine.js local - Ajouté ici pour être disponible globalement #}
-    {# /!\ cdn.min.js doit être placé dans webapp/static/webapp/js/vendors/ #}
-    <script src="{% static 'webapp/js/vendors/cdn.min.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

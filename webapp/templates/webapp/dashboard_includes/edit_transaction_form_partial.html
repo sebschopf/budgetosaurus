@@ -1,80 +1,153 @@
-{# webapp/templates/webapp/dashboard_includes/edit_transaction_form_partial.html #}
-{# Ce template est utilisé pour rendre le formulaire d'édition d'une transaction via AJAX #}
-
-{# Le formulaire est passé dans la variable 'form' #}
-{# L'ID de la transaction est passé dans la variable 'transaction_id' #}
-
+{% csrf_token %}
 <input type="hidden" name="transaction_id" value="{{ transaction_id }}">
 
-{# Affichage des erreurs non liées à un champ spécifique #}
-{% if form.non_field_errors %}
-    <ul class="errorlist">
-        {% for error in form.non_field_errors %}
-            <li>{{ error }}</li>
-        {% endfor %}
-    </ul>
-{% endif %}
-
-<div class="form-field-group">
-    <label for="{{ form.date.id_for_label }}">Date</label>
-    {{ form.date }}
-    {% if form.date.errors %}<p class="text-red-500 text-xs mt-1">{{ form.date.errors }}</p>{% endif %}
-</div>
-
-<div class="form-field-group">
-    <label for="{{ form.description.id_for_label }}">Description</label>
-    {{ form.description }}
-    {% if form.description.errors %}<p class="text-red-500 text-xs mt-1">{{ form.description.errors }}</p>{% endif %}
-</div>
-
-<div class="form-field-group">
-    <label for="{{ form.amount.id_for_label }}">Montant</label>
-    {{ form.amount }}
-    {% if form.amount.errors %}<p class="text-red-500 text-xs mt-1">{{ form.amount.errors }}</p>{% endif %}
-</div>
-
-<div class="form-field-group">
-    <label for="{{ form.category.id_for_label }}">Catégorie Principale</label>
-    {{ form.category }}
-    {% if form.category.errors %}<p class="text-red-500 text-xs mt-1">{{ form.category.errors }}</p>{% endif %}
-</div>
-
-<div id="modal-subcategory-field-container" class="form-field-group">
-    <label for="{{ form.subcategory.id_for_label }}">Sous-catégorie</label>
-    {{ form.subcategory }}
-    {% if form.subcategory.errors %}<p class="text-red-500 text-xs mt-1">{{ form.subcategory.errors }}</p>{% endif %}
-</div>
-
-<div class="form-field-group">
-    <label for="{{ form.account.id_for_label }}">Compte</label>
-    {{ form.account }}
-    {% if form.account.errors %}<p class="text-red-500 text-xs mt-1">{{ form.account.errors }}</p>{% endif %}
-</div>
-
-<div class="form-field-group">
-    <label for="{{ form.transaction_type.id_for_label }}">Type de transaction</label>
-    {{ form.transaction_type }}
-    {% if form.transaction_type.errors %}<p class="text-red-500 text-xs mt-1">{{ form.transaction_type.errors }}</p>{% endif %}
-</div>
-
-{# Nouveau champ pour les tags #}
-<div class="form-field-group">
-    <label>Tags</label>
-    <div class="flex flex-wrap gap-2"> {# Utilisation de flexbox pour aligner les cases à cocher #}
-        {% for checkbox in form.tags %}
-            <div class="flex items-center">
-                {{ checkbox.tag }} {# Rend la case à cocher et son input #}
-                <label for="{{ checkbox.id_for_label }}" class="ml-2 text-gray-700">{{ checkbox.choice_label }}</label>
-            </div>
-        {% endfor %}
+<div class="space-y-4">
+    <!-- Date et Montant -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-field-group">
+            <label for="{{ form.date.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.date.label }}
+            </label>
+            <!-- Utiliser un input personnalisé pour la date -->
+            <input 
+                type="date" 
+                name="{{ form.date.html_name }}" 
+                id="{{ form.date.id_for_label }}" 
+                value="{{ form.date.value|date:'Y-m-d' }}" 
+                class="p-2 border rounded-md w-full"
+            >
+            {% if form.date.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="form-field-group">
+            <label for="{{ form.amount.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.amount.label }}
+            </label>
+            {{ form.amount }}
+            {% if form.amount.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.amount.errors.0 }}</p>
+            {% endif %}
+        </div>
     </div>
-    {% if form.tags.errors %}<p class="text-red-500 text-xs mt-1">{{ form.tags.errors }}</p>{% endif %}
+    
+    <!-- Description -->
+    <div class="form-field-group">
+        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+            {{ form.description.label }}
+        </label>
+        {{ form.description }}
+        {% if form.description.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.description.errors.0 }}</p>
+        {% endif %}
+    </div>
+    
+    <!-- Compte et Type de transaction -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-field-group">
+            <label for="{{ form.account.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.account.label }}
+            </label>
+            {{ form.account }}
+            {% if form.account.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.account.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="form-field-group">
+            <label for="{{ form.transaction_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.transaction_type.label }}
+            </label>
+            {{ form.transaction_type }}
+            {% if form.transaction_type.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.transaction_type.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Catégorie et Sous-catégorie -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-field-group">
+            <label for="{{ form.category.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.category.label }}
+            </label>
+            {{ form.category }}
+            {% if form.category.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.category.errors.0 }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="form-field-group" id="subcategory-container" style="display: none;">
+            <label for="{{ form.subcategory.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ form.subcategory.label }}
+            </label>
+            {{ form.subcategory }}
+            {% if form.subcategory.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.subcategory.errors.0 }}</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Tags -->
+    {% if form.tags %}
+    <div class="form-field-group">
+        <label class="block text-sm font-medium text-gray-700 mb-1">
+            {{ form.tags.label }}
+        </label>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {% for tag in form.tags %}
+                <div class="flex items-center">
+                    {{ tag.tag }}
+                    <label for="{{ tag.id_for_label }}" class="ml-2 text-sm text-gray-700">
+                        {{ tag.choice_label }}
+                    </label>
+                </div>
+            {% endfor %}
+        </div>
+        {% if form.tags.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.tags.errors.0 }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Erreurs générales -->
+    {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Boutons d'action -->
+    <div class="flex justify-end space-x-3 mt-6">
+        <button type="button" @click="closeForm()" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600">
+            Annuler
+        </button>
+        <button type="button" @click="submitForm()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            Enregistrer
+        </button>
+    </div>
 </div>
 
-{# Inclure les données de catégorie et sous-catégorie en JSON pour le JavaScript #}
+<!-- Données pour Alpine.js -->
 <script id="allCategoriesData" type="application/json">
     {{ all_categories_data_json|safe }}
 </script>
 <script id="allSubcategoriesData" type="application/json">
     {{ all_subcategories_data_json|safe }}
+</script>
+
+<!-- Script de débogage pour vérifier les données -->
+<script>
+    console.log("Form template loaded");
+    try {
+        const categoriesData = JSON.parse(document.querySelector('#allCategoriesData').textContent);
+        const subcategoriesData = JSON.parse(document.querySelector('#allSubcategoriesData').textContent);
+        console.log("Categories in template:", categoriesData.length);
+        console.log("Subcategories in template:", subcategoriesData.length);
+    } catch (e) {
+        console.error("Error parsing category data in template:", e);
+    }
 </script>

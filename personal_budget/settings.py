@@ -19,6 +19,14 @@ load_dotenv() # Charge les variables du fichier .env
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Chemin vers le dossier data à la racine du projet
+DATA_DIR = BASE_DIR / 'data'
+
+# Créer les dossiers nécessaires s'ils n'existent pas
+DATA_DIR.mkdir(exist_ok=True)
+(DATA_DIR / 'imports').mkdir(exist_ok=True)
+(DATA_DIR / 'media').mkdir(exist_ok=True)
+(DATA_DIR / 'logs').mkdir(exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -31,9 +39,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['budget.moustik.site', 'localhost', '127.0.0.1', '192.168.1.112']
 
-
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -75,21 +81,17 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'personal_budget.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'data' / 'db.sqlite3',
+        'NAME': DATA_DIR / 'db.sqlite3',  # Base de données dans data/db.sqlite3
     }
 }
 
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -105,34 +107,25 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = 'fr-fr'
-
-TIME_ZONE = 'UTC'
-
+TIME_ZONE = 'Europe/Zurich'  # Changé de UTC vers Europe/Zurich
 USE_I18N = True
-
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# NOUVEAU: Chemin absolu vers le répertoire où 'collectstatic' va rassembler tous les fichiers statiques.
-# Il est recommandé de le mettre en dehors du répertoire de votre projet.
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
+# Media files (uploads)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = DATA_DIR / 'media'  # Fichiers media dans data/media/
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 # Configuration du système de logging de Django
 LOGGING = {
@@ -161,7 +154,7 @@ LOGGING = {
         'file': { # Écrit les logs généraux de Django dans un fichier
             'level': 'DEBUG', # Capture tous les messages de débogage et plus
             'class': 'logging.handlers.RotatingFileHandler', # Rotation des fichiers de log
-            'filename': os.path.join(BASE_DIR, 'logs', 'django_debug.log'), # Chemin du fichier de log
+            'filename': DATA_DIR / 'logs' / 'django_debug.log',  # Logs dans data/logs/
             'maxBytes': 1024*1024*5, # Taille maximale du fichier (5 MB)
             'backupCount': 5, # Nombre de fichiers de sauvegarde
             'formatter': 'verbose',
@@ -169,7 +162,7 @@ LOGGING = {
         'importer_file': { # Handler spécifique pour les importateurs
             'level': 'DEBUG', # Capture tous les messages de débogage pour les importateurs
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'importer.log'),
+            'filename': DATA_DIR / 'logs' / 'importer.log',  # Logs dans data/logs/
             'maxBytes': 1024*1024*2, # 2 MB
             'backupCount': 3,
             'formatter': 'verbose',
@@ -186,6 +179,11 @@ LOGGING = {
         'webapp.importers': { # Logger spécifique pour le paquet d'importateurs
             'handlers': ['console', 'importer_file'],
             'level': 'DEBUG', # Capture tous les messages de débogage pour les importateurs
+            'propagate': False,
+        },
+        'webapp': { # Logger pour l'application webapp
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
             'propagate': False,
         },
         '': { # Logger par défaut (pour toutes les autres parties de votre code)

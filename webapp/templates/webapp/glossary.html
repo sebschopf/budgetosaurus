@@ -1,73 +1,175 @@
-    {# webapp/templates/webapp/glossary.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% block title %}Glossaire - Budgetosaurus{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 
-    {% block extra_head %}
-    {% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- En-tête -->
+    <div class="section-header text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">Comprendre les termes et concepts de votre budget</p>
+    </div>
 
-    {% block content %}
-        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Glossaire des Concepts</h1>
-        <p class="text-center text-gray-700 text-lg mb-10">Comprenez les termes clés de votre application de gestion budgétaire.</p>
-
-        <div class="glossary-item">
-            <h2>Compte (Account)</h2>
-            <p>Un <strong>Compte</strong> représente un lieu physique ou logique où votre argent est détenu. Il peut s'agir d'un compte bancaire courant, d'un compte d'épargne, d'une carte de crédit, ou même d'une caisse d'espèces. Chaque compte a un solde réel qui est affecté par les transactions.</p>
-            <em>Analogie : C'est le tiroir ou le portefeuille où se trouve l'argent.</em>
+    <!-- Glossaire -->
+    <div class="space-y-6">
+        <!-- Catégories -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-tags mr-3 text-blue-600"></i>
+                Catégories et Classification
+            </h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Catégorie</h3>
+                    <p class="text-gray-600">Groupe principal pour classer vos transactions (ex: Alimentation, Transport, Logement).</p>
+                </div>
+                
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Sous-catégorie</h3>
+                    <p class="text-gray-600">Division plus précise d'une catégorie (ex: Courses, Restaurants sous Alimentation).</p>
+                </div>
+                
+                <div class="border-l-4 border-purple-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Catégorie gérée par fonds</h3>
+                    <p class="text-gray-600">Catégorie qui utilise un système d'enveloppes budgétaires pour suivre les dépenses.</p>
+                </div>
+                
+                <div class="border-l-4 border-orange-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Catégorie budgétée</h3>
+                    <p class="text-gray-600">Catégorie pour laquelle vous avez défini un budget mensuel ou annuel.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="glossary-item">
-            <h2>Catégorie (Category)</h2>
-            <p>Une <strong>Catégorie</strong> est une étiquette descriptive qui classe la nature d'une transaction. Elle répond à la question "À quoi sert cet argent ?" (pour une dépense) ou "D'où vient cet argent ?" (pour un revenu). Les catégories peuvent être hiérarchiques (par exemple, "Dépenses Fixes" > "Loyer").</p>
-            <p>Les catégories sont au cœur de votre gestion financière, car elles peuvent être associées à des <strong>Fonds</strong>, faire partie d'un <strong>Budget</strong>, ou être liées à un <strong>Objectif d'Épargne</strong>. Leur statut est indiqué par des <strong>tags visuels (flags)</strong> à côté de leur nom dans les menus déroulants.</p>
-            <em>Analogie : C'est l'étiquette sur le tiroir qui décrit ce qu'il contient (ex: "factures", "nourriture").</em>
+        <!-- Transactions -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-exchange-alt mr-3 text-green-600"></i>
+                Transactions
+            </h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Revenu</h3>
+                    <p class="text-gray-600">Argent qui entre dans vos comptes (salaire, remboursements, ventes).</p>
+                </div>
+                
+                <div class="border-l-4 border-red-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Dépense</h3>
+                    <p class="text-gray-600">Argent qui sort de vos comptes (achats, factures, frais).</p>
+                </div>
+                
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Virement</h3>
+                    <p class="text-gray-600">Mouvement d'argent entre vos propres comptes.</p>
+                </div>
+                
+                <div class="border-l-4 border-yellow-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Transaction à revoir</h3>
+                    <p class="text-gray-600">Transaction non catégorisée qui nécessite votre attention.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="glossary-item">
-            <h2>Transaction</h2>
-            <p>Une <strong>Transaction</strong> est un enregistrement d'un mouvement d'argent. Chaque transaction est liée à une date, une description, un montant, un compte et une catégorie. Elle peut être de différents types :</p>
-            <ul>
-                <li><strong>Revenu (IN) :</strong> Représente de l'argent entrant sur votre compte. C'est utilisé pour votre salaire, des remboursements reçus, des intérêts, etc.</li>
-                <li><strong>Dépense (OUT) :</strong> Représente de l'argent sortant de votre compte. C'est utilisé pour vos achats, factures, retraits, etc.</li>
-                <li><strong>Transfert (TRF) :</strong> Représente un mouvement d'argent entre deux de vos propres comptes (par exemple, d'un compte courant à un compte d'épargne). Ce type est important pour éviter de compter deux fois l'argent dans vos totaux de revenus/dépenses, car il ne s'agit pas d'un vrai revenu ou d'une vraie dépense, mais d'un simple déplacement.</li>
-            </ul>
-            <p>Il est crucial de choisir le bon type de transaction pour que vos récapitulatifs financiers soient précis.</p>
-            <em>Analogie : C'est une ligne dans votre relevé bancaire ou votre carnet de comptes.</em>
+        <!-- Gestion des fonds -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-wallet mr-3 text-purple-600"></i>
+                Gestion des Fonds
+            </h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-purple-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Fonds / Enveloppe budgétaire</h3>
+                    <p class="text-gray-600">Montant d'argent alloué à une catégorie spécifique, comme une enveloppe physique.</p>
+                </div>
+                
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Allocation de revenus</h3>
+                    <p class="text-gray-600">Répartition d'un revenu entre différentes enveloppes budgétaires.</p>
+                </div>
+                
+                <div class="border-l-4 border-red-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Débit de fonds</h3>
+                    <p class="text-gray-600">Retrait d'argent d'une ou plusieurs enveloppes pour couvrir une dépense.</p>
+                </div>
+                
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Division de transaction</h3>
+                    <p class="text-gray-600">Séparation d'une transaction unique en plusieurs transactions catégorisées.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="glossary-item">
-            <h2>Budget (Planification)</h2>
-            <p>Un <strong>Budget</strong> est un montant que vous <strong>prévoyez</strong> de ne pas dépasser pour une catégorie donnée sur une période spécifique (par exemple, mensuelle ou annuelle). C'est une <strong>cible</strong> ou une <strong>limite</strong> que vous vous fixez pour vos dépenses. Une catégorie est "budgétisée" si un budget lui est associé, et est identifiée par un tag visuel de couleur **Bleu** dans les menus déroulants.</p>
-            <em>Analogie : C'est la limite que vous vous fixez pour la quantité d'argent que vous allez dépenser pour le "carburant" ce mois-ci.</em>
+        <!-- Budgets -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-chart-pie mr-3 text-orange-600"></i>
+                Budgets et Planification
+            </h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-orange-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Budget mensuel</h3>
+                    <p class="text-gray-600">Montant planifié à dépenser dans une catégorie pour un mois donné.</p>
+                </div>
+                
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Budget annuel</h3>
+                    <p class="text-gray-600">Montant planifié à dépenser dans une catégorie pour une année complète.</p>
+                </div>
+                
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Objectif d'épargne</h3>
+                    <p class="text-gray-600">Montant cible à économiser pour un projet ou une urgence.</p>
+                </div>
+                
+                <div class="border-l-4 border-yellow-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Solde net</h3>
+                    <p class="text-gray-600">Différence entre vos revenus et vos dépenses sur une période donnée.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="glossary-item">
-            <h2>Fonds (Provision)</h2>
-            <p>Un <strong>Fonds</strong> représente une "enveloppe" budgétaire virtuelle pour une catégorie spécifique, dont le solde est <strong>cumulatif</strong> et <strong>automatiquement ajusté</strong> par les transactions qui lui sont associées.</p>
-            <p>Ce concept est utile si vous souhaitez <strong>mettre de côté de l'argent</strong> pour des dépenses futures ou gérer un solde roulant pour certains objectifs (par exemple, "Fonds Vacances", "Fonds Impôts"). Une catégorie est dite "gérant un fonds" si elle est configurée pour ce suivi de provision, et est identifiée par un tag visuel de couleur **Verte** dans les menus déroulants.</p>
-            <p>Les transactions d'une catégorie qui ne gère pas de fonds impacteront uniquement le "Récapitulatif Mensuel par Catégorie" et le solde de votre compte, sans ajuster un fonds dédié.</p>
-            <em>Analogie : C'est une tirelire dédiée à un objectif spécifique (ex: "Vacances"). Vous y ajoutez de l'argent (revenus, allocations) et en retirez (dépenses). Le solde de la tirelire vous indique combien il reste pour cet objectif.</em>
+        <!-- Comptes -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-university mr-3 text-gray-600"></i>
+                Types de Comptes
+            </h2>
+            
+            <div class="space-y-4">
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Compte courant</h3>
+                    <p class="text-gray-600">Compte bancaire principal pour les transactions quotidiennes.</p>
+                </div>
+                
+                <div class="border-l-4 border-green-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Compte d'épargne</h3>
+                    <p class="text-gray-600">Compte destiné à faire fructifier votre argent sur le long terme.</p>
+                </div>
+                
+                <div class="border-l-4 border-purple-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Compte de crédit</h3>
+                    <p class="text-gray-600">Carte de crédit ou ligne de crédit permettant de dépenser à crédit.</p>
+                </div>
+                
+                <div class="border-l-4 border-orange-500 pl-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Espèces</h3>
+                    <p class="text-gray-600">Argent liquide que vous avez en votre possession.</p>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <div class="glossary-item">
-            <h2>Objectif d'Épargne (SavingGoal)</h2>
-            <p>Un <strong>Objectif d'Épargne</strong> est un montant spécifique que vous <strong>voulez accumuler</strong> d'ici une certaine date pour un but précis (par exemple, acheter une voiture, payer un acompte pour une maison). Il s'agit d'un objectif à long terme pour une dépense importante et souvent non récurrente.</p>
-            <p>Une catégorie est "liée à un objectif" si elle est associée à un objectif d'épargne actif, et est identifiée par un tag visuel de couleur **Orange/Jaune** dans les menus déroulants.</p>
-            <em>Analogie : C'est la somme totale que vous voulez atteindre pour un achat important, comme le prix d'une voiture, et vous y contribuez de diverses manières.</em>
-        </div>
-
-        <div class="glossary-item">
-            <h2>Tag / Flag (Indicateur Visuel de Catégorie)</h2>
-            <p>Les <strong>Tags / Flags</strong> sont de petits badges colorés qui apparaissent à côté du nom des catégories dans les menus déroulants. Ils servent d'indicateurs visuels rapides pour vous informer de la nature ou de l'impact particulier de la catégorie sélectionnée :</p>
-            <ul>
-                <li><strong><span style="background-color: #28a745; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Fonds</span> (Vert) :</strong> Indique que la catégorie gère une provision ou une "enveloppe" budgétaire cumulative.</li>
-                <li><strong><span style="background-color: #007bff; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Budget</span> (Bleu) :</strong> Indique que la catégorie est associée à un budget planifié.</li>
-                <li><strong><span style="background-color: #ffc107; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold;">Objectif</span> (Orange/Jaune) :</strong> Indique que la catégorie est liée à un objectif d'épargne spécifique.</li>
-            </ul>
-            <p>Une catégorie peut avoir plusieurs de ces tags si elle répond à plusieurs critères (par exemple, une catégorie peut être à la fois un "Fonds" et avoir un "Budget" si vous planifiez d'y verser un certain montant chaque mois).</p>
-            <em>Analogie : Ce sont comme de petits autocollants de couleur sur vos étiquettes de tiroir qui vous donnent des informations supplémentaires d'un coup d'œil.</em>
-        </div>
-
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
-    
+    <!-- Navigation -->
+    <div class="text-center mt-8">
+        <a href="{% url 'dashboard_view' %}" 
+           class="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+            <i class="fas fa-arrow-left mr-2"></i>Retour au Tableau de Bord
+        </a>
+    </div>
+</div>
+{% endblock %}

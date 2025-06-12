@@ -1,41 +1,308 @@
-    {# webapp/templates/webapp/index.html #}
-    {% extends 'webapp/base.html' %}
+{% extends "webapp/base.html" %}
+{% load static %}
+{% load custom_filters %}
 
-    {% block title %}Tableau de Bord{% endblock %}
+{% block title %}Tableau de Bord - Budgetosaurus{% endblock %}
 
-    {% block extra_head %}
-    {% endblock %}
+{% block content %}
+<div 
+    class="container mx-auto px-4 py-8"
+    x-data="transactionManager()"
+    @transaction-updated.window="window.location.reload()"
+>
+    <!-- En-tête et bouton d'action -->
+    <div class="mb-8">
+        <h1 class="text-5xl font-extrabold text-gray-800">Tableau de Bord</h1>
+    </div>
 
-    {% block content %}
-        {# h1 stylé par h1 dans _base.css #}
-        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">Tableau de Bord de Votre Budget</h1>
-
-        {# h2 stylé par h2 dans _base.css #}
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Soldes par Compte</h2>
-        {# .balance-cards-grid est stylé dans pages/_dashboard.css #}
-        <div class="balance-cards-grid gap-5 mb-8"> 
-            {% for name, data in account_balances.items %}
-                {# .card est stylé dans components/_cards.css. Ses h3 et p aussi. #}
-                <div class="card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto">
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">
-                        {{ name }}
-                    </h3>
-                    {# .positive et .negative sont stylés dans _base.css #}
-                    <p class="text-2xl font-bold mt-2 {% if data.balance >= 0 %}positive{% else %}negative{% endif %}">
-                        {{ data.balance|floatformat:2 }} {{ data.currency }}
-                    </p>
+    <!-- Cartes d'information financière -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-8">
+        <!-- Carte des comptes - Redesignée pour plus de visibilité -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                <h2 class="text-2xl font-bold text-blue-800">Comptes</h2>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for account in accounts %}
+                <div class="flex justify-between items-center p-5 hover:bg-gray-50 transition-colors">
+                    <span class="text-lg font-medium text-gray-700">{{ account.name }}</span>
+                    <span class="text-xl font-bold {% if account.balance > 0 %}text-green-600{% elif account.balance < 0 %}text-red-600{% else %}text-gray-600{% endif %}">
+                        {{ account.balance|floatformat:2 }} {{ account.currency }}
+                    </span>
                 </div>
-            {% endfor %}
+                {% empty %}
+                <div class="p-5 text-center text-gray-500">
+                    <p>Aucun compte trouvé</p>
+                </div>
+                {% endfor %}
+            </div>
         </div>
 
-        {% include 'webapp/dashboard_includes/transaction_form.html' %}
+        <!-- Aperçu Rapide - Redesigné avec des cartes distinctes -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="bg-blue-50 px-6 py-4 border-b border-blue-100">
+                    <h2 class="text-2xl font-bold text-blue-800">Aperçu Rapide</h2>
+                </div>
+                <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Solde Total -->
+                    <div class="bg-gray-50 rounded-lg p-5 text-center">
+                        <p class="text-sm font-medium text-gray-500 mb-1">Solde Total</p>
+                        <p class="text-3xl font-bold text-gray-800">{{ total_balance|floatformat:2 }} {{ base_currency }}</p>
+                    </div>
+                    
+                    <!-- Revenus du mois -->
+                    <div class="bg-green-50 rounded-lg p-5 text-center">
+                        <p class="text-sm font-medium text-green-600 mb-1">Revenus du mois</p>
+                        <p class="text-3xl font-bold text-green-600">{{ monthly_income|floatformat:2 }} {{ base_currency }}</p>
+                    </div>
+                    
+                    <!-- Dépenses du mois -->
+                    <div class="bg-red-50 rounded-lg p-5 text-center">
+                        <p class="text-sm font-medium text-red-600 mb-1">Dépenses du mois</p>
+                        <p class="text-3xl font-bold text-red-600">{{ monthly_expense|floatformat:2 }} {{ base_currency }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Dernières Transactions</h2>
-        {% include 'webapp/dashboard_includes/latest_transactions_table.html' %}
-    {% endblock %}
+    <!-- Bouton d'ajout de transaction repositionné -->
+    <div class="mb-6 flex justify-end">
+        <button 
+            @click="openAddForm"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 ease-in-out flex items-center transform hover:scale-105"
+        >
+            <i class="fas fa-plus mr-3 text-lg"></i> Ajouter une Transaction
+        </button>
+    </div>
 
-    {% block extra_js %}
-        {# Les données allCategoriesData et allSubcategoriesData sont maintenant dans base.html #}
-        {# Inclure les scripts spécifiques au tableau de bord #}
-        {% include 'webapp/dashboard_includes/dashboard_scripts.html' %}
-    {% endblock %}
+    <!-- Dernières Transactions - Tableau redesigné -->
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
+            <h2 class="text-2xl font-bold text-blue-800">Dernières Transactions</h2>
+            <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:text-blue-800 font-medium">
+                Voir tout <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
+                            <input type="checkbox" id="select-all-transactions" class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                        </th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Date</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-3/12">Description</th>
+                        <th scope="col" class="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Montant</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/12">Catégorie</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Compte</th>
+                        <th scope="col" class="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for transaction in latest_transactions %}
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <input type="checkbox" name="transaction_ids" value="{{ transaction.id }}" class="transaction-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ transaction.date|date:"d M Y" }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">
+                            <div class="truncate max-w-xs" title="{{ transaction.description }}">
+                                {{ transaction.description }}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right whitespace-nowrap text-sm font-bold {% if transaction.transaction_type == 'income' %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ transaction.amount|floatformat:2 }} {{ transaction.account.currency }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ transaction.category.name|default:'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ transaction.account.name|default:'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <div class="flex items-center justify-center space-x-2">
+                                <button 
+                                    type="button"
+                                    onclick="triggerEdit({{ transaction.id }})"
+                                    class="text-blue-600 hover:text-blue-900 p-2 rounded-full hover:bg-blue-100 transition duration-150"
+                                    title="Modifier la transaction"
+                                >
+                                    <i class="fas fa-pencil-alt"></i>
+                                </button>
+                                <button 
+                                    type="button"
+                                    onclick="showConfirmationModal('Supprimer la transaction', 'Êtes-vous sûr de vouloir supprimer cette transaction ?', (confirmed) => { if (confirmed) { window.location.href = '{% url "delete_transaction" transaction.id %}'; } })"
+                                    class="text-red-600 hover:text-red-900 p-2 rounded-full hover:bg-red-100 transition duration-150"
+                                    title="Supprimer la transaction"
+                                >
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modale d'Ajout/Édition de Transaction - Redesignée -->
+    <div 
+        x-show="isFormOpen" 
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4"
+        style="display: none;"
+        @keydown.escape.window="closeForm"
+    >
+        <div 
+            class="bg-white rounded-xl shadow-2xl max-w-3xl w-full m-4 transform transition-all"
+            @click.outside="closeForm"
+            x-show="isFormOpen"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+        >
+            <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 rounded-t-xl">
+                <h2 class="text-2xl font-bold text-blue-800" x-text="isEditing ? 'Modifier la Transaction' : 'Ajouter une Transaction'"></h2>
+            </div>
+            
+            <form @submit.prevent="submitForm" id="transaction-form" novalidate class="p-6">
+                {% csrf_token %}
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <!-- Type de transaction (boutons radio stylisés) -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type de Transaction</label>
+                        <div class="flex rounded-md shadow-sm">
+                            <button type="button" 
+                                    @click="transactionData.transaction_type = 'expense'" 
+                                    :class="{ 'bg-red-600 text-white': transactionData.transaction_type === 'expense', 'bg-gray-200 text-gray-700 hover:bg-gray-300': transactionData.transaction_type !== 'expense' }" 
+                                    class="px-4 py-2 rounded-l-md w-full font-semibold transition duration-200 ease-in-out">
+                                Dépense
+                            </button>
+                            <button type="button" 
+                                    @click="transactionData.transaction_type = 'income'" 
+                                    :class="{ 'bg-green-600 text-white': transactionData.transaction_type === 'income', 'bg-gray-200 text-gray-700 hover:bg-gray-300': transactionData.transaction_type !== 'income' }" 
+                                    class="px-4 py-2 rounded-r-md w-full font-semibold transition duration-200 ease-in-out">
+                                Revenu
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div class="md:col-span-2">
+                        <label for="id_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <input type="text" name="description" x-model="transactionData.description" id="id_description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required placeholder="Ex: Courses, Salaire, Restaurant">
+                    </div>
+
+                    <!-- Montant -->
+                    <div>
+                        <label for="id_amount" class="block text-sm font-medium text-gray-700 mb-1">Montant</label>
+                        <input type="number" step="0.01" name="amount" x-model.number="transactionData.amount" id="id_amount" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required placeholder="0.00">
+                    </div>
+                    
+                    <!-- Catégorie Principale -->
+                    <div>
+                        <label for="id_category" class="block text-sm font-medium text-gray-700 mb-1">Catégorie Principale</label>
+                        <select name="category" x-model="transactionData.category" id="id_category" 
+                                @change="updateSubcategoriesDropdown()"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
+                            <option value="">-- Sélectionner --</option>
+                            <template x-for="category in allCategories" :key="category.id">
+                                <option :value="category.id" x-text="category.name"></option>
+                            </template>
+                        </select>
+                        <!-- Affichage des badges de catégorie -->
+                        <div class="mt-2 text-sm">
+                            <span x-html="categoryBadgeHtml(findCategoryById(transactionData.category, allCategories))"
+                                  x-show="transactionData.category !== ''">
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Sous-catégorie -->
+                    <div id="subcategory-field-container"
+                         x-show="filteredSubcategories.length > 0"
+                         x-transition:enter="transition ease-out duration-200" 
+                         x-transition:enter-start="opacity-0 transform -translate-y-2" 
+                         x-transition:enter-end="opacity-100 transform translate-y-0"
+                         x-transition:leave="transition ease-in duration-150" 
+                         x-transition:leave-start="opacity-100 transform translate-y-0" 
+                         x-transition:leave-end="opacity-0 transform -translate-y-2">
+                        <label for="id_subcategory" class="block text-sm font-medium text-gray-700 mb-1">Sous-catégorie</label>
+                        <select name="subcategory" x-model="transactionData.subcategory" id="id_subcategory" 
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <option value="">-- Sélectionner --</option>
+                            <template x-for="subcategory in filteredSubcategories" :key="subcategory.id">
+                                <option :value="subcategory.id" x-text="subcategory.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Date -->
+                    <div>
+                        <label for="id_date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" name="date" x-model="transactionData.date" id="id_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                        <div class="flex space-x-2 mt-2">
+                            <button type="button" @click="transactionData.date = new Date().toISOString().slice(0, 10)" class="bg-gray-200 text-gray-700 text-xs px-3 py-1 rounded-md hover:bg-gray-300 transition duration-150">Aujourd'hui</button>
+                            <button type="button" @click="transactionData.date = new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 10)" class="bg-gray-200 text-gray-700 text-xs px-3 py-1 rounded-md hover:bg-gray-300 transition duration-150">Hier</button>
+                        </div>
+                    </div>
+
+                    <!-- Heure -->
+                    <div>
+                        <label for="id_time" class="block text-sm font-medium text-gray-700 mb-1">Heure</label>
+                        <input type="time" name="time" x-model="transactionData.time" id="id_time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    </div>
+
+                    <!-- Compte -->
+                    <div>
+                        <label for="id_account" class="block text-sm font-medium text-gray-700 mb-1">Compte</label>
+                        <select name="account" x-model="transactionData.account" id="id_account" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50" required>
+                             <option value="">-- Sélectionner --</option>
+                            {% for account in accounts %}
+                            <option value="{{ account.pk }}">{{ account.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Tags -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                        <div class="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+                            {% for tag in available_tags %}
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="tags" id="tag_{{ tag.id }}" value="{{ tag.id }}"
+                                           x-model="transactionData.tags"
+                                           class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500">
+                                    <label for="tag_{{ tag.id }}" class="ml-2 text-gray-700">{{ tag.name }}</label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions du Formulaire -->
+                <div class="flex justify-end pt-6 space-x-4 border-t border-gray-200 mt-6">
+                    <button type="button" @click="closeForm" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition duration-200 ease-in-out">Annuler</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-300 ease-in-out">
+                        <span x-show="!isEditing">Sauvegarder</span>
+                        <span x-show="isEditing">Mettre à jour</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

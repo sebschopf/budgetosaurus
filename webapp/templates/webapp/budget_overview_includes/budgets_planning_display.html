@@ -1,29 +1,24 @@
 {# webapp/templates/webapp/budget_overview_includes/budgets_planning_display.html #}
-{# Le titre h2 a été déplacé dans le template parent #}
 {% if budget_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Ajout des classes de grille et espacement Tailwind #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
     {% for budget in budget_data %}
-        <div class="budget-card bg-white rounded-lg shadow-md p-5 mb-5 border border-gray-200"> {# Ajout des classes Tailwind #}
+        <div class="budget-card bg-white rounded-lg shadow-md p-5 mb-5 border border-gray-200" x-data="{ percentage: {{ budget.percentage_spent|floatformat:0 }} }">
             <h3 class="text-lg font-semibold text-gray-700 mb-3">{{ budget.category_name }}</h3>
             <p class="text-sm text-gray-600 mb-1">Budgété : <span class="font-bold">{{ budget.budgeted_amount|floatformat:2 }} CHF</span></p>
             <p class="text-sm text-gray-600 mb-1">Dépensé : <span class="font-bold">{{ budget.spent_amount|floatformat:2 }} CHF</span></p>
-            <p class="text-sm text-gray-600 mb-1">Restant : <span class="font-bold {% if budget.remaining >= 0 %}positive{% else %}negative{% endif %}">{{ budget.remaining|floatformat:2 }} CHF</span></p>
+            <p class="text-sm text-gray-600 mb-1">Restant : <span class="font-bold" :class="{ 'text-green-600': {{ budget.remaining }} >= 0, 'text-red-600': {{ budget.remaining }} < 0 }">{{ budget.remaining|floatformat:2 }} CHF</span></p>
 
-            <div class="progress-bar-container">
-            {% comment %} Déterminer la classe de couleur en fonction du pourcentage dépensé {% endcomment %}
-            {% if budget.percentage_spent < 75 %}
-                <div class="progress-bar green" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                {{ budget.percentage_spent|floatformat:0 }}%
-                </div>
-                {% elif budget.percentage_spent < 100 %}
-                <div class="progress-bar orange" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                {{ budget.percentage_spent|floatformat:0 }}%
-                </div>
-                {% else %}
-                <div class="progress-bar red" style="width: {{ budget.percentage_spent|floatformat:0 }}%;">
-                {{ budget.percentage_spent|floatformat:0 }}%
-                </div>
-            {% endif %}
+            <div class="mt-3 h-6 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div 
+                    :class="{ 
+                        'bg-green-500': percentage < 75, 
+                        'bg-yellow-500': percentage >= 75 && percentage < 100, 
+                        'bg-red-500': percentage >= 100 
+                    }"
+                    class="h-full text-xs flex items-center justify-center text-white font-semibold transition-all duration-300"
+                    :style="{ width: `${Math.min(percentage, 100)}%` }"
+                    x-text="`${percentage}%`"
+                ></div>
             </div>
         </div>
     {% endfor %}

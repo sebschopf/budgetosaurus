@@ -1,0 +1,58 @@
+{% extends 'webapp/base.html' %}
+{% load static %}
+
+{% block title %}Mes Ménages{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Mes Ménages</h1>
+    
+    {% if households %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {% for household in households %}
+                <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-2">{{ household.name }}</h2>
+                    <p class="text-gray-600 mb-4">Type: {{ household.get_household_type_display }}</p>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-500">
+                            {{ household.members.count }} membre(s)
+                        </span>
+                        <a href="{% url 'household_detail' household_id=household.id %}" 
+                           class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                            <i class="fas fa-eye mr-1"></i>Voir détails
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="bg-white rounded-lg shadow-md p-8 text-center mb-8">
+            <i class="fas fa-home text-blue-400 text-4xl mb-3"></i>
+            <h3 class="text-lg font-semibold text-gray-700 mb-3">Vous n'avez pas encore de ménage</h3>
+            <p class="text-gray-600 mb-4">Créez un ménage pour partager vos finances avec d'autres personnes.</p>
+        </div>
+    {% endif %}
+    
+    <div class="flex justify-center">
+        <a href="{% url 'create_household' %}" 
+           class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300">
+            <i class="fas fa-plus mr-2"></i>Créer un nouveau ménage
+        </a>
+    </div>
+    
+    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-blue-800 mb-2">À propos des ménages</h3>
+        <p class="text-blue-700 mb-4">
+            Les ménages vous permettent de partager vos finances avec d'autres personnes, comme votre conjoint(e), 
+            votre famille ou vos colocataires. Selon le type de ménage choisi, vous pourrez partager:
+        </p>
+        <ul class="list-disc list-inside text-blue-700 space-y-1 ml-4">
+            <li>Des comptes bancaires</li>
+            <li>Des catégories de dépenses</li>
+            <li>Des budgets</li>
+            <li>Des objectifs d'épargne</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

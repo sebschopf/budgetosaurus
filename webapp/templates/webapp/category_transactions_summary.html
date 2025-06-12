@@ -1,51 +1,349 @@
-    {# webapp/templates/webapp/category_transactions_summary.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% block title %}{{ page_title }}{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 
-    {% block extra_head %}
-    {% endblock %}
-
-    {% block content %}
-        <div class="section-header">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
-            <p class="text-lg text-gray-700">Pour la période : <span class="font-bold text-indigo-600">{{ current_period_display }}</span></p>
-        </div>
-
-        <div class="period-selection-buttons">
-            {# Pour le mois courant, passer year et month nommés #}
-            <a href="{% url 'category_transactions_summary_view' year=today_year month=today_month %}"
-               class="{% if selected_year == today_year and selected_month == today_month %}active{% endif %}">
-                Mois Courant
-            </a>
-            {# Pour l'année courante, passer seulement year nommé #}
-            <a href="{% url 'category_transactions_summary_view' year=today_year %}"
-               class="{% if selected_year == today_year and selected_month is None %}active{% endif %}">
-                Année Courante
-            </a>
-        </div>
-
-        {% if category_transactions_summary %}
-            {% for category_data in category_transactions_summary %}
-                <div class="category-summary-section">
-                    <h3>{{ category_data.category_name }}</h3>
-                    <div class="transaction-list-grid">
-                        {% for transaction in category_data.transactions %}
-                            <div class="transaction-item">
-                                <span class="description">{{ transaction.description }}</span>
-                                <span class="amount {% if transaction.amount >= 0 %}positive{% else %}negative{% endif %}">
-                                    {{ transaction.amount|floatformat:2 }} {{ transaction.account_currency }}
-                                </span>
-                                <span class="date">{{ transaction.date|date:"d M Y" }}</span>
-                            </div>
+{% block content %}
+<div x-data="categoryTransactionsSummary" class="max-w-7xl mx-auto">
+    <!-- En-tête avec sélecteur de période intégré -->
+    <div class="section-header mb-6">
+        <div class="bg-amber-300 flex flex-col md:flex-row md:items-center md:justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-1">{{ page_title }}</h1>
+                <p class="text-lg text-gray-700">
+                    Période : <span class="font-bold text-blue-600">{{ current_period_display }}</span>
+                </p>
+            </div>
+            
+            <!-- Sélecteur de période compact -->
+            <div class="mt-4 md:mt-0 bg-white rounded-lg shadow-sm p-3 border border-gray-200">
+                <div class="flex items-center space-x-4 text-base">
+                    <span class="text-gray-600 font-medium">Année:</span>
+                    <div class="flex flex-wrap gap-2">
+                        {% for year in available_years %}
+                        <a href="{% url 'category_transactions_summary_view' year=year %}"
+                           class="px-5 py-12 rounded text-base font-medium transition duration-300 {% if selected_year == year and selected_month is None %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                            {{ year }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    
+                    <span class="text-gray-600 font-medium ml-2">Mois:</span>
+                    <div class="flex flex-wrap gap-2">
+                        {% for month_num in "123456789101112"|make_list %}
+                            {% with month_num_int=month_num|add:"0" %}
+                            <a href="{% url 'category_transactions_summary_view' year=selected_year month=month_num_int %}"
+                               class="px-5 py-14 rounded text-base font-medium transition duration-300 {% if selected_month == month_num_int %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                                {% if month_num == "1" %}J
+                                {% elif month_num == "2" %}F
+                                {% elif month_num == "3" %}M
+                                {% elif month_num == "4" %}A
+                                {% elif month_num == "5" %}M
+                                {% elif month_num == "6" %}J
+                                {% elif month_num == "7" %}J
+                                {% elif month_num == "8" %}A
+                                {% elif month_num == "9" %}S
+                                {% elif month_num == "10" %}O
+                                {% elif month_num == "11" %}N
+                                {% elif month_num == "12" %}D
+                                {% endif %}
+                            </a>
+                            {% endwith %}
                         {% endfor %}
                     </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p class="no-transactions-found">Aucune transaction trouvée pour les catégories gérant des fonds pour cette période.</p>
-        {% endif %}
+            </div>
+        </div>
+    </div>
 
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
-    
+    <!-- Filtres et recherche -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Recherche -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
+                <input 
+                    type="text" 
+                    x-model="searchTerm"
+                    placeholder="Description, montant..."
+                    class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                >
+            </div>
+            
+            <!-- Filtre par catégorie -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
+                <select x-model="selectedCategory" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Toutes les catégories</option>
+                    <template x-for="category in availableCategories" :key="category">
+                        <option :value="category" x-text="category"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <!-- Filtre par montant -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Type de transaction</label>
+                <select x-model="amountFilter" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Toutes</option>
+                    <option value="positive">Revenus uniquement</option>
+                    <option value="negative">Dépenses uniquement</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques globales et transactions -->
+    <div x-show="categoryData.length > 0">
+        <!-- Statistiques globales -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white rounded-lg shadow-md p-4 text-center">
+                <div class="flex items-center justify-center">
+                    <i class="fas fa-list-alt text-blue-600 text-xl mr-2"></i>
+                    <h3 class="text-sm font-semibold text-gray-700">Total Transactions</h3>
+                </div>
+                <p class="text-xl font-bold text-blue-600 mt-1" x-text="filteredTransactions.length"></p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 text-center">
+                <div class="flex items-center justify-center">
+                    <i class="fas fa-arrow-up text-green-600 text-xl mr-2"></i>
+                    <h3 class="text-sm font-semibold text-gray-700">Total Revenus</h3>
+                </div>
+                <p class="text-xl font-bold text-green-600 mt-1" x-text="`${totalIncome.toFixed(2)} CHF`"></p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 text-center">
+                <div class="flex items-center justify-center">
+                    <i class="fas fa-arrow-down text-red-600 text-xl mr-2"></i>
+                    <h3 class="text-sm font-semibold text-gray-700">Total Dépenses</h3>
+                </div>
+                <p class="text-xl font-bold text-red-600 mt-1" x-text="`${Math.abs(totalExpenses).toFixed(2)} CHF`"></p>
+            </div>
+            <div class="bg-white rounded-lg shadow-md p-4 text-center">
+                <div class="flex items-center justify-center">
+                    <i class="fas fa-balance-scale text-gray-600 text-xl mr-2"></i>
+                    <h3 class="text-sm font-semibold text-gray-700">Solde Net</h3>
+                </div>
+                <p class="text-xl font-bold mt-1" :class="{ 'text-green-600': netBalance >= 0, 'text-red-600': netBalance < 0 }" x-text="`${netBalance.toFixed(2)} CHF`"></p>
+            </div>
+        </div>
+
+        <!-- Transactions par catégorie -->
+        <template x-for="categoryData in filteredCategoryData" :key="categoryData.category_name">
+            <div class="bg-white rounded-lg shadow-md mb-6">
+                <!-- En-tête de catégorie -->
+                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800" x-text="categoryData.category_name"></h3>
+                            <p class="text-xs text-gray-600" x-text="`${categoryData.transactions.length} transaction(s)`"></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold" 
+                               :class="{ 'text-green-600': getCategoryTotal(categoryData) >= 0, 'text-red-600': getCategoryTotal(categoryData) < 0 }"
+                               x-text="`${getCategoryTotal(categoryData).toFixed(2)} CHF`">
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des transactions -->
+                <div class="p-4">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Montant</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-for="transaction in categoryData.transactions" :key="transaction.id">
+                                    <tr x-show="matchesFilters(transaction)">
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500" x-text="formatDate(transaction.date)"></td>
+                                        <td class="px-4 py-2 text-sm text-gray-900" x-text="transaction.description"></td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm font-medium" 
+                                            :class="{ 'text-green-600': transaction.amount >= 0, 'text-red-600': transaction.amount < 0 }"
+                                            x-text="`${transaction.amount.toFixed(2)} ${transaction.account_currency}`">
+                                        </td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm font-medium space-x-1">
+                                            <template x-if="transaction.amount < 0">
+                                                <a :href="`/debit-funds/${transaction.id}/`" 
+                                                   class="text-red-600 hover:text-red-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                                   title="Débiter des fonds">
+                                                    <i class="fas fa-wallet mr-1"></i>
+                                                    <span class="hidden sm:inline text-xs">Débiter</span>
+                                                </a>
+                                            </template>
+                                            <template x-if="transaction.amount > 0">
+                                                <a :href="`/allocate-income/${transaction.id}/`" 
+                                                   class="text-green-600 hover:text-green-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                                   title="Allouer revenus">
+                                                    <i class="fas fa-hand-holding-usd mr-1"></i>
+                                                    <span class="hidden sm:inline text-xs">Allouer</span>
+                                                </a>
+                                            </template>
+                                            <a :href="`/split-transaction/${transaction.id}/`" 
+                                               class="text-purple-600 hover:text-purple-900 inline-flex items-center px-1.5 py-0.5 rounded"
+                                               title="Diviser transaction">
+                                                <i class="fas fa-scissors mr-1"></i>
+                                                <span class="hidden sm:inline text-xs">Diviser</span>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Message si aucune transaction -->
+    <div x-show="categoryData.length === 0" class="bg-white rounded-lg shadow-md p-8 text-center">
+        <i class="fas fa-info-circle text-blue-400 text-4xl mb-3"></i>
+        <h3 class="text-lg font-semibold text-gray-700 mb-3">Aucune transaction trouvée</h3>
+        <div class="text-gray-600 space-y-2 max-w-2xl mx-auto">
+            <p>Cette page affiche les transactions des catégories qui gèrent des fonds.</p>
+            <p><strong>Raisons possibles :</strong></p>
+            <ul class="text-left list-disc list-inside space-y-1 mt-3">
+                <li>Aucune transaction pour la période sélectionnée</li>
+                <li>Aucune catégorie configurée comme "gestion de fonds"</li>
+                <li>Les transactions ne sont pas encore catégorisées</li>
+            </ul>
+            <div class="mt-4 space-x-3">
+                <a href="{% url 'import_transactions_view' %}" 
+                   class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm">
+                    <i class="fas fa-upload mr-1"></i>Importer des transactions
+                </a>
+                <a href="/admin/" 
+                   class="inline-flex items-center px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm">
+                    <i class="fas fa-cog mr-1"></i>Configurer les catégories
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="text-center mt-6">
+        <a href="{% url 'recap_overview_view' %}" 
+           class="inline-flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition duration-300 mr-3 text-sm">
+            <i class="fas fa-arrow-left mr-1"></i>Retour aux Récapitulatifs
+        </a>
+        <a href="{% url 'dashboard_view' %}" 
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300 text-sm">
+            <i class="fas fa-tachometer-alt mr-1"></i>Tableau de Bord
+        </a>
+    </div>
+
+    <!-- Données pour Alpine.js -->
+    <script id="categoryTransactionsData" type="application/json">
+        {{ category_transactions_summary|safe }}
+    </script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('categoryTransactionsSummary', () => ({
+        // État
+        searchTerm: '',
+        selectedCategory: '',
+        amountFilter: '',
+        categoryData: [],
+        
+        // Initialisation
+        init() {
+            this.loadData();
+            console.log("Alpine component initialized");
+        },
+        
+        loadData() {
+            const dataElement = document.getElementById('categoryTransactionsData');
+            if (dataElement) {
+                try {
+                    this.categoryData = JSON.parse(dataElement.textContent);
+                    console.log("Data loaded:", this.categoryData);
+                } catch (e) {
+                    console.error('Erreur parsing données:', e);
+                    this.categoryData = [];
+                }
+            } else {
+                console.error('Element categoryTransactionsData not found');
+            }
+        },
+        
+        // Getters calculés
+        get availableCategories() {
+            return [...new Set(this.categoryData.map(cat => cat.category_name))];
+        },
+        
+        get filteredCategoryData() {
+            return this.categoryData.map(categoryData => ({
+                ...categoryData,
+                transactions: categoryData.transactions.filter(transaction => this.matchesFilters(transaction))
+            })).filter(categoryData => 
+                categoryData.transactions.length > 0 && 
+                (this.selectedCategory === '' || categoryData.category_name === this.selectedCategory)
+            );
+        },
+        
+        get filteredTransactions() {
+            return this.filteredCategoryData.flatMap(cat => cat.transactions);
+        },
+        
+        get totalIncome() {
+            return this.filteredTransactions
+                .filter(t => t.amount > 0)
+                .reduce((sum, t) => sum + t.amount, 0);
+        },
+        
+        get totalExpenses() {
+            return this.filteredTransactions
+                .filter(t => t.amount < 0)
+                .reduce((sum, t) => sum + t.amount, 0);
+        },
+        
+        get netBalance() {
+            return this.totalIncome + this.totalExpenses;
+        },
+        
+        // Méthodes
+        matchesFilters(transaction) {
+            // Filtre de recherche
+            if (this.searchTerm) {
+                const searchLower = this.searchTerm.toLowerCase();
+                if (!transaction.description.toLowerCase().includes(searchLower) &&
+                    !transaction.amount.toString().includes(searchLower)) {
+                    return false;
+                }
+            }
+            
+            // Filtre par type de montant
+            if (this.amountFilter === 'positive' && transaction.amount <= 0) return false;
+            if (this.amountFilter === 'negative' && transaction.amount >= 0) return false;
+            
+            return true;
+        },
+        
+        getCategoryTotal(categoryData) {
+            return categoryData.transactions
+                .filter(t => this.matchesFilters(t))
+                .reduce((sum, t) => sum + t.amount, 0);
+        },
+        
+        formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+            });
+        }
+    }));
+});
+</script>
+{% endblock %}

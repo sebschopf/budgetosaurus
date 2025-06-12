@@ -1,121 +1,244 @@
-# webapp/views/transaction_actions.py
-from django.shortcuts import redirect, render, get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST, require_GET
-from django.contrib import messages
 import json
-from datetime import date
-from django.contrib.auth.decorators import login_required # Importez le décorateur
+import logging
+from django.shortcuts import get_object_or_404, redirect
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
+from django.utils.safestring import mark_safe
+from django.views.decorators.http import require_http_methods
+from django.contrib import messages
+from ..models import Transaction, Category
+from ..forms.transaction_form import TransactionForm
 
-from webapp.models import Transaction, Category, Budget, SavingGoal
-from webapp.forms import TransactionForm
-from webapp.services import TransactionService
+# Ajoutez cette fonction en haut du fichier
+from datetime import datetime
 
-@login_required # Protégez cette vue
-@require_POST
+def format_date_for_input(date_obj):
+    """Convertit une date en format ISO pour les inputs HTML5"""
+    if date_obj:
+        return date_obj.strftime('%Y-%m-%d')
+    return ''
+
+logger = logging.getLogger(__name__)
+
+@login_required
+@require_http_methods(["GET"])
+def get_transaction_form(request, transaction_id):
+    """
+    Vue AJAX pour récupérer le formulaire d'édition d'une transaction
+    """
+    try:
+        logger.info(f"Fetching form for transaction {transaction_id} for user {request.user.username}")
+        
+        # Récupérer la transaction
+        transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
+        logger.info(f"Transaction found: {transaction.description}")
+        
+        # Créer le formulaire
+        form = TransactionForm(instance=transaction, user=request.user)
+        
+        # Formater la date pour l'input HTML5
+        if hasattr(transaction, 'date'):
+            form.initial['date'] = format_date_for_input(transaction.date)
+        
+        # Préparer les données de catégories
+        all_categories_data = []
+        all_subcategories_data = []
+        
+        # Récupérer les catégories principales
+        categories = Category.objects.filter(
+            user=request.user, 
+            parent__isnull=True
+        ).order_by('name')
+        
+        logger.info(f"Found {categories.count()} main categories")
+        
+        for cat in categories:
+            all_categories_data.append({
+                'id': cat.id,
+                'name': cat.name,
+                'is_fund_managed': getattr(cat, 'is_fund_managed', False),
+                'is_budgeted': getattr(cat, 'is_budgeted', False),
+            })
+            
+            # Récupérer les sous-catégories
+            subcategories = cat.children.filter(user=request.user).order_by('name')
+            logger.info(f"Found {subcategories.count()} subcategories for {cat.name}")
+            
+            for child_cat in subcategories:
+                all_subcategories_data.append({
+                    'id': child_cat.id,
+                    'name': child_cat.name,
+                    'parent': cat.id,
+                    'is_fund_managed': getattr(child_cat, 'is_fund_managed', False),
+                    'is_budgeted': getattr(child_cat, 'is_budgeted', False),
+                })
+
+        logger.info(f"Total: {len(all_categories_data)} categories and {len(all_subcategories_data)} subcategories")
+
+        # Rendre le template
+        form_html = render_to_string(
+            'webapp/dashboard_includes/edit_transaction_form_partial.html',
+            {
+                'form': form,
+                'transaction': transaction,
+                'transaction_id': transaction_id,
+                'all_categories_data_json': mark_safe(json.dumps(all_categories_data)),
+                'all_subcategories_data_json': mark_safe(json.dumps(all_subcategories_data)),
+            },
+            request=request
+        )
+        
+        logger.info(f"Form HTML generated successfully, length: {len(form_html)}")
+        
+        return JsonResponse({
+            'success': True,
+            'form_html': form_html
+        })
+        
+    except Transaction.DoesNotExist:
+        logger.error(f"Transaction {transaction_id} not found for user {request.user.username}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Transaction non trouvée'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error fetching transaction form: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Erreur lors du chargement du formulaire: {str(e)}'
+        }, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def edit_transaction(request, transaction_id):
+    """
+    Vue pour traiter la soumission du formulaire d'édition
+    """
+    try:
+        logger.info(f"Editing transaction {transaction_id} for user {request.user.username}")
+        
+        transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
+        
+        form = TransactionForm(request.POST, instance=transaction, user=request.user)
+        
+        if form.is_valid():
+            # Assigner la catégorie finale (principale ou sous-catégorie)
+            final_category = form.cleaned_data.get('final_category')
+            if final_category:
+                transaction.category = final_category
+            
+            saved_transaction = form.save()
+            logger.info(f"Transaction {transaction_id} updated successfully")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Transaction mise à jour avec succès'
+            })
+        else:
+            logger.warning(f"Form validation failed for transaction {transaction_id}: {form.errors}")
+            
+            # Retourner le formulaire avec les erreurs
+            all_categories_data = []
+            all_subcategories_data = []
+            
+            for cat in Category.objects.filter(user=request.user, parent__isnull=True).order_by('name'):
+                all_categories_data.append({
+                    'id': cat.id,
+                    'name': cat.name,
+                    'is_fund_managed': getattr(cat, 'is_fund_managed', False),
+                    'is_budgeted': getattr(cat, 'is_budgeted', False),
+                })
+                
+                for child_cat in cat.children.filter(user=request.user).order_by('name'):
+                    all_subcategories_data.append({
+                        'id': child_cat.id,
+                        'name': child_cat.name,
+                        'parent': cat.id,
+                        'is_fund_managed': getattr(child_cat, 'is_fund_managed', False),
+                        'is_budgeted': getattr(child_cat, 'is_budgeted', False),
+                    })
+
+            form_html = render_to_string(
+                'webapp/dashboard_includes/edit_transaction_form_partial.html',
+                {
+                    'form': form,
+                    'transaction': transaction,
+                    'transaction_id': transaction_id,
+                    'all_categories_data_json': mark_safe(json.dumps(all_categories_data)),
+                    'all_subcategories_data_json': mark_safe(json.dumps(all_subcategories_data)),
+                },
+                request=request
+            )
+            
+            return JsonResponse({
+                'success': False, 
+                'errors_html': form_html,
+                'errors': form.errors
+            })
+            
+    except Transaction.DoesNotExist:
+        logger.error(f"Transaction {transaction_id} not found for user {request.user.username}")
+        return JsonResponse({
+            'success': False,
+            'error': 'Transaction non trouvée'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error editing transaction: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'Erreur lors de la modification: {str(e)}'
+        }, status=500)
+
+@login_required
+def delete_transaction(request, transaction_id):
+    """
+    Vue pour supprimer une transaction
+    """
+    try:
+        transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
+        transaction_desc = transaction.description
+        transaction.delete()
+        
+        messages.success(request, f'Transaction "{transaction_desc}" supprimée avec succès.')
+        logger.info(f"Transaction {transaction_id} deleted by user {request.user.username}")
+        
+    except Exception as e:
+        messages.error(request, f'Erreur lors de la suppression: {str(e)}')
+        logger.error(f"Error deleting transaction {transaction_id}: {str(e)}")
+    
+    return redirect('review_transactions_view')
+
+@login_required
+@require_http_methods(["POST"])
 def delete_selected_transactions(request):
     """
-    Vue pour supprimer les transactions sélectionnées par l'utilisateur connecté.
+    Vue pour supprimer plusieurs transactions sélectionnées
     """
-    transaction_ids = request.POST.getlist('transaction_ids')
-
-    if not transaction_ids:
-        messages.error(request, "Aucune transaction sélectionnée pour la suppression.")
-        return redirect('dashboard_view')
-
     try:
-        with Transaction.objects.atomic():
-            # S'assurer que seules les transactions de l'utilisateur connecté sont supprimées
-            deleted_count, _ = Transaction.objects.filter(id__in=transaction_ids, user=request.user).delete()
-
-        messages.success(request, f"{deleted_count} transaction(s) supprimée(s) avec succès.")
+        transaction_ids = request.POST.getlist('transaction_ids')
+        if not transaction_ids:
+            messages.warning(request, 'Aucune transaction sélectionnée.')
+            return redirect('review_transactions_view')
+        
+        # Supprimer les transactions appartenant à l'utilisateur
+        deleted_count = Transaction.objects.filter(
+            id__in=transaction_ids,
+            user=request.user
+        ).delete()[0]
+        
+        messages.success(request, f'{deleted_count} transaction(s) supprimée(s) avec succès.')
+        logger.info(f"{deleted_count} transactions deleted by user {request.user.username}")
+        
     except Exception as e:
-        messages.error(request, f"Erreur lors de la suppression des transactions: {e}")
+        messages.error(request, f'Erreur lors de la suppression: {str(e)}')
+        logger.error(f"Error deleting selected transactions: {str(e)}")
+    
+    return redirect('review_transactions_view')
 
-    return redirect('dashboard_view')
-
-
-@login_required # Protégez cette vue
-@require_GET
-def get_transaction_form_for_edit(request, transaction_id):
-    """
-    Vue AJAX pour récupérer le formulaire d'édition d'une transaction spécifique pour l'utilisateur connecté.
-    Le formulaire est pré-rempli avec les données de la transaction.
-    """
-    # S'assurer que la transaction appartient à l'utilisateur connecté
-    transaction = get_object_or_404(Transaction, pk=transaction_id, user=request.user)
-    # Passez l'utilisateur au formulaire pour filtrer les choix
-    form = TransactionForm(instance=transaction, user=request.user)
-
-    # Récupérer toutes les catégories pour le JS, incluant l'info is_fund_managed etc.
-    all_categories_data = []
-    all_subcategories_data = []
-
-    current_year = date.today().year
-    current_month = date.today().month
-    # Filtrer les budgets et objectifs d'épargne par l'utilisateur
-    budgeted_category_ids_for_current_period = set(
-        Budget.objects.filter(
-            user=request.user, # NOUVEAU
-            period_type='M',
-            start_date__year=current_year,
-            start_date__month=current_month
-        ).values_list('category__id', flat=True)
-    )
-
-    goal_linked_category_ids = set(
-        SavingGoal.objects.filter(
-            user=request.user, # NOUVEAU
-            status='OU'
-        ).values_list('category__id', flat=True)
-    )
-
-    # Filtrer les catégories par l'utilisateur connecté
-    for cat in Category.objects.filter(user=request.user, parent__isnull=True).order_by('name'):
-        is_budgeted_for_display = cat.is_budgeted
-        is_fund_managed_for_display = cat.is_fund_managed
-        is_goal_linked_for_display = cat.id in goal_linked_category_ids
-
-        all_categories_data.append({
-            'id': cat.id,
-            'name': cat.name,
-            'is_fund_managed': is_fund_managed_for_display,
-            'is_budgeted': is_budgeted_for_display,
-            'is_goal_linked': is_goal_linked_for_display
-        })
-        # Filtrer les sous-catégories par l'utilisateur
-        for child_cat in cat.children.filter(user=request.user).order_by('name'):
-            child_is_budgeted_for_display = child_cat.is_budgeted
-            child_is_fund_managed_for_display = child_cat.is_fund_managed
-            child_is_goal_linked_for_display = child_cat.id in goal_linked_category_ids
-
-            all_subcategories_data.append({
-                'id': child_cat.id,
-                'name': child_cat.name,
-                'parent': cat.id,
-                'is_fund_managed': child_is_fund_managed_for_display,
-                'is_budgeted': child_is_budgeted_for_display,
-                'is_goal_linked': child_is_goal_linked_for_display
-            })
-
-    context = {
-        'form': form,
-        'transaction_id': transaction_id,
-        'all_categories_data_json': json.dumps(all_categories_data),
-        'all_subcategories_data_json': json.dumps(all_subcategories_data),
-    }
-    return render(request, 'webapp/dashboard_includes/edit_transaction_form_partial.html', context)
-
-
-@login_required # Protégez cette vue
-@require_GET
 def suggest_transaction_categorization(request):
     """
-    Vue AJAX pour suggérer une catégorie et des tags basés sur une description de transaction
-    pour l'utilisateur connecté.
+    Vue pour suggérer une catégorisation automatique des transactions
+    (À implémenter selon vos besoins)
     """
-    description = request.GET.get('description', '')
-    transaction_service = TransactionService()
-    # Passez request.user à la méthode de service
-    suggestion = transaction_service.suggest_categorization(description, request.user)
-    return JsonResponse(suggestion)
+    return JsonResponse({'message': 'Fonctionnalité à implémenter'})

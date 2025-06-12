@@ -4,8 +4,9 @@
   "description": "application pour gérer son budget domestique avec la méthode des enveloppes",
   "main": "index.js",
   "scripts": {
-    "build:css": "postcss webapp/static/webapp/css/tailwind_input.css -o webapp/static/webapp/css/tailwind_output.css",
-    "watch:css": "postcss webapp/static/webapp/css/tailwind_input.css -o webapp/static/webapp/css/tailwind_output.css --watch"
+    "build-css": "tailwindcss -i ./webapp/static/webapp/css/tailwind_input.css -o ./webapp/static/webapp/css/tailwind_output.css",
+    "watch-css": "tailwindcss -i ./webapp/static/webapp/css/tailwind_input.css -o ./webapp/static/webapp/css/tailwind_output.css --watch",
+    "build-css-prod": "tailwindcss -i ./webapp/static/webapp/css/tailwind_input.css -o ./webapp/static/webapp/css/tailwind_output.css --minify"
   },
   "repository": {
     "type": "git",
@@ -22,9 +23,12 @@
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.4",
     "postcss-cli": "^11.0.1",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.17",
+    "@tailwindcss/forms": "^0.5.10",
+    "tailwindcss-animate": "^1.0.7"
   },
   "dependencies": {
     "alpinejs": "^3.14.9"
-  }
+  },
+  "type": "commonjs"
 }

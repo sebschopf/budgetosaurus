@@ -1,0 +1,62 @@
+/* Styles pour les badges de catégorie */
+.category-info-icon {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.category-info-icon.fund-managed {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: rgb(16, 185, 129);
+}
+
+.category-info-icon.budgeted {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(59, 130, 246);
+}
+
+.category-info-icon.goal-linked {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: rgb(245, 158, 11);
+}
+
+/* Animation pour le chargement */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.form-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Styles pour les cases à cocher des tags */
+.tag-checkbox {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.tag-checkbox:hover {
+  background-color: rgba(243, 244, 246, 1);
+}
+
+.tag-checkbox input[type="checkbox"] {
+  border-radius: 0.25rem;
+  border-color: rgba(209, 213, 219, 1);
+}
+
+.tag-checkbox input[type="checkbox"]:checked {
+  background-color: rgba(59, 130, 246, 1);
+  border-color: rgba(59, 130, 246, 1);
+}

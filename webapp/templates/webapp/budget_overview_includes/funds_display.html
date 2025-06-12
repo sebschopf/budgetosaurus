@@ -1,25 +1,32 @@
 {# webapp/templates/webapp/budget_overview_includes/funds_display.html #}
-{# Le titre h2 a été déplacé dans le template parent pour une meilleure hiérarchie #}
-
 {% if fund_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"> {# Espacement augmenté pour une meilleure aération et marge inférieure via Tailwind #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {% for fund in fund_data %}
-            {# Réutilise la classe 'card' pour le style commun, ajoute 'fund-card' pour les spécificités #}
-            {# Ajout des classes Tailwind directes pour la carte et la bordure colorée #}
-            <div class="fund-card card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto
-                        {% if fund.status == 'healthy' %}border-l-green-500{% elif fund.status == 'low' %}border-l-yellow-500{% elif fund.status == 'critical' %}border-l-red-500{% endif %}">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2 flex items-center justify-center"> {# Ajout flex, items-center, justify-center pour aligner texte et icône #}
+            <div 
+                class="fund-card bg-white rounded-lg shadow-md p-6 text-center transition-all duration-300 ease-in-out border border-gray-200 w-full max-w-sm mx-auto"
+                x-data="{ status: '{{ fund.status }}' }"
+                :class="{
+                    'border-l-4 border-l-green-500': status === 'healthy',
+                    'border-l-4 border-l-yellow-500': status === 'low',
+                    'border-l-4 border-l-red-500': status === 'critical'
+                }"
+            >
+                <h3 class="text-xl font-semibold text-gray-700 mb-2 flex items-center justify-center">
                     {{ fund.category_name }}
-                    {# NOUVEAU : Ajoute une petite icône basée sur le statut du fonds #}
-                    {% if fund.status == 'healthy' %}
-                        <span title="Fonds sain" class="text-green-500 ml-2 text-xl">&#10003;</span> {# Icône de coche #}
-                    {% elif fund.status == 'low' %}
-                        <span title="Solde faible, à surveiller" class="text-yellow-500 ml-2 text-xl">&#9888;</span> {# Icône d'avertissement #}
-                    {% elif fund.status == 'critical' %}
-                        <span title="Solde critique/négatif" class="text-red-500 ml-2 text-xl">&#10060;</span> {# Icône croix rouge #}
-                    {% endif %}
+                    <template x-if="status === 'healthy'">
+                        <span title="Fonds sain" class="text-green-500 ml-2 text-xl">&#10003;</span>
+                    </template>
+                    <template x-if="status === 'low'">
+                        <span title="Solde faible, à surveiller" class="text-yellow-500 ml-2 text-xl">&#9888;</span>
+                    </template>
+                    <template x-if="status === 'critical'">
+                        <span title="Solde critique/négatif" class="text-red-500 ml-2 text-xl">&#10060;</span>
+                    </template>
                 </h3>
-                <p class="balance text-2xl font-bold mt-2 {% if fund.current_balance >= 0 %}positive{% else %}negative{% endif %}">
+                <p 
+                    class="balance text-2xl font-bold mt-2"
+                    :class="{ 'text-green-600': {{ fund.current_balance }} >= 0, 'text-red-600': {{ fund.current_balance }} < 0 }"
+                >
                     {{ fund.current_balance|floatformat:2 }} CHF
                 </p>
             </div>

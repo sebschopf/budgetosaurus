@@ -1,0 +1,117 @@
+{% extends 'webapp/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- En-tête du tableau de bord -->
+    <div class="section-header text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">{{ page_title }}</h1>
+        <p class="text-lg text-gray-700">Bienvenue sur votre tableau de bord financier</p>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-list text-blue-600 text-2xl mr-3"></i>
+                <h3 class="text-lg font-semibold text-gray-700">Total Transactions</h3>
+            </div>
+            <p class="text-3xl font-bold text-blue-600 mt-2">{{ total_transactions }}</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-arrow-up text-green-600 text-2xl mr-3"></i>
+                <h3 class="text-lg font-semibold text-gray-700">Revenus {{ current_month_name }}</h3>
+            </div>
+            <p class="text-3xl font-bold text-green-600 mt-2">{{ monthly_income|floatformat:2 }} CHF</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-arrow-down text-red-600 text-2xl mr-3"></i>
+                <h3 class="text-lg font-semibold text-gray-700">Dépenses {{ current_month_name }}</h3>
+            </div>
+            <p class="text-3xl font-bold text-red-600 mt-2">{{ monthly_expenses|floatformat:2 }} CHF</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="flex items-center justify-center">
+                <i class="fas fa-balance-scale text-gray-600 text-2xl mr-3"></i>
+                <h3 class="text-lg font-semibold text-gray-700">Solde {{ current_month_name }}</h3>
+            </div>
+            <p class="text-3xl font-bold mt-2 {% if monthly_balance >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                {{ monthly_balance|floatformat:2 }} CHF
+            </p>
+        </div>
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl mr-3"></i>
+                <h3 class="text-xl font-semibold text-gray-700">Transactions à Revoir</h3>
+            </div>
+            <p class="text-gray-600 mb-4">{{ uncategorized_count }} transaction(s) non catégorisée(s)</p>
+            <a href="{% url 'review_transactions_view' %}" 
+               class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition duration-300">
+                <i class="fas fa-edit mr-2"></i>Revoir maintenant
+            </a>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-chart-bar text-blue-600 text-2xl mr-3"></i>
+                <h3 class="text-xl font-semibold text-gray-700">Récapitulatifs</h3>
+            </div>
+            <p class="text-gray-600 mb-4">Consultez vos récapitulatifs et analyses</p>
+            <a href="{% url 'recap_overview_view' %}" 
+               class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-300">
+                <i class="fas fa-chart-line mr-2"></i>Voir les récapitulatifs
+            </a>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-list-alt text-green-600 text-2xl mr-3"></i>
+                <h3 class="text-xl font-semibold text-gray-700">Toutes les Transactions</h3>
+            </div>
+            <p class="text-gray-600 mb-4">Gérez toutes vos transactions</p>
+            <a href="{% url 'all_transactions_summary_view' %}" 
+               class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300">
+                <i class="fas fa-list mr-2"></i>Voir toutes
+            </a>
+        </div>
+    </div>
+
+    <!-- Liens rapides -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">Liens Rapides</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <a href="{% url 'category_transactions_summary_view' %}" 
+               class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition duration-300">
+                <i class="fas fa-tags text-blue-600 mr-2"></i>
+                <span class="text-sm font-medium">Par Catégorie</span>
+            </a>
+            <a href="{% url 'export_transactions_csv' %}" 
+               class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition duration-300">
+                <i class="fas fa-download text-green-600 mr-2"></i>
+                <span class="text-sm font-medium">Exporter CSV</span>
+            </a>
+            <a href="/admin/" 
+               class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition duration-300">
+                <i class="fas fa-cog text-gray-600 mr-2"></i>
+                <span class="text-sm font-medium">Administration</span>
+            </a>
+            <a href="{% url 'recap_overview_view' %}" 
+               class="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition duration-300">
+                <i class="fas fa-tools text-purple-600 mr-2"></i>
+                <span class="text-sm font-medium">Outils</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

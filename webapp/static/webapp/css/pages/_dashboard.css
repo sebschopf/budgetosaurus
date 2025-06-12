@@ -1,9 +1,0 @@
-/* webapp/static/webapp/css/pages/_dashboard.css */
-
-/* Ce fichier contient les styles spécifiques au tableau de bord. */
-
-/* Grille pour les cartes de solde des comptes */
-.balance-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Grille adaptative avec min 200px */
-}

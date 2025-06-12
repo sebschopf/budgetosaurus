@@ -1,232 +1,132 @@
-# webapp/views/imports.py
+import os
 import csv
 import io
-from datetime import date
-import calendar
-
+import tempfile
+import xml.etree.ElementTree as ET
 from django.shortcuts import render, redirect
-from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
-from django.db import transaction as db_transaction
-from django.db.models import Sum, F
 from django.contrib.auth.decorators import login_required
-from ..models import Category, Budget, Transaction
-from ..importers import (
-    CsvGenericImporter,
-    CsvRaiffeisenImporter,
-    XmlIsoImporter,
-    SwiftMt940Importer
-)
-from ..forms import CategoryImportForm, TransactionImportForm
-from ..services import TransactionImportService
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
+from webapp.models import Transaction, Account
+from webapp.forms.transaction_import_form import TransactionImportForm
+from webapp.importers.csv_raiffeisen import CsvRaiffeisenImporter
+from webapp.importers.csv_generic import CsvGenericImporter
+from webapp.importers.xml_iso import XmlIsoImporter
+from webapp.importers.swift_mt940 import SwiftMt940Importer
+from webapp.services.transaction_import_service import TransactionImportService
 
 @login_required
-def import_categories(request):
-    """
-    Vue pour importer des catégories à partir d'un fichier CSV pour l'utilisateur connecté.
-    Le CSV doit avoir les colonnes 'name' et 'parent_name' (optionnel).
-    """
-    if request.method == 'POST':
-        # Passer l'utilisateur au formulaire pour filtrer les choix si nécessaire (pas de ModelChoiceField ici)
-        form = CategoryImportForm(request.POST, request.FILES)
-        if form.is_valid():
-            csv_file = form.cleaned_data['csv_file']
-            try:
-                decoded_file = csv_file.read().decode('utf-8')
-            except UnicodeDecodeError:
-                decoded_file = csv_file.read().decode('latin-1')
-
-            io_string = io.StringIO(decoded_file)
-            reader = csv.DictReader(io_string)
-
-            imported_count = 0
-            updated_count = 0
-            errors = []
-
-            with db_transaction.atomic():
-                for row in reader:
-                    try:
-                        category_name = row.get('name')
-                        parent_name = row.get('parent_name')
-
-                        if not category_name:
-                            errors.append(f"Ligne ignorée (vide ou 'name' manquant) à la ligne {reader.line_num}.")
-                            continue
-
-                        # Assigner la catégorie à l'utilisateur
-                        category, created = Category.objects.get_or_create(user=request.user, name=category_name)
-                        if created:
-                            imported_count += 1
-                        else:
-                            updated_count += 1
-
-                        if parent_name:
-                            # Assigner le parent à l'utilisateur
-                            parent_category, parent_created = Category.objects.get_or_create(user=request.user, name=parent_name)
-                            if category.parent != parent_category:
-                                category.parent = parent_category
-                                category.save()
-
-                    except Exception as e:
-                        errors.append(f"Erreur à la ligne {reader.line_num} ({row.get('name', 'N/A')}): {e}")
-
-            if not errors:
-                messages.success(request, f"Importation réussie : {imported_count} nouvelles catégories, {updated_count} catégories existantes mises à jour.")
-            else:
-                messages.warning(request, f"Importation terminée avec des erreurs. {imported_count} nouvelles, {updated_count} mises à jour. Erreurs: {', '.join(errors[:5])}...")
-            return redirect('import_categories')
-        else:
-            messages.error(request, "Veuillez corriger les erreurs dans le formulaire de téléchargement.")
-    else:
-        form = CategoryImportForm()
-
-    context = {
-        'page_title': 'Importer des Catégories', 
-        'form': form,
-    }
-    return render(request, 'webapp/import_categories.html', context)
-
-
-@login_required 
 def import_transactions_view(request):
     """
-    Vue pour importer des transactions à partir d'un fichier pour l'utilisateur connecté.
-    Permet à l'utilisateur de choisir le format du fichier et, si nécessaire, de mapper les colonnes.
+    Vue pour importer des transactions depuis différents formats de fichiers bancaires.
     """
     if request.method == 'POST':
-        # Passer l'utilisateur au formulaire pour filtrer les choix de compte
         form = TransactionImportForm(request.POST, request.FILES, user=request.user)
+        
         if form.is_valid():
-            file_to_import = form.cleaned_data['csv_file']
+            uploaded_file = request.FILES.get('csv_file')  # Le nom du champ est toujours 'csv_file' même pour XML
             account = form.cleaned_data['account']
             importer_type = form.cleaned_data['importer_type']
-
-            importer_instance = None # Renommé pour éviter le conflit avec la classe Importer
-            column_mapping = None
-
-            if importer_type == 'generic_csv':
-                column_mapping = {
-                    'date': form.cleaned_data['date_column'],
-                    'description': form.cleaned_data['description_column'],
-                    'amount': form.cleaned_data['amount_column'],
-                }
-                importer_instance = CsvGenericImporter()
-            elif importer_type == 'raiffeisen_csv':
-                importer_instance = CsvRaiffeisenImporter()
-            elif importer_type == 'xml_iso':
-                importer_instance = XmlIsoImporter()
-            elif importer_type == 'swift_mt940':
-                importer_instance = SwiftMt940Importer()
-            else:
-                messages.error(request, "Type d'importateur non valide.")
-                return redirect('import_transactions_view')
-
-            if importer_instance is None:
-                messages.error(request, "Impossible de déterminer l'importateur pour le type de fichier sélectionné.")
-                return redirect('import_transactions_view')
-
+            
+            if not uploaded_file:
+                messages.error(request, "Veuillez sélectionner un fichier.")
+                return render(request, 'webapp/import_transactions.html', {'form': form})
+            
+            # Vérifier l'extension du fichier selon le type d'importateur
+            file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+            
+            if importer_type == 'generic_csv' and file_extension != '.csv':
+                messages.error(request, "Pour l'importateur CSV générique, le fichier doit être au format CSV.")
+                return render(request, 'webapp/import_transactions.html', {'form': form})
+            
+            if importer_type == 'raiffeisen_csv' and file_extension != '.csv':
+                messages.error(request, "Pour l'importateur Raiffeisen CSV, le fichier doit être au format CSV.")
+                return render(request, 'webapp/import_transactions.html', {'form': form})
+            
+            if importer_type == 'xml_iso' and file_extension != '.xml':
+                messages.error(request, "Pour l'importateur XML ISO, le fichier doit être au format XML.")
+                return render(request, 'webapp/import_transactions.html', {'form': form})
+            
+            if importer_type == 'swift_mt940' and file_extension not in ['.mt940', '.sta', '.txt']:
+                messages.error(request, "Pour l'importateur SWIFT MT940, le fichier doit être au format MT940, STA ou TXT.")
+                return render(request, 'webapp/import_transactions.html', {'form': form})
+            
+            # Sauvegarder temporairement le fichier
+            temp_file = tempfile.NamedTemporaryFile(delete=False)
+            for chunk in uploaded_file.chunks():
+                temp_file.write(chunk)
+            temp_file.close()
+            
             try:
-                file_to_import.seek(0)
-                file_content = file_to_import.read().decode('utf-8')
-            except UnicodeDecodeError:
-                file_to_import.seek(0)
-                file_content = file_to_import.read().decode('latin-1')
-
-            # Instancier le service d'importation sans l'importer, car il est passé à process_import
-            importer_service = TransactionImportService()
-
-            try:
-                # Passer l'utilisateur et l'instance de l'importer au service
-                imported_count = importer_service.process_import(file_content, account, request.user, importer_instance, column_mapping)
-                messages.success(request, f"{imported_count} transactions importées avec succès pour le compte '{account.name}'.")
-                return redirect('dashboard_view')
-            except NotImplementedError as e:
-                messages.error(request, f"Fonctionnalité non implémentée: {e}")
-            except ValueError as e:
-                messages.error(request, f"Erreur de format de fichier ou de mappage: {e}")
+                # Sélectionner l'importateur approprié
+                if importer_type == 'generic_csv':
+                    config = {
+                        'date_column_index': 0,  # À adapter selon votre formulaire
+                        'description_column_index': 1,
+                        'amount_column_index': 2,
+                        'date_format': '%Y-%m-%d',  # À adapter selon votre formulaire
+                        'header_rows': 1,  # À adapter selon votre formulaire
+                    }
+                    importer = CsvGenericImporter(config)
+                elif importer_type == 'raiffeisen_csv':
+                    importer = CsvRaiffeisenImporter()
+                elif importer_type == 'xml_iso':
+                    importer = XmlIsoImporter()
+                    
+                    # Vérification supplémentaire pour les fichiers XML
+                    try:
+                        tree = ET.parse(temp_file.name)
+                        root = tree.getroot()
+                        # Vérifier si le fichier XML est au format camt.053
+                        if 'camt.053' not in root.tag and not any('camt.053' in child.tag for child in root):
+                            messages.error(request, "Le fichier XML ne semble pas être au format camt.053.")
+                            os.unlink(temp_file.name)
+                            return render(request, 'webapp/import_transactions.html', {'form': form})
+                    except ET.ParseError as e:
+                        messages.error(request, f"Erreur de parsing XML: {str(e)}")
+                        os.unlink(temp_file.name)
+                        return render(request, 'webapp/import_transactions.html', {'form': form})
+                    
+                elif importer_type == 'swift_mt940':
+                    importer = SwiftMt940Importer()
+                else:
+                    messages.error(request, "Type d'importateur non reconnu.")
+                    os.unlink(temp_file.name)  # Supprimer le fichier temporaire
+                    return render(request, 'webapp/import_transactions.html', {'form': form})
+                
+                # Créer le service d'importation
+                import_service = TransactionImportService(importer)
+                
+                # Importer les transactions
+                try:
+                    imported_count = import_service.process_import(temp_file.name, account, request.user)
+                    
+                    if imported_count > 0:
+                        messages.success(request, f"{imported_count} transaction(s) importée(s) avec succès.")
+                    else:
+                        messages.info(request, "Aucune transaction n'a été importée.")
+                        
+                except ValueError as e:
+                    messages.error(request, f"Erreur de validation: {str(e)}")
+                except Exception as e:
+                    messages.error(request, f"Erreur lors de l'importation: {str(e)}")
+                
             except Exception as e:
-                messages.error(request, f"Une erreur inattendue est survenue lors de l'importation: {e}")
+                messages.error(request, f"Erreur lors de l'importation: {str(e)}")
+            finally:
+                # Nettoyer le fichier temporaire
+                if os.path.exists(temp_file.name):
+                    os.unlink(temp_file.name)
+            
+            return redirect('dashboard_view')
         else:
-            messages.error(request, "Veuillez corriger les erreurs dans le formulaire de téléchargement.")
+            # Le formulaire n'est pas valide, afficher les erreurs
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"Erreur dans le champ {field}: {error}")
     else:
-        # Passer l'utilisateur au formulaire pour filtrer les choix de compte
         form = TransactionImportForm(user=request.user)
-
-    context = {
-        'page_title': 'Importer des Transactions',
-        'form': form,
-    }
-    return render(request, 'webapp/import_transactions.html', context)
-
-
-@login_required 
-def budget_overview(request):
-    """
-    Vue affichant un aperçu des budgets et un résumé des revenus/dépenses pour le mois en cours
-    pour l'utilisateur connecté.
-    """
-    current_month = date.today().month
-    current_year = date.today().year
-
-    # Filtrer les budgets par l'utilisateur
-    budgets = Budget.objects.filter(
-        user=request.user, # NOUVEAU
-        period_type='M',
-        start_date__month=current_month,
-        start_date__year=current_year
-    ).select_related('category')
-
-    budget_data = []
-    for budget in budgets:
-        # Filtrer les catégories et leurs enfants par l'utilisateur
-        category_and_children_ids = [budget.category.id] + list(budget.category.children.filter(user=request.user).values_list('id', flat=True)) # NOUVEAU
-
-        # Filtrer les transactions par l'utilisateur
-        spent_amount = Transaction.objects.filter(
-            user=request.user, # NOUVEAU
-            category__id__in=category_and_children_ids,
-            transaction_type='OUT',
-            date__month=current_month,
-            date__year=current_year
-        ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-        spent_amount = abs(spent_amount)
-
-        remaining = budget.amount - spent_amount
-        percentage_spent = (spent_amount / budget.amount * 100) if budget.amount > 0 else 0
-
-        budget_data.append({
-            'category_name': budget.category.name,
-            'budgeted_amount': budget.amount,
-            'spent_amount': spent_amount,
-            'remaining': remaining,
-            'percentage_spent': round(percentage_spent, 2),
-            'status': 'ok' if remaining >= 0 else 'overbudget'
-        })
-
-    # Filtrer les revenus et dépenses par l'utilisateur
-    total_income_month = Transaction.objects.filter(
-        user=request.user,
-        transaction_type='IN',
-        date__month=current_month,
-        date__year=current_year
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-
-    total_expense_month = Transaction.objects.filter(
-        user=request.user,
-        transaction_type='OUT',
-        date__month=current_month,
-        date__year=current_year
-    ).aggregate(Sum('amount'))['amount__sum'] or 0
-    total_expense_month = abs(total_expense_month)
-
-    context = {
-        'page_title': 'Aperçu des Budgets',
-        'current_month_name': calendar.month_name[current_month],
-        'current_year': current_year,
-        'budget_data': budget_data,
-        'total_income_month': total_income_month,
-        'total_expense_month': total_expense_month,
-    }
-    return render(request, 'webapp/budget_overview.html', context)
+    
+    return render(request, 'webapp/import_transactions.html', {'form': form})

@@ -1,131 +1,134 @@
-    {# webapp/templates/webapp/allocate_income.html #}
-    {% extends 'webapp/base.html' %}
+{% extends 'webapp/base.html' %}
+{% load static %}
 
-    {% load static %} {# Pour charger les fichiers statiques (CSS, JS) #}
-    {% load webapp_filters %} {# Charge les filtres de template personnalisés #}
+{% block title %}Allocation de Revenus{% endblock %}
 
-    {% block title %}{{ page_title }}{% endblock %}
-
-    {% block extra_head %}
-    {% endblock %}
-
-    {% block content %}
-        <h1 class="text-center text-3xl font-bold text-gray-800 mb-6">{{ page_title }}</h1>
-
-        {% if original_transaction %}
-            <div class="allocate-form-container bg-gray-50 rounded-lg shadow-md p-6 mb-8 border border-gray-200"> {# Ajout des classes Tailwind #}
-                <div class="original-transaction-info bg-blue-50 rounded-lg p-5 mb-6 text-center border border-blue-200"> {# Ajout des classes Tailwind #}
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-3">Transaction à Allouer</h2>
-                    <p class="text-base text-gray-700 mb-1">Date: {{ original_transaction.date|date:"d M Y" }}</p>
-                    <p class="text-base text-gray-700 mb-1">Description: {{ original_transaction.description }}</p>
-                    {# .amount et .positive sont stylés dans pages/_allocate_income.css et _base.css #}
-                    <p class="text-2xl font-bold mt-2">Montant: <span class="amount positive">{{ original_transaction.amount|floatformat:2 }} {{ original_transaction.account.currency }}</span></p>
-                    <p class="text-base text-gray-700 mb-0">Compte: {{ original_transaction.account.name }} ({{ original_transaction.get_transaction_type_display }})</p>
-                </div>
-
-                {# Affichage des messages d'erreur Django (gérés par toast.js) #}
-                {% if messages %}
-                    <ul class="messages">
-                        {% for message in messages %}
-                            <li class="{{ message.tags }}">{{ message }}</li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                <form method="post" id="allocationForm" action="{% url 'process_allocation_income' original_transaction.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="original_transaction_id" value="{{ original_transaction.id }}">
-
-                    {# Formulaire principal d'Allocation (pour les notes globales par exemple) #}
-                    <div class="form-field-group mb-4">
-                        <label for="{{ form.notes.id_for_label }}">Notes générales sur l'allocation (optionnel)</label>
-                        {{ form.notes }}
-                        {% if form.notes.errors %}<p class="text-red-500 text-xs mt-1">{{ form.notes.errors }}</p>{% endif %}
-                    </div>
-
-                    <h3 class="text-lg font-semibold text-gray-700 mb-4">Lignes d'Allocation</h3>
-
-                    {# Management form pour le formset Django #}
-                    {{ formset.management_form }}
-
-                    <div class="form-row-header">
-                        <span>Fonds / Enveloppe</span>
-                        <span>Montant</span>
-                        <span>Notes (ligne)</span>
-                        <span></span> {# For delete button #}
-                    </div>
-
-                    <div id="allocation-lines-container">
-                        {% for line_form in formset %}
-                            <div class="allocation-line {% if line_form.errors %}has-error{% endif %} mb-4 p-4 border border-gray-200 rounded-md bg-white shadow-sm" id="form-{{ forloop.counter0 }}"> {# Ajout des classes Tailwind #}
-                                {% comment %} Afficher les erreurs du formulaire de ligne s'il y en a {% endcomment %}
-                                {% if line_form.errors %}
-                                    <ul class="errorlist col-span-full text-red-600 text-sm list-none p-0"> {# Ajout des classes Tailwind #}
-                                        {% for field_name, errors in line_form.errors.items %}
-                                            <li>{{ line_form|get_field_label:field_name }}: {{ errors|join:", " }}</li>
-                                        {% endfor %}
-                                        {% if line_form.non_field_errors %}
-                                            {% for error in line_form.non_field_errors %}
-                                                <li>{{ error }}</li>
-                                            {% endfor %}
-                                        {% endif %}
-                                    </ul>
-                                {% endif %}
-
-                                {# Rendering form fields #}
-                                {{ line_form.id }} {# Hidden field for line form ID, needed for can_delete #}
-                                <div>
-                                    {{ line_form.category }}
-                                    {# An icon will be injected here by JS after selection, styled by components/_category_icons.css #}
-                                </div>
-                                {{ line_form.amount }}
-                                {{ line_form.notes }}
-                                {% if formset.can_delete %}
-                                    <div class="flex items-center justify-center">
-                                        {{ line_form.DELETE }} {# Checkbox for deletion (can be hidden via CSS) #}
-                                        <label for="{{ line_form.DELETE.id_for_label }}" class="sr-only">Supprimer</label>
-                                        <button type="button" class="delete-line-btn">X</button>
-                                    </div>
-                                {% else %}
-                                    <div></div> {# Empty space if no delete button #}
-                                {% endif %}
-                            </div>
-                        {% endfor %}
-                    </div>
-
-                    {# .add-line-btn est stylé dans components/_buttons.css #}
-                    <button type="button" id="add-allocation-line-btn" class="add-line-btn bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-300 font-semibold mt-4 block mx-auto max-w-xs">Ajouter une ligne d'allocation</button> {# Ajout des classes Tailwind #}
-
-                    {# .allocation-summary est stylé dans pages/_allocate_income.css #}
-                    <div id="allocation-summary-box" class="allocation-summary bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6 text-center font-semibold text-yellow-800"> {# Ajout des classes Tailwind #}
-                        Montant restant à allouer: <span id="remaining-amount">{{ original_transaction.amount|floatformat:2 }}</span> {{ original_transaction.account.currency }}
-                    </div>
-
-                    {# .main-submit-btn est stylé dans components/_buttons.css #}
-                    <button type="submit" class="main-submit-btn w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition duration-300 font-bold text-lg">Allouer le Revenu</button> {# Ajout des classes Tailwind #}
-                </form>
-            </div>
-        {% else %}
-            <p class="text-center text-gray-700 text-lg my-10">
-                Aucune transaction de revenu à allouer. Veuillez sélectionner une transaction de type 'Revenu'
-                depuis la page <a href="{% url 'all_transactions_summary_view' %}" class="text-blue-600 hover:underline">Toutes les Transactions</a>.
-            </p>
-        {% endif %}
-
-        <a href="{% url 'dashboard_view' %}" class="back-link">Retour au Tableau de Bord</a>
-    {% endblock %}
-
-    {% block extra_js %}
-        {# passer le montant original au JavaScript via un élément de script masqué #}
-        <script id="originalTransactionAmountData" type="application/json">
-            {{ original_transaction.amount|floatformat:2 }}
-        </script>
-        {# Passer les données des catégories gérées par les fonds au JavaScript #}
-        <script id="fundManagedCategoriesData" type="application/json">
-            {{ fund_managed_categories_json|safe }}
-        </script>
-
-        {# lien pour js allocate #}
-        <script src="{% static 'webapp/js/allocate_income.js' %}"></script>
-    {% endblock %}
+{% block content %}
+<div x-data="incomeAllocationManager" class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Allocation de Revenus</h1>
     
+    <!-- Information sur la transaction originale -->
+    <div class="original-transaction-info bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+        <h2 class="text-lg font-semibold text-green-800 mb-2">Revenu à allouer</h2>
+        <p><strong>Date:</strong> {{ original_transaction.date|date:"d/m/Y" }}</p>
+        <p><strong>Description:</strong> {{ original_transaction.description }}</p>
+        <p><strong>Montant:</strong> <span class="font-bold text-green-600">{{ original_transaction.amount|floatformat:2 }} CHF</span></p>
+        <p><strong>Compte:</strong> {{ original_transaction.account.name }}</p>
+    </div>
+
+    <!-- Résumé des calculs -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6" :class="{ 'border-green-500 border-2': isBalanced }">
+        <h3 class="text-lg font-semibold mb-4">Résumé de l'allocation</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <p class="text-sm text-gray-600">Montant original</p>
+                <p class="text-xl font-bold" x-text="`${originalAmount.toFixed(2)} CHF`"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Total alloué</p>
+                <p class="text-xl font-bold" x-text="`${totalAllocated.toFixed(2)} CHF`"></p>
+            </div>
+            <div>
+                <p class="text-sm text-gray-600">Restant</p>
+                <p class="text-xl font-bold" :class="remainingClass" x-text="`${remainingAmount.toFixed(2)} CHF`"></p>
+            </div>
+        </div>
+        <div x-show="isBalanced" class="mt-4 p-3 bg-green-100 border border-green-400 rounded-md">
+            <p class="text-green-700 font-medium">✓ Le montant est entièrement alloué</p>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <form id="allocationForm" method="post" @submit.prevent="submitForm()">
+        {% csrf_token %}
+        
+        <!-- Lignes d'allocation -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Lignes d'allocation</h3>
+                <button type="button" @click="addAllocationLine()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                    <i class="fas fa-plus mr-2"></i>Ajouter une ligne
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <template x-for="(line, index) in allocationLines" :key="line.id">
+                    <div x-show="!line.isDeleted" 
+                         class="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-gray-200 rounded-lg">
+                        
+                        <!-- Catégorie -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Fonds/Enveloppe</label>
+                            <select x-model="line.category" 
+                                    class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Sélectionner le fonds</option>
+                                <template x-for="category in fundCategories" :key="category.id">
+                                    <option :value="category.id" x-text="category.name"></option>
+                                </template>
+                            </select>
+                        </div>
+
+                        <!-- Montant -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Montant</label>
+                            <input type="number" x-model.number="line.amount" step="0.01" 
+                                   placeholder="Montant alloué"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Notes -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <input type="text" x-model="line.notes" 
+                                   placeholder="Notes (optionnel)"
+                                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="flex items-end">
+                            <button type="button" @click="removeAllocationLine(line.id)"
+                                    class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <div x-show="allocationLines.filter(l => !l.isDeleted).length === 0" 
+                     class="text-center py-8 text-gray-500">
+                    Aucune ligne d'allocation. Cliquez sur "Ajouter une ligne" pour commencer.
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes générales -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <label for="id_notes" class="block text-sm font-medium text-gray-700 mb-2">Notes générales</label>
+            {{ form.notes }}
+        </div>
+
+        <!-- Actions -->
+        <div class="flex justify-between">
+            <a href="{% url 'dashboard_view' %}" 
+               class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-md">
+                <i class="fas fa-arrow-left mr-2"></i>Retour
+            </a>
+            <button type="submit" 
+                    :disabled="!isBalanced"
+                    :class="{ 'opacity-50 cursor-not-allowed': !isBalanced }"
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md">
+                <i class="fas fa-save mr-2"></i>Enregistrer l'allocation
+            </button>
+        </div>
+    </form>
+
+    <!-- Données pour Alpine.js -->
+    <script id="originalTransactionAmountData" type="application/json">{{ original_transaction.amount|floatformat:2 }}</script>
+    <script id="fundManagedCategoriesData" type="application/json">{{ fund_categories_json|safe }}</script>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'webapp/js/alpine-fund-management.js' %}"></script>
+{% endblock %}
